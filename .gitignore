@@ -1,0 +1,13 @@
+blocks*.txt
+derby.log
+metastore_db/
+
+# sbt
+target/
+
+# IDE
+/eclipse.sbt
+/.classpath
+/.project
+/.settings/
+/.cache-main
