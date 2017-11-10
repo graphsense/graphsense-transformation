@@ -1,6 +1,6 @@
 name := "graphsense-transformation"
-
-version := "0.3.2dev"
+organization := "at.ac.ait"
+version := "0.3.1"
 
 scalaVersion := "2.11.8"
 
