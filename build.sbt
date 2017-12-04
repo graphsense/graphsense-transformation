@@ -1,28 +1,32 @@
-name := "graphsense-transformation"
+import Dependencies._
 
-version := "0.3.1"
-
-scalaVersion := "2.11.8"
-
-scalacOptions ++= Seq(
-  "-deprecation",
-  "-feature",
-  "-unchecked",
-  "-Xlint:_",
-  "-Ywarn-adapted-args",
-  "-Ywarn-dead-code",
-  "-Ywarn-inaccessible",
-  "-Ywarn-infer-any",
-  "-Ywarn-nullary-override",
-  "-Ywarn-nullary-unit",
-  "-Ywarn-numeric-widen",
-  "-Ywarn-unused",
-  "-Ywarn-unused-import",
-  "-Ywarn-value-discard")
-
-resolvers += "Spark Packages Repo" at "https://dl.bintray.com/spark-packages/maven"
-
-libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
-  "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
-  "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.5")
+lazy val root = (project in file(".")).
+  settings(
+    inThisBuild(List(
+      scalaVersion := "2.11.8",
+      version      := "0.1.0-SNAPSHOT"
+    )),
+    name := "graphsense-transformation-2",
+    fork := true,
+    //javaOptions in Test ++= List("-Xms3G", "-Xmx3G"),
+    testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oF"),
+    scalacOptions ++= List(
+      "-deprecation",
+      "-feature",
+      "-unchecked",
+      "-Xlint:_",
+      "-Ywarn-adapted-args",
+      "-Ywarn-dead-code",
+      "-Ywarn-inaccessible",
+      "-Ywarn-infer-any",
+      "-Ywarn-nullary-override",
+      "-Ywarn-nullary-unit",
+      "-Ywarn-numeric-widen",
+      "-Ywarn-unused",
+      "-Ywarn-unused-import",
+      "-Ywarn-value-discard"),
+    libraryDependencies ++= List(
+      scalaTest % Test,
+      sparkSql % Provided,
+      sparkCassandraConnector % Provided)
+  )
