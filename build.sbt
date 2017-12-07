@@ -4,9 +4,9 @@ lazy val root = (project in file(".")).
   settings(
     inThisBuild(List(
       scalaVersion := "2.11.8",
-      version      := "0.1.0-SNAPSHOT"
+      version      := "0.3.2-SNAPSHOT"
     )),
-    name := "graphsense-transformation-2",
+    name := "graphsense-transformation",
     fork := true,
     //javaOptions in Test ++= List("-Xms3G", "-Xmx3G"),
     testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oF"),
