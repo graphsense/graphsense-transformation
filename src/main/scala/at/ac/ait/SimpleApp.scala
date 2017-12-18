@@ -10,7 +10,7 @@ import at.ac.ait.{Fields => F}
 case class BlockGroup(block_group: Int)
 
 object SimpleApp {
-  
+
   def time[R](block: => R): R = {
     val t0 = System.currentTimeMillis()
     val result = block
@@ -18,25 +18,54 @@ object SimpleApp {
     println("Elapsed time: " + (t1 - t0) / 1000 + "s")
     result
   }
+
+  case class AppArgs(
+      sourceKeyspace: String,
+      targetKeyspace: String,
+      maxBlockgroup: Int
+  )
+
+  object AppArgs {
+    def empty = new AppArgs("", "", 0)
+  }
   
   def main(args: Array[String]) {
+    
+    val argsInstance = args.sliding(2, 1).toList.foldLeft(AppArgs.empty) {
+      case (accumArgs, currArgs) => currArgs match {
+        case Array("--source_keyspace", sourceKeyspace) => accumArgs.copy(sourceKeyspace = sourceKeyspace)
+        case Array("--target_keyspace", targetKeyspace) => accumArgs.copy(targetKeyspace = targetKeyspace)
+        case Array("--max_blockgroup", maxBlockgroup) => accumArgs.copy(maxBlockgroup = maxBlockgroup.toInt)
+        case _ => accumArgs
+      }
+    }
+    
+    if (argsInstance.maxBlockgroup < 0 || 
+        argsInstance.sourceKeyspace == "" || 
+        argsInstance.targetKeyspace == "") {
+      Console.err.println("Usage: spark-submit [...] graphsense-transformation.jar" +
+        " --source_keyspace SRC_KEYSPACE" +
+        " --target_keyspace TGT_KEYSPACE" + 
+        " --max_blockgroup BLOCKGROUP")
+      sys.exit(1)
+    }
+    
     val spark = SparkSession.builder.appName("Simple Application").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
-    
+
     import spark.implicits._
-    
-    val keyspace_raw_old = "graphsense_raw"
-    val keyspace_raw = "graphsense_raw_new"
-    val keyspace = "graphsense_transformed_new"
+
+    val keyspace_raw = argsInstance.sourceKeyspace
+    val keyspace = argsInstance.targetKeyspace
     val allBlocks = false
-    
+
     //val rawBlocks = spark.sparkContext.cassandraTable[RawBlock](keyspace, "block").toDS()
     val transactionTable = "transaction"
     val rawTransactionsRelative = {
       if (allBlocks)
         spark.sparkContext.cassandraTable[RawTransaction](keyspace_raw, transactionTable)
       else
-        spark.sparkContext.parallelize(0.to(1).map(BlockGroup))
+        spark.sparkContext.parallelize(0.to(argsInstance.maxBlockgroup).map(BlockGroup))
           .repartitionByCassandraReplica(keyspace_raw, transactionTable, 50)
           .joinWithCassandraTable[RawTransaction](keyspace_raw, transactionTable)
           .values
@@ -44,17 +73,17 @@ object SimpleApp {
     val rawExchangeRates =
       spark.sparkContext.cassandraTable[RawExchangeRates](keyspace_raw, "exchange_rates").toDS()
     val rawTags =
-      spark.sparkContext.cassandraTable[RawTag](keyspace_raw_old, "tag").toDS()
-    
+      spark.sparkContext.cassandraTable[RawTag](keyspace_raw, "tag").toDS()
+
     val rawTransactions =
       rawTransactionsRelative.sort(F.height, F.txNumber).rdd
         .zipWithIndex()
         .map { case ((t, id)) =>
           RawTransaction(t.height, id.toInt + 1, t.txHash, t.timestamp, t.coinbase, t.vin, t.vout)
         }.toDS().persist()
-    
+
     val transformation = new Transformation(spark, rawTransactions, rawExchangeRates, rawTags)
-    
+
     def save[A <: Product: ClassTag: TypeTag](table: Dataset[A], tableName: String) = {
       val description = "store " + tableName
       println(description)
@@ -62,7 +91,7 @@ object SimpleApp {
       time{table.rdd.saveToCassandra(keyspace, tableName)}
       ()
     }
-    
+
     save(transformation.addressTransactions, "address_transactions")
     save(transformation.transactions, "transaction")
     save(transformation.blockTransactions, "block_transactions")
