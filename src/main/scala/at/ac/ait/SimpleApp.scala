@@ -1,7 +1,9 @@
 package at.ac.ait
 
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.cql._
 import org.apache.spark.sql.{Dataset, SparkSession}
+import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 
@@ -28,9 +30,9 @@ object SimpleApp {
   object AppArgs {
     def empty = new AppArgs("", "", 0)
   }
-  
+
   def main(args: Array[String]) {
-    
+
     val argsInstance = args.sliding(2, 1).toList.foldLeft(AppArgs.empty) {
       case (accumArgs, currArgs) => currArgs match {
         case Array("--source_keyspace", sourceKeyspace) => accumArgs.copy(sourceKeyspace = sourceKeyspace)
@@ -39,17 +41,17 @@ object SimpleApp {
         case _ => accumArgs
       }
     }
-    
-    if (argsInstance.maxBlockgroup < 0 || 
-        argsInstance.sourceKeyspace == "" || 
+
+    if (argsInstance.maxBlockgroup < 0 ||
+        argsInstance.sourceKeyspace == "" ||
         argsInstance.targetKeyspace == "") {
       Console.err.println("Usage: spark-submit [...] graphsense-transformation.jar" +
         " --source_keyspace SRC_KEYSPACE" +
-        " --target_keyspace TGT_KEYSPACE" + 
+        " --target_keyspace TGT_KEYSPACE" +
         " --max_blockgroup BLOCKGROUP")
       sys.exit(1)
     }
-    
+
     val spark = SparkSession.builder.appName("Simple Application").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
@@ -57,19 +59,26 @@ object SimpleApp {
 
     val keyspace_raw = argsInstance.sourceKeyspace
     val keyspace = argsInstance.targetKeyspace
-    val allBlocks = false
 
-    //val rawBlocks = spark.sparkContext.cassandraTable[RawBlock](keyspace, "block").toDS()
+    val maxBlockGroup = {
+      if (argsInstance.maxBlockgroup == 0) {
+        val rs = CassandraConnector(spark.sparkContext.getConf).withSessionDo (
+          session => session.execute(
+            s"SELECT block_group FROM $keyspace_raw.transaction PER PARTITION LIMIT 1")
+        )
+        rs.all.asScala.map(_ getInt 0).max
+      } else {
+        argsInstance.maxBlockgroup
+      }
+    }
+
     val transactionTable = "transaction"
-    val rawTransactionsRelative = {
-      if (allBlocks)
-        spark.sparkContext.cassandraTable[RawTransaction](keyspace_raw, transactionTable)
-      else
-        spark.sparkContext.parallelize(0.to(argsInstance.maxBlockgroup).map(BlockGroup))
-          .repartitionByCassandraReplica(keyspace_raw, transactionTable, 50)
-          .joinWithCassandraTable[RawTransaction](keyspace_raw, transactionTable)
-          .values
-    }.toDS().persist()
+    val rawTransactionsRelative =
+      spark.sparkContext.parallelize(0.to(maxBlockGroup).map(BlockGroup))
+        .repartitionByCassandraReplica(keyspace_raw, transactionTable, 50)
+        .joinWithCassandraTable[RawTransaction](keyspace_raw, transactionTable)
+        .values
+        .toDS().persist()
     val rawExchangeRates =
       spark.sparkContext.cassandraTable[RawExchangeRates](keyspace_raw, "exchange_rates").toDS()
     val rawTags =
