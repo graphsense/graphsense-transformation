@@ -33,6 +33,7 @@ CREATE TYPE tx_input_output (
 	address text,
 	value bigint
 );
+
 CREATE TABLE transaction (
 	tx_prefix text,
 	tx_hash blob,
@@ -53,6 +54,7 @@ CREATE TYPE tx_summary (
 	total_input bigint,
 	total_output bigint
 );
+
 CREATE TABLE block_transactions (
 	height int PRIMARY KEY,
 	txs list<FROZEN<tx_summary>>
@@ -85,6 +87,7 @@ CREATE TYPE address_summary (
 	total_received bigint,
 	total_spent bigint
 );
+
 CREATE TABLE address_incoming_relations (
 	dst_address_prefix text,
 	dst_address text,
@@ -95,6 +98,7 @@ CREATE TABLE address_incoming_relations (
 	estimated_value frozen <value>,
 	PRIMARY KEY (dst_address_prefix, dst_address, src_category, estimated_value, src_address)	
 ) WITH CLUSTERING ORDER BY (dst_address ASC, src_category DESC, estimated_value DESC);
+
 CREATE TABLE address_outgoing_relations (
 	src_address_prefix text,
 	src_address text,
@@ -154,6 +158,7 @@ CREATE TYPE cluster_summary (
 	total_received bigint,
 	total_spent bigint
 );
+
 CREATE TABLE cluster_incoming_relations (
 	dst_cluster text,
 	src_cluster text,
@@ -163,6 +168,7 @@ CREATE TABLE cluster_incoming_relations (
 	value frozen <value>,
 	PRIMARY KEY (dst_cluster, src_category, value, src_cluster)
 ) WITH CLUSTERING ORDER BY (src_category DESC, value DESC);
+
 CREATE TABLE cluster_outgoing_relations (
 	src_cluster text,
 	dst_cluster text,
