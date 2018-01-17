@@ -19,7 +19,7 @@ EXEC=$(basename "$0")
 USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--max_blockgroup MAX_BLOCKGROUP] [--src_keyspace SRC_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE]"
 
 # parse command line options
-args=`getopt -o hc:m:s: --long src_keyspace,tgt_keyspace: -- "$@"`
+args=`getopt -o hc:m:s: --long src_keyspace:,tgt_keyspace:,max_blockgroup: -- "$@"`
 eval set -- "$args"
 
 while true; do
