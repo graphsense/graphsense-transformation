@@ -9,14 +9,18 @@ import at.ac.ait.{Fields => F}
 
 class Transformation(
     spark: SparkSession,
+    rawBlocks: Dataset[RawBlock],
     rawTransactions: Dataset[RawTransaction],
     rawExchangeRates: Dataset[RawExchangeRates],
     rawTags: Dataset[RawTag]) {
-  
+
   import spark.implicits._
-  
+
   val t = new Transformator(spark)
-  
+
+  val blocks =
+    rawBlocks.select($"height", $"blockHash", $"timestamp", size($"txs") as "noTransactions").as[Block]
+
   val rawOutputs =
     rawTransactions.withColumn(F.vout, explode(col(F.vout)))
       .select(F.txHash, F.txNumber, "vout.value", "vout.n", "vout.addresses")
@@ -28,7 +32,7 @@ class Transformation(
       .join(rawOutputs.drop(F.txNumber).withColumnRenamed(F.txHash, "txid"), List("txid", F.n))
       .select(F.txHash, F.txNumber, F.value, F.addresses)
   }.persist()
-  
+
   def simplifyOutputs(rawOutputs: Dataset[Row]) =
     rawOutputs.filter(size(col(F.addresses)) === 1)
       .withColumn(F.address, explode(col(F.addresses)))

@@ -13,11 +13,11 @@ import at.ac.ait.{Fields => F}
 import entity.AddressMapping
 
 class Transformator(spark: SparkSession) {
-  
+
   import spark.implicits._
 
   val addressPrefixColumn = substring(col(F.address), 0, 5) as F.addressPrefix
-  
+
   def exchangeRates(
       rawExchangeRates: Dataset[RawExchangeRates],
       rawTransactions: Dataset[RawTransaction]) = {
@@ -51,7 +51,7 @@ class Transformator(spark: SparkSession) {
         usdPrice(col(F.timestamp)) as F.usd)
       .as[ExchangeRates]
   }
-  
+
   def toBitcoinDataFrame(
       exchangeRates: Dataset[ExchangeRates],
       tableWithHeight: Dataset[_],
@@ -69,27 +69,27 @@ class Transformator(spark: SparkSession) {
         cs.tail)
     processColumns(tableWithHeight.join(exchangeRates, F.height), columns).drop(F.eur, F.usd)
   }
-  
+
   def addressCluster(
       regularInputs: Dataset[RegularInput],
       regularOutputs: Dataset[RegularOutput]) = {
     def plainAddressCluster(basicTxInputAddresses: DataFrame) = {
       val addrCount = count(F.addrId).over(Window.partitionBy(F.txNumber))
-      
+
       val collectiveInputAddresses =
         basicTxInputAddresses.select(col(F.txNumber), col(F.addrId), addrCount as "count")
           .filter($"count" > 1)
           .select(col(F.txNumber), col(F.addrId))
-      
+
       val transactionCount =
         collectiveInputAddresses.groupBy(F.addrId).count()
-      
+
       val reprAddrId = "reprAddrId"
-      
+
       val initialRepresentative = {
         val transactionWindow = Window.partitionBy(F.txNumber).orderBy($"count".desc)
         val rowNumber = row_number().over(transactionWindow)
-        
+
         val addressMax = {
           val rank = "rank"
           collectiveInputAddresses.join(transactionCount, F.addrId)
@@ -97,26 +97,26 @@ class Transformator(spark: SparkSession) {
             .filter(col(rank) === 1)
             .select(col(F.txNumber), col(F.addrId) as reprAddrId)
         }
-      
+
         val tmp = transactionCount.filter($"count" === 1)
           .select(F.addrId)
           .join(collectiveInputAddresses, F.addrId)
-          
+
         tmp.toDF(F.addrId, F.txNumber).join(addressMax, F.txNumber)
           .select(F.addrId, reprAddrId)
       }
-      
+
       val basicAddressCluster = {
         val inputAddressesRdd = {
           val nonTrivialAddresses =
             transactionCount.filter($"count" > 1)
               .select(F.addrId)
               .join(collectiveInputAddresses, F.addrId)
-              
+
           for (r <- nonTrivialAddresses)
           yield (r getInt 1, r getInt 0)
         }.rdd
-        
+
         @tailrec
         def doGrouping(am: AddressMapping, iter: Iterator[Set[Int]]): AddressMapping = {
           if (iter.hasNext) {
@@ -124,23 +124,23 @@ class Transformator(spark: SparkSession) {
             doGrouping(am.group(addresses), iter)
           } else am
         }
-        
+
         val inputGroups =
           inputAddressesRdd.aggregateByKey[Set[Int]](Set.empty[Int])(_ + _, _ ++ _)
             .map(_._2).toLocalIterator
-       
+
         val addressMapping = doGrouping(AddressMapping(Map.empty), inputGroups)
-        
+
         spark.sparkContext.parallelize(addressMapping.collect.toSeq).toDF().persist()
       }
-      
+
       val addressClusterRemainder =
         initialRepresentative.join(
             basicAddressCluster.toDF(reprAddrId, F.cluster), List(reprAddrId), "left_outer")
           .select(
             col(F.addrId),
             when(col(F.cluster).isNotNull, col(F.cluster)) otherwise col(reprAddrId) as F.cluster)
-      
+
       basicAddressCluster.union(addressClusterRemainder)
     }
     val orderWindow = Window.partitionBy(F.address).orderBy(F.txNumber, F.n)
@@ -161,7 +161,7 @@ class Transformator(spark: SparkSession) {
       .select(addressPrefixColumn, col(F.address), col(F.cluster))
       .as[AddressCluster]
   }
-  
+
   def addressRelations(
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
@@ -225,7 +225,7 @@ class Transformator(spark: SparkSession) {
       .withColumn(F.dstAddressPrefix, substring(col(F.dstAddress), 0, 5))
       .as[AddressRelations]
   }
-  
+
   def clusterRelations(
       clusterInputs: Dataset[ClusterTransactions],
       clusterOutputs: Dataset[ClusterTransactions],

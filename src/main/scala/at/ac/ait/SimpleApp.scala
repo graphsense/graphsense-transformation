@@ -72,6 +72,8 @@ object SimpleApp {
       }
     }
 
+    val rawBlocks = spark.sparkContext.cassandraTable[RawBlock](keyspace_raw, "block").toDS()
+
     val transactionTable = "transaction"
     val rawTransactionsRelative =
       spark.sparkContext.parallelize(0.to(maxBlockGroup).map(BlockGroup))
@@ -79,8 +81,10 @@ object SimpleApp {
         .joinWithCassandraTable[RawTransaction](keyspace_raw, transactionTable)
         .values
         .toDS().persist()
+
     val rawExchangeRates =
       spark.sparkContext.cassandraTable[RawExchangeRates](keyspace_raw, "exchange_rates").toDS()
+
     val rawTags =
       spark.sparkContext.cassandraTable[RawTag](keyspace_raw, "tag").toDS()
 
@@ -91,7 +95,7 @@ object SimpleApp {
           RawTransaction(t.height, id.toInt + 1, t.txHash, t.timestamp, t.coinbase, t.vin, t.vout)
         }.toDS().persist()
 
-    val transformation = new Transformation(spark, rawTransactions, rawExchangeRates, rawTags)
+    val transformation = new Transformation(spark, rawBlocks, rawTransactions, rawExchangeRates, rawTags)
 
     def save[A <: Product: ClassTag: TypeTag](table: Dataset[A], tableName: String) = {
       val description = "store " + tableName
@@ -101,6 +105,7 @@ object SimpleApp {
       ()
     }
 
+    save(transformation.blocks, "block")
     save(transformation.addressTransactions, "address_transactions")
     save(transformation.transactions, "transaction")
     save(transformation.blockTransactions, "block_transactions")

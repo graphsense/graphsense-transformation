@@ -78,7 +78,7 @@ case class ClusterTags(
     source: String,
     sourceUri: String,
     timestamp: Int)
-    
+
 // TRANSFORMED SCHEMA DATA TYPES
 
 case class TxSummary(
@@ -110,7 +110,7 @@ case class ClusterSummary(
     noAddresses: Int,
     totalReceived: Long,
     totalSpent: Long)
-    
+
 // TRANSFORMED SCHEMA TABLES
 
 case class ExchangeRates(
@@ -180,7 +180,7 @@ case class ClusterTransactions(
     height: Int,
     txNumber: Int,
     timestamp: Int)
-    
+
 case class Cluster(
     cluster: Int,
     noAddresses: Int,
@@ -190,7 +190,7 @@ case class Cluster(
     lastTx: TxIdTime,
     totalReceived: Bitcoin,
     totalSpent: Bitcoin)
-    
+
 case class AddressRelations(
     srcAddressPrefix: String,
     dstAddressPrefix: String,
