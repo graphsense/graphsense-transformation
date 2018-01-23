@@ -34,6 +34,11 @@ Download, install, and test Apache Spark (version >= 2.2.0) in $SPARK_HOME:
 Make sure raw data has been imported into a running Apache Cassandra
 instance using the [graphsense-datafeed][graphsense-datafeed] service.
 
+
+Mac OSX only: make sure gnu-getopt is installed
+
+    brew install gnu-getopt
+
 Create a keyspace for the transformed data
 
     cqlsh -f schema_transformed.cql
