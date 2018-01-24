@@ -52,7 +52,7 @@ object SimpleApp {
       sys.exit(1)
     }
 
-    val spark = SparkSession.builder.appName("Simple Application").getOrCreate()
+    val spark = SparkSession.builder.appName("GraphSense Transformation").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
     import spark.implicits._
