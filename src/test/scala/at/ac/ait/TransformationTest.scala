@@ -13,16 +13,28 @@ trait SparkEnvironment extends BeforeAndAfterAll { this: Suite =>
   val conf = new SparkConf()
     .setAppName("Transformation Test")
     .setMaster("local")
-    //.set("spark.memory.fraction", "0.8")
-    //.set("spark.memory.storageFraction", "0.3")
+
   val spark = SparkSession.builder.config(conf).getOrCreate()
   spark.sparkContext.setLogLevel("WARN")
+  
   import spark.implicits._
   
+  def blockHash(n: Byte) = Array(n, n, n, n, n)
   def tx(n: Byte) = Array(n, n, n, n, n, n)
   def a(n: Int) = n + "address"
   
   val bitcoin: Long = 10000 * 10000
+  
+  val rawBlocks = List(
+      RawBlock(
+        0,
+        blockHash(1),
+        23,
+        1,
+        2,
+        List(tx(1), tx(2))
+      )
+  ).toDS()
   
   val rawTransactions = List(
     RawTransaction(
@@ -41,9 +53,10 @@ trait SparkEnvironment extends BeforeAndAfterAll { this: Suite =>
       false,
       List(RawInput(tx(1), 0), RawInput(tx(1), 1)),
       List(RawOutput(2 * bitcoin, 0, List(a(3)))))).toDS()
+
   val rawExchangeRates = List(RawExchangeRates(23, Some(4), Some(5))).toDS()
   val rawTags = List(RawTag(a(1),"tag1","","","","","",12)).toDS()
-  val transformation = new Transformation(spark, rawTransactions, rawExchangeRates, rawTags)
+  val transformation = new Transformation(spark, rawBlocks, rawTransactions, rawExchangeRates, rawTags)
   
   override def afterAll() {
     spark.close()
@@ -93,6 +106,7 @@ class TransformationSpec extends FlatSpec with Matchers with SparkEnvironment {
     }
   }
   
+  fileTest("blocks", transformation.blocks)
   fileTest("addressTransactions", transformation.addressTransactions)
   fileTest("transactions", transformation.transactions)
   fileTest("blockTransactions", transformation.blockTransactions)
