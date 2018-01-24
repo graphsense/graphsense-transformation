@@ -11,7 +11,7 @@ import at.ac.ait.{Fields => F}
 
 case class BlockGroup(block_group: Int)
 
-object SimpleApp {
+object TransformationJob {
 
   def time[R](block: => R): R = {
     val t0 = System.currentTimeMillis()
