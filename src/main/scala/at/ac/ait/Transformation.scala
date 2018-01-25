@@ -152,4 +152,5 @@ class Transformation(
   val clusterRelations = t.clusterRelations(
     clusterInputs, clusterOutputs, inputs, outputs, addressCluster,
     clusterTags, explicitlyKnownAddresses, cluster, addresses, exchangeRates).persist()
+  val filteredTags = rawTags.join(addresses, Seq(F.address), joinType="left_semi").as[RawTag]
 }
