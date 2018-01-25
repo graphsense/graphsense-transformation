@@ -27,7 +27,7 @@ Import project into the Scala-IDE via
 
 Download, install, and test Apache Spark (version >= 2.2.0) in $SPARK_HOME:
 
-	$SPARK_HOME/bin/spark-shell
+    $SPARK_HOME/bin/spark-shell
 
 ## Local Transformation Pipeline Execution 
 
@@ -35,7 +35,7 @@ Make sure raw data has been imported into a running Apache Cassandra
 instance using the [graphsense-datafeed][graphsense-datafeed] service.
 
 
-Mac OSX only: make sure gnu-getopt is installed
+macOS only: make sure gnu-getopt is installed
 
     brew install gnu-getopt
 
@@ -45,7 +45,7 @@ Create a keyspace for the transformed data
 
 Compile and test the implementation
 
-	sbt test
+    sbt test
 
 Package the transformation pipeline
 
@@ -53,7 +53,7 @@ Package the transformation pipeline
 
 Run the transformation pipeline on the localhost
 
-    ./submit
+    bash submit.sh
 
 Check the running job using the local Spark UI at http://localhost:4040/jobs
 
