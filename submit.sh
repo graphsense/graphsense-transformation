@@ -79,7 +79,7 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
 
 
 $SPARK_HOME/bin/spark-submit \
-  --class "at.ac.ait.SimpleApp" \
+  --class "at.ac.ait.TransformationJob" \
   --master $SPARK_MASTER \
   --conf spark.executor.memory=$MEMORY \
   --conf spark.cassandra.connection.host=$CASSANDRA_HOST \
