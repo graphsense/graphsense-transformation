@@ -123,7 +123,7 @@ object TransformationJob {
     save(
       transformation.clusterRelations.sort(F.srcCluster, F.dstCluster),
       "cluster_outgoing_relations")
-    save(transformation.filteredTags, "tag")
+    save(transformation.filteredTags, "address_tags")
     spark.stop()
   }
 }

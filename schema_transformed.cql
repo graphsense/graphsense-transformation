@@ -179,7 +179,7 @@ CREATE TABLE cluster_outgoing_relations (
     PRIMARY KEY (src_cluster, dst_category, value, dst_cluster)
 ) WITH CLUSTERING ORDER BY (dst_category DESC, value DESC);
 
-CREATE TABLE tag (
+CREATE TABLE address_tags (
     address text,
     tag text,
     tag_uri text,
