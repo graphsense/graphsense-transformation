@@ -11,12 +11,12 @@ This component is implemented using the [Apache Spark][apache-spark].
 
 ## Local Development Environment Setup
 
-Make sure [Java 8][java] and [sbt > 1.0][scala-sbt]is installed:
+Make sure [Java 8][java] and [sbt > 1.0][scala-sbt] is installed:
 
     java -version
     sbt about
 
-Install the [Scala IDE for Eclipse][http://scala-ide.org/].
+Install the [Scala IDE for Eclipse][scala-ide].
 
 Install the [sbteclipse][sbteclipse] plugin. Use either
 
