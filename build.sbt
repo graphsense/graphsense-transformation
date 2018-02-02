@@ -4,7 +4,7 @@ lazy val root = (project in file(".")).
   settings(
     inThisBuild(List(
       scalaVersion := "2.11.8",
-      version      := "0.3.2"
+      version      := "0.3.3-SNAPSHOT"
     )),
     name := "graphsense-transformation",
     fork := true,
