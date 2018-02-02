@@ -1,16 +1,15 @@
-package at.ac.ait.clustering
+package at.ac.ait.entity
 
-case class AddressMapping(entries: Map[Long, MappingInfo]) {
-
-  def apply(address: Long): Representative =
+case class AddressMapping(entries: Map[Int, MappingInfo]) {
+  def apply(address: Int): Representative =
     if (entries.contains(address))
       entries(address) match {
         case MappingInfo(_, Some(a)) => apply(a)
         case MappingInfo(h, None) => Representative(address, h)
       }
     else Representative(address, 0)
-
-  def group(addresses: Set[Long]): AddressMapping = {
+    
+  def group(addresses: Set[Int]): AddressMapping = {
     val representatives = addresses.map(apply)
     val (highestRepresentative, exclusive) =
       representatives.tail.foldLeft((representatives.head, true)) { (b,a) =>
@@ -30,12 +29,13 @@ case class AddressMapping(entries: Map[Long, MappingInfo]) {
     val entryForRepresentative = (highestRepresentative.address, MappingInfo(height, None))
     AddressMapping(entries ++ newEntries + entryForRepresentative)
   }
-
-  def collect: Iterator[ClusteringResult] = {
+  
+  def collect = {
     for (a <- entries.keysIterator)
-    yield ClusteringResult(a, apply(a).address)
+    yield Result(a, apply(a).address)
   }
 }
 
-case class MappingInfo(height: Byte, next: Option[Long])
-case class Representative(address: Long, height: Byte)
+case class MappingInfo(height: Byte, next: Option[Int])
+case class Representative(address: Int, height: Byte)
+case class Result(addrId: Int, cluster: Int)

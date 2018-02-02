@@ -1,13 +1,15 @@
-blocks*.txt
-derby.log
-metastore_db/
+eclipse.sbt
 
 # sbt
 target/
 
+# test
+/last_test/
+
 # IDE
-/eclipse.sbt
-/.classpath
-/.project
+/bin/
 /.settings/
 /.cache-main
+/.cache-tests
+/.classpath
+/.project
