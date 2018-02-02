@@ -1,15 +1,22 @@
 # GraphSense Transformation Pipeline
 
-An Apache Spark service for transforming raw data (blocks, tags, etc) 
-provided by the [graphsense-datafeed][graphsense-datafeed] component into
-denormalized views required by the [graphsense-dashboard][graphsense-dashboard].
+The GraphSense Transformation Pipeline reads raw data, which is ingested into [Cassandra][apache-cassandra]
+by the [graphsense-datafeed][graphsense-datafeed] component, and computes de-normalized views, which are
+again stored in [Cassandra][apache-stored].
 
+Access to computed de-normalized views is subsequently provided by the [GraphSense REST][graphsense-rest]
+interface, which is used by the [graphsense-dashboard][graphsense-dashboard] component.
+
+This component is implemented using the [Apache Spark][apache-spark].
 
 ## Local Development Environment Setup
 
-Make sure [Scala][scala-lang] 2.11 and [scala-sbt][scala-sbt] is installed:
+Make sure [Java 8][java] and [sbt > 1.0][scala-sbt]is installed:
 
+    java -version
     sbt about
+
+Install the [Scala IDE for Eclipse][http://scala-ide.org/].
 
 Install the [sbteclipse][sbteclipse] plugin. Use either
 
@@ -59,7 +66,11 @@ Check the running job using the local Spark UI at http://localhost:4040/jobs
 
 [graphsense-datafeed]: https://github.com/graphsense/graphsense-datafeed
 [graphsense-dashboard]: https://github.com/graphsense/graphsense-dashboard
+[java]: https://java.com
 [scala-lang]: https://www.scala-lang.org/
 [scala-sbt]: http://www.scala-sbt.org
 [sbteclipse]: https://github.com/typesafehub/sbteclipse
 [apache-spark]: https://spark.apache.org/downloads.html
+[apache-cassandra]: http://cassandra.apache.org/
+[java]: https://java.com
+[scala-ide]: http://scala-ide.org/
