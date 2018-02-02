@@ -2,7 +2,7 @@
 
 The GraphSense Transformation Pipeline reads raw data, which is ingested into [Cassandra][apache-cassandra]
 by the [graphsense-datafeed][graphsense-datafeed] component, and computes de-normalized views, which are
-again stored in [Cassandra][apache-stored].
+again stored in [Cassandra][apache-cassandra].
 
 Access to computed de-normalized views is subsequently provided by the [GraphSense REST][graphsense-rest]
 interface, which is used by the [graphsense-dashboard][graphsense-dashboard] component.
@@ -66,6 +66,7 @@ Check the running job using the local Spark UI at http://localhost:4040/jobs
 
 [graphsense-datafeed]: https://github.com/graphsense/graphsense-datafeed
 [graphsense-dashboard]: https://github.com/graphsense/graphsense-dashboard
+[graphsense-rest]: https://github.com/graphsense/graphsense-rest
 [java]: https://java.com
 [scala-lang]: https://www.scala-lang.org/
 [scala-sbt]: http://www.scala-sbt.org
