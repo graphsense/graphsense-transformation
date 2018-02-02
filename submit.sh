@@ -84,7 +84,7 @@ $SPARK_HOME/bin/spark-submit \
   --conf spark.executor.memory=$MEMORY \
   --conf spark.cassandra.connection.host=$CASSANDRA_HOST \
   --packages datastax:spark-cassandra-connector:2.0.6-s_2.11 \
-             target/scala-2.11/graphsense-transformation_2.11-0.3.2-SNAPSHOT.jar \
+             target/scala-2.11/graphsense-transformation_2.11-0.3.2.jar \
   --source_keyspace $SRC_KEYSPACE \
   --target_keyspace $TGT_KEYSPACE \
   --max_blockgroup $MAX_BLOCKGROUP
