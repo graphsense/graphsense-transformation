@@ -1,64 +1,14 @@
 package at.ac.ait
 
-object Currency extends Enumeration {
-  type Currency = Value
-  val EUR, USD = Value
+case class NormalizedAddress(id: Long, address: String)
+case class InputIdSet(inputs: Seq[Long]) extends Iterable[Long] {
+    override def iterator = inputs.iterator
 }
-
-case class NormalizedAddress(addrId: Int, address: String)
 
 case class TotalInput(txHash: Array[Byte], totalInput: Long)
 case class KnownAddress(address: String, category: Int)
 
-case class RegularInput(
-    txHash: Array[Byte],
-    txNumber: Int,
-    value: Long,
-    address: String)
-
-case class RegularOutput(
-    txHash: Array[Byte],
-    txNumber: Int,
-    value: Long,
-    n: Int,
-    address: String)
-
-// RAW SCHEMA DATA TYPES
-
-case class RawInput(
-    txid: Array[Byte],
-    vout: Int)
-
-case class RawOutput(
-    value: Long,
-    n: Int,
-    addresses: Seq[String])
-
-// RAW SCHEMA TABLES
-
-case class RawBlock(
-    height: Int,
-    blockHash: Array[Byte],
-    timestamp: Int,
-    blockVersion: Int,
-    size: Int,
-    txs: Seq[Array[Byte]])
-
-case class RawTransaction(
-    height: Int,
-    txNumber: Int,
-    txHash: Array[Byte],
-    timestamp: Int,
-    coinbase: Boolean,
-    vin: Seq[RawInput],
-    vout: Seq[RawOutput])
-
-case class RawExchangeRates(
-    timestamp: Int,
-    eur: Option[Double],
-    usd: Option[Double])
-
-case class RawTag(
+case class Tag(
     address: String,
     tag: String,
     tagUri: String,
@@ -89,15 +39,16 @@ case class TxSummary(
     totalOutput: Long)
 
 case class TxInputOutput(
-    address: String,
-    value: Long)
+    address: Seq[String],
+    value: Long,
+    txType: Byte)
 
 case class TxIdTime(
     height: Int,
     txHash: Array[Byte],
     timestamp: Int)
 
-case class Bitcoin(
+case class Currency(
     satoshi: Long,
     eur: Double,
     usd: Double)
@@ -111,7 +62,7 @@ case class ClusterSummary(
     totalReceived: Long,
     totalSpent: Long)
 
-// TRANSFORMED SCHEMA TABLES
+// SCHEMA TABLES
 
 case class ExchangeRates(
     height: Int,
@@ -133,11 +84,8 @@ case class Transaction(
     totalInput: Long,
     totalOutput: Long,
     inputs: Seq[TxInputOutput],
-    outputs: Seq[TxInputOutput])
-
-case class BlockTransactions(
-    height: Int,
-    txs: Seq[TxSummary])
+    outputs: Seq[TxInputOutput],
+    txIndex: Long)
 
 case class AddressTransactions(
     addressPrefix: String,
@@ -145,7 +93,7 @@ case class AddressTransactions(
     txHash: Array[Byte],
     value: Long,
     height: Int,
-    txNumber: Int,
+    txIndex: Long,
     timestamp: Int)
 
 case class Address(
@@ -155,41 +103,41 @@ case class Address(
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
     lastTx: TxIdTime,
-    totalReceived: Bitcoin,
-    totalSpent: Bitcoin)
+    totalReceived: Currency,
+    totalSpent: Currency)
 
 case class AddressCluster(
     addressPrefix: String,
     address: String,
-    cluster: Int)
+    cluster: Long)
 
 case class ClusterAddresses(
-    cluster: Int,
+    cluster: Long,
     address: String,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
     lastTx: TxIdTime,
-    totalReceived: Bitcoin,
-    totalSpent: Bitcoin)
+    totalReceived: Currency,
+    totalSpent: Currency)
 
 case class ClusterTransactions(
-    cluster: Int,
+    cluster: Long,
     txHash: Array[Byte],
     value: Long,
     height: Int,
-    txNumber: Int,
+    txIndex: Long,
     timestamp: Int)
 
 case class Cluster(
-    cluster: Int,
+    cluster: Long,
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
     lastTx: TxIdTime,
-    totalReceived: Bitcoin,
-    totalSpent: Bitcoin)
+    totalReceived: Currency,
+    totalSpent: Currency)
 
 case class AddressRelations(
     srcAddressPrefix: String,
@@ -201,7 +149,7 @@ case class AddressRelations(
     srcProperties: AddressSummary,
     dstProperties: AddressSummary,
     noTransactions: Int,
-    estimatedValue: Bitcoin)
+    estimatedValue: Currency)
 
 case class ClusterRelations(
     srcCluster: String,
@@ -211,4 +159,4 @@ case class ClusterRelations(
     srcProperties: ClusterSummary,
     dstProperties: ClusterSummary,
     noTransactions: Int,
-    value: Bitcoin)
+    value: Currency)
