@@ -1,13 +1,14 @@
 package at.ac.ait
 
+import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
-
 import org.apache.spark.sql.functions.
-  {col, count, lit, round, substring, sum, udf}
+  {col, collect_set, count, lit, round, row_number, substring, sum, udf, when}
 import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
 
 import at.ac.ait.{Fields => F}
+import linking.common._
 
 class Transformator(spark: SparkSession) {
 
@@ -33,11 +34,103 @@ class Transformator(spark: SparkSession) {
     processColumns(tableWithHeight.join(exchangeRates, F.height), columns).drop(F.eur, F.usd)
   }
 
+  def addressCluster(
+      regularInputs: Dataset[RegularInput],
+      regularOutputs: Dataset[RegularOutput]) = {
+
+    def plainAddressCluster(basicTxInputAddresses: DataFrame) = {
+
+      val addrCount = count(F.addrId).over(Window.partitionBy(F.txIndex))
+
+      // filter transactions with multiple input addresses
+      val collectiveInputAddresses =
+        basicTxInputAddresses.select(col(F.txIndex), col(F.addrId), addrCount as "count")
+          .filter(col("count") > 1)
+          .select(col(F.txIndex), col(F.addrId))
+
+      // compute number of transaction per address
+      val transactionCount =
+        collectiveInputAddresses.groupBy(F.addrId).count()
+
+      val basicAddressCluster = {
+        // input for clustering algorithm
+        // to optimize performance use only nontrivial addresses,
+        // i.e. addresses which occur in multiple txes;
+        // otherwise Spark errors were observed for BTC >= 480000 blocks
+        val inputGroups = transactionCount
+              .filter(col("count") > 1)
+              .select(F.addrId)
+              .join(collectiveInputAddresses, F.addrId)
+              .groupBy(col(F.txIndex))
+              .agg(collect_set(F.addrId) as "inputs")
+              .select(col("inputs"))
+              .as[InputIdSet]
+              .rdd
+              .toLocalIterator
+        spark.sparkContext.parallelize(Clustering.getClustersMutable(inputGroups).toSeq).toDS()
+      }
+
+      val reprAddrId = "reprAddrId"
+
+      val initialRepresentative = {
+        val transactionWindow = Window.partitionBy(F.txIndex).orderBy(col("count").desc)
+        val rowNumber = row_number().over(transactionWindow)
+
+        val addressMax = collectiveInputAddresses
+                           .join(transactionCount, F.addrId)
+                           .select(col(F.txIndex), col(F.addrId), rowNumber as "rank")
+                           .filter(col("rank") === 1)
+                           .select(col(F.txIndex), col(F.addrId) as reprAddrId)
+
+        transactionCount.filter(col("count") === 1)
+          .select(F.addrId)
+          .join(collectiveInputAddresses, F.addrId)
+          .toDF(F.addrId, F.txIndex)
+          .join(addressMax, F.txIndex)
+          .select(F.addrId, reprAddrId)
+      }
+
+      val addressClusterRemainder =
+        initialRepresentative.join(
+            basicAddressCluster.toDF(reprAddrId, F.cluster), List(reprAddrId), "left_outer")
+          .select(
+            col(F.addrId),
+            when(col(F.cluster).isNotNull, col(F.cluster)) otherwise col(reprAddrId) as F.cluster)
+          .as[Result[Int]]
+
+      basicAddressCluster.union(addressClusterRemainder)
+    }
+
+    // assign in integer IDs to addresses
+    // .withColumn("id", monotonically_increasing_id) could be used instead of zipWithIndex,
+    // but this assigns Long values instead of Int
+    val orderWindow = Window.partitionBy(F.address).orderBy(F.txIndex, F.n)
+    val normalizedAddresses =
+      regularOutputs.withColumn("rowNumber", row_number().over(orderWindow))
+        .filter(col("rowNumber") === 1)
+        .sort(F.txIndex, F.n)
+        .select(F.address)
+        .map(_ getString 0)
+        .rdd
+        .zipWithIndex()
+        .map { case ((a, id)) => NormalizedAddress(id.toInt + 1, a) }
+        .toDS()
+
+    val inputIds = regularInputs
+                     .join(normalizedAddresses, F.address)
+                     .select(F.txIndex, F.addrId)
+
+    // perform multiple-input clustering
+    plainAddressCluster(inputIds).join(normalizedAddresses, F.addrId)
+      .select(addressPrefixColumn, col(F.address), col(F.cluster))
+      .as[AddressCluster]
+}
+
 
   def addressRelations(
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
-      regularInputs: Dataset[AddressTransactions],
+      regularInputs: Dataset[RegularInput],
       totalInput: Dataset[TotalInput],
       explicitlyKnownAddresses: Dataset[KnownAddress],
       clusterTags: Dataset[ClusterTags],

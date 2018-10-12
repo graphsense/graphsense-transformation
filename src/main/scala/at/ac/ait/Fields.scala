@@ -12,6 +12,7 @@ object Fields {
   val addressPrefix = "addressPrefix"
   val totalInput = "totalInput"
   val totalOutput = "totalOutput"
+  val n = "n"
   val noIncomingTxs = "noIncomingTxs"
   val noOutgoingTxs = "noOutgoingTxs"
   val firstTx = "firstTx"
@@ -21,8 +22,8 @@ object Fields {
   val noAddresses = "noAddresses"
   val eur = "eur"
   val usd = "usd"
-  val txId = "txId"
-  val id = "id"
+  val id = "id"  // TODO
+  val addrId = "id"  // TODO
   val cluster = "cluster"
   val srcAddress = "srcAddress"
   val dstAddress = "dstAddress"

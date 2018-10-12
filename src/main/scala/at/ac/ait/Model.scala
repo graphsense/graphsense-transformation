@@ -1,7 +1,7 @@
 package at.ac.ait
 
-case class NormalizedAddress(id: Long, address: String)
-case class InputIdSet(inputs: Seq[Long]) extends Iterable[Long] {
+case class NormalizedAddress(id: Int, address: String)
+case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
     override def iterator = inputs.iterator
 }
 
@@ -19,7 +19,7 @@ case class Tag(
     timestamp: Int)
 
 case class ClusterTags(
-    cluster: Long,
+    cluster: Int,
     address: String,
     tag: String,
     tagUri: String,
@@ -27,6 +27,23 @@ case class ClusterTags(
     actorCategory: String,
     source: String,
     sourceUri: String,
+    timestamp: Int)
+
+case class RegularInput(
+    address: String,
+    txHash: Array[Byte],
+    value: Long,
+    height: Int,
+    txIndex: Long,
+    timestamp: Int)
+
+case class RegularOutput(
+    address: String,
+    txHash: Array[Byte],
+    value: Long,
+    height: Int,
+    txIndex: Long,
+    n: Int,
     timestamp: Int)
 
 // TRANSFORMED SCHEMA DATA TYPES
@@ -87,6 +104,10 @@ case class Transaction(
     outputs: Seq[TxInputOutput],
     txIndex: Long)
 
+case class BlockTransactions(
+    height: Int,
+    txs: Seq[TxSummary])
+
 case class AddressTransactions(
     addressPrefix: String,
     address: String,
@@ -109,7 +130,7 @@ case class Address(
 case class AddressCluster(
     addressPrefix: String,
     address: String,
-    cluster: Long)
+    cluster: Int)
 
 case class ClusterAddresses(
     cluster: Long,
@@ -122,7 +143,7 @@ case class ClusterAddresses(
     totalSpent: Currency)
 
 case class ClusterTransactions(
-    cluster: Long,
+    cluster: Int,
     txHash: Array[Byte],
     value: Long,
     height: Int,
@@ -130,7 +151,7 @@ case class ClusterTransactions(
     timestamp: Int)
 
 case class Cluster(
-    cluster: Long,
+    cluster: Int,
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,

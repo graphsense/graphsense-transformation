@@ -16,13 +16,13 @@ object TransformationJob {
     val t0 = System.currentTimeMillis()
     val result = block
     val t1 = System.currentTimeMillis()
-    println("Elapsed time: " + (t1 - t0) / 1000 + "s")
+    println("Elapsed time: " + (t1 - t0)/1000 + "s")
     result
   }
 
   case class AppArgs(
       keyspace: String,
-      maxBlocks: Int
+      maxBlocks: Int  // TODO
   )
 
   object AppArgs {
@@ -39,7 +39,8 @@ object TransformationJob {
       }
     }
 
-    if (argsInstance.maxBlocks < 0 || argsInstance.keyspace == "") {
+    if (argsInstance.maxBlocks < 0 ||
+        argsInstance.keyspace == "") {
       Console.err.println("Usage: spark-submit [...] graphsense-transformation.jar" +
         " --keyspace KEYSPACE" +
         " --max_blocks NUM_BLOCKS")
@@ -49,23 +50,9 @@ object TransformationJob {
     val spark = SparkSession.builder.appName("GraphSense Transformation [dev]").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    import spark.implicits._
-
     val keyspace = argsInstance.keyspace
-/*
-    val maxBlocks = {
-      if (argsInstance.maxBlocks == 0) {
-        val rs = CassandraConnector(spark.sparkContext.getConf).withSessionDo (
-          session => session.execute(
-            s"SELECT block FROM $keyspace.block")
-        )
-        rs.all.asScala.map(_ getInt 0).max
-      } else {
-        argsInstance.maxBlocks
-      }
-    }
-*/
-    //val blocks = spark.sparkContext.cassandraTable[Block](keyspace, "block").toDS()
+
+    import spark.implicits._
     val transactions = spark.sparkContext.cassandraTable[Transaction](keyspace, "transaction").toDS()
     val exchangeRates = spark.sparkContext.cassandraTable[ExchangeRates](keyspace, "exchange_rates").toDS()
     val tags = spark.sparkContext.cassandraTable[Tag](keyspace, "tag").toDS()
@@ -79,6 +66,7 @@ object TransformationJob {
       time{table.rdd.saveToCassandra(keyspace, tableName)}
       ()
     }
+
 
     save(transformation.addressTransactions, "address_transactions")
     save(transformation.addresses, "address")

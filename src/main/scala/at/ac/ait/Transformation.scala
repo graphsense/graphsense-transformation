@@ -2,14 +2,11 @@ package at.ac.ait
 
 import org.apache.spark.sql.{Encoder, Dataset, Row, SparkSession}
 import org.apache.spark.sql.functions.
-  {col, count, explode, lit, min, max, size, sum, struct, udf}
+  {col, count, explode, lit, min, max, posexplode, size, sum, struct, udf}
 import org.apache.spark.sql.types.IntegerType
 
 import at.ac.ait.{Fields => F}
 
-import org.apache.spark.sql.functions.{collect_set, monotonically_increasing_id}
-import collection.JavaConverters._
-import linking.common._
 
 class Transformation(
     spark: SparkSession,
@@ -28,23 +25,23 @@ class Transformation(
                                 col(F.txHash), col(F.height),
                                 col(F.txIndex), col(F.timestamp))
                         .withColumn(F.addressPrefix, t.addressPrefixColumn)
-                        .as[AddressTransactions]
+                        .as[RegularInput]
                         .persist()
 
-  val regularOutputs = transactions.withColumn("output", explode(col("outputs")))
+  val regularOutputs = transactions
+                         .select(posexplode(col("outputs")) as Seq(F.n, "output"),
+                                 col(F.txHash), col(F.height), col(F.txIndex), col(F.timestamp))
                          .filter(size(col("output.address")) === 1)
                          .select(explode(col("output.address")) as "address",
-                                 col("output.value"),
-                                 col(F.txHash), col(F.height),
-                                 col("txIndex"), col(F.timestamp))
+                                 col("output.value"), col(F.txHash), col(F.height),
+                                 col(F.txIndex), col(F.n), col(F.timestamp))
                          .withColumn(F.addressPrefix, t.addressPrefixColumn)
-                         .as[AddressTransactions]
+                         .as[RegularOutput]
                          .persist()
 
   // table address_transactions
   val addressTransactions = regularInputs.withColumn(F.value, -col(F.value))
-                              .as[AddressTransactions]
-                              .union(regularOutputs)
+                              .union(regularOutputs.drop(F.n))
                               .groupBy(F.txHash, F.address)
                               .agg(sum(F.value) as F.value)
                               .join(
@@ -102,35 +99,9 @@ class Transformation(
     .sort(F.addressPrefix)
     .persist()
 
-
   // clustering
-  val addressId = regularOutputs
-                    .select(F.address)
-                    .distinct
-                    .withColumn("id", monotonically_increasing_id)
-                    .as[NormalizedAddress]
-                    .persist()
-
-  val inputIds = regularInputs
-                   .join(addressId, F.address)
-                   .select(F.txIndex, F.id)
-                   .groupBy(col(F.txIndex))
-                   .agg(collect_set(F.id) as "inputs")
-                   .select(col("inputs"))
-                   .filter(size($"inputs") > 1)
-                   .as[InputIdSet]
-
   // table address_cluster
-  val addressCluster = Clustering.getClustersMutable(inputIds.toLocalIterator.asScala)
-                         .toList
-                         .toDS
-                         .join(addressId, F.id)
-                         .withColumn(F.addressPrefix, t.addressPrefixColumn)
-                         .select(col(F.addressPrefix), col(F.address), col(F.cluster))
-                         .as[AddressCluster]
-                         .sort(F.addressPrefix)
-                         .persist()
-
+  val addressCluster = t.addressCluster(regularInputs, regularOutputs).persist()
   val clusterAddresses =
     addressCluster.join(addresses, F.address)
       .as[ClusterAddresses]
