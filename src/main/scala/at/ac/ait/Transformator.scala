@@ -1,7 +1,7 @@
 package at.ac.ait
 
-import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.
   {col, collect_set, count, lit, round, row_number, substring, sum, udf, when}
 import org.apache.spark.sql.types.{IntegerType, LongType}

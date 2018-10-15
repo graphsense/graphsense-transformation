@@ -1,8 +1,8 @@
 package at.ac.ait
 
-import org.apache.spark.sql.{Encoder, Dataset, Row, SparkSession}
+import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.functions.
-  {col, count, explode, lit, min, max, posexplode, size, sum, struct, udf}
+  {col, count, explode, lit, max, min, posexplode, size, struct, sum, udf}
 import org.apache.spark.sql.types.IntegerType
 
 import at.ac.ait.{Fields => F}
@@ -45,7 +45,9 @@ class Transformation(
                               .groupBy(F.txHash, F.address)
                               .agg(sum(F.value) as F.value)
                               .join(
-                                transactions.select(F.txHash, F.height, F.txIndex, F.timestamp).distinct(),
+                                transactions
+                                  .select(F.txHash, F.height, F.txIndex, F.timestamp)
+                                  .distinct(),
                                 F.txHash)
                               .withColumn(F.addressPrefix, t.addressPrefixColumn)
                               .sort(F.addressPrefix)

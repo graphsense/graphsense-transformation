@@ -39,8 +39,7 @@ object TransformationJob {
       }
     }
 
-    if (argsInstance.maxBlocks < 0 ||
-        argsInstance.keyspace == "") {
+    if (argsInstance.maxBlocks < 0 || argsInstance.keyspace == "") {
       Console.err.println("Usage: spark-submit [...] graphsense-transformation.jar" +
         " --keyspace KEYSPACE" +
         " --max_blocks NUM_BLOCKS")
@@ -53,8 +52,10 @@ object TransformationJob {
     val keyspace = argsInstance.keyspace
 
     import spark.implicits._
-    val transactions = spark.sparkContext.cassandraTable[Transaction](keyspace, "transaction").toDS()
-    val exchangeRates = spark.sparkContext.cassandraTable[ExchangeRates](keyspace, "exchange_rates").toDS()
+    val transactions =
+      spark.sparkContext.cassandraTable[Transaction](keyspace, "transaction").toDS()
+    val exchangeRates =
+      spark.sparkContext.cassandraTable[ExchangeRates](keyspace, "exchange_rates").toDS()
     val tags = spark.sparkContext.cassandraTable[Tag](keyspace, "tag").toDS()
 
     val transformation = new Transformation(spark, transactions, exchangeRates, tags)
