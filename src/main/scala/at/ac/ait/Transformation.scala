@@ -132,11 +132,28 @@ class Transformation(
   val explicitlyKnownAddresses =
     tags.select(col(F.address), lit(2) as F.category).dropDuplicates().as[KnownAddress].persist()
 
-  val addressRelations = t.addressRelations(
-    inputs, outputs, regularInputs, totalInput,
-    explicitlyKnownAddresses, clusterTags, addresses, exchangeRates).persist()
+  val addressRelations = t.addressRelations(inputs,
+                                            outputs,
+                                            regularInputs,
+                                            totalInput,
+                                            explicitlyKnownAddresses,
+                                            clusterTags,
+                                            addresses,
+                                            exchangeRates)
+                           .persist()
 
-  val clusterRelations = t.clusterRelations(
-    clusterInputs, clusterOutputs, inputs, outputs, addressCluster,
-    clusterTags, explicitlyKnownAddresses, cluster, addresses, exchangeRates)
+  val simpleClusterRelations = t.simpleClusterRelations(clusterInputs,
+                                                        clusterOutputs,
+                                                        inputs,
+                                                        outputs,
+                                                        addressCluster)
+                                 .persist()
+
+  val clusterRelations = t.clusterRelations(simpleClusterRelations,
+                                            clusterTags,
+                                            explicitlyKnownAddresses,
+                                            cluster,
+                                            addresses,
+                                            exchangeRates).
+                           persist()
 }

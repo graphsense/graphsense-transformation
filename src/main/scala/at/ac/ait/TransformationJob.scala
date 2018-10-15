@@ -80,6 +80,7 @@ object TransformationJob {
     save(transformation.addressRelations.sort(F.dstAddressPrefix), "address_incoming_relations")
     save(transformation.addressRelations.sort(F.srcAddressPrefix), "address_outgoing_relations")
 
+    save(transformation.simpleClusterRelations.sort(F.srcCluster), "simple_cluster_relations")
     save(
       transformation.clusterRelations.sort(F.dstCluster, F.srcCluster),
       "cluster_incoming_relations")

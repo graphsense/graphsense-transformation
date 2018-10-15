@@ -172,6 +172,13 @@ case class AddressRelations(
     noTransactions: Int,
     estimatedValue: Currency)
 
+case class SimpleClusterRelations(
+    txHash: Array[Byte],
+    srcCluster: String,
+    dstCluster: String,
+    value: Long,
+    height: Int)
+
 case class ClusterRelations(
     srcCluster: String,
     dstCluster: String,

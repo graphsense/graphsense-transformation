@@ -35,6 +35,18 @@ CREATE TABLE address (
     PRIMARY KEY (address_prefix, address)
 );
 
+CREATE TABLE address_tags (
+    address text,
+    tag text,
+    tag_uri text,
+    description text,
+    actor_category text,
+    source text,
+    source_uri text,
+    timestamp int,
+    PRIMARY KEY (address, tag, source)
+);
+
 CREATE TYPE address_summary (
     total_received bigint,
     total_spent bigint
@@ -105,6 +117,15 @@ CREATE TABLE cluster_tags (
     PRIMARY KEY (cluster, address, tag, source)
 );
 
+CREATE TABLE simple_cluster_relations (
+    tx_hash blob,
+    src_cluster text,
+    dst_cluster text,
+    value bigint,
+    height int,
+    PRIMARY KEY (height, src_cluster, value)
+);
+
 CREATE TYPE cluster_summary (
     no_addresses int,
     total_received bigint,
@@ -130,15 +151,3 @@ CREATE TABLE cluster_outgoing_relations (
     value frozen <value>,
     PRIMARY KEY (src_cluster, dst_category, value, dst_cluster)
 ) WITH CLUSTERING ORDER BY (dst_category DESC, value DESC);
-
-CREATE TABLE address_tags (
-    address text,
-    tag text,
-    tag_uri text,
-    description text,
-    actor_category text,
-    source text,
-    source_uri text,
-    timestamp int,
-    PRIMARY KEY (address, tag, source)
-);

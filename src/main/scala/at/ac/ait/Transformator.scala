@@ -192,34 +192,39 @@ class Transformator(spark: SparkSession) {
   }
 
 
-  def clusterRelations(
+  def simpleClusterRelations(
       clusterInputs: Dataset[ClusterTransactions],
       clusterOutputs: Dataset[ClusterTransactions],
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
-      addressCluster: Dataset[AddressCluster],
+      addressCluster: Dataset[AddressCluster]) = {
+    val addressInputs =
+      inputs.join(addressCluster, List(F.address), "left_anti")
+        .select(col(F.txHash), col(F.address) as F.srcCluster)
+    val addressOutputs =
+      outputs.join(addressCluster, List(F.address), "left_anti")
+        .select(col(F.txHash), col(F.address) as F.dstCluster, col(F.value), col(F.height))
+    val allInputs =
+      clusterInputs.select(col(F.txHash), col(F.cluster) as F.srcCluster)
+        .union(addressInputs)
+    val allOutputs =
+      clusterOutputs
+        .select(col(F.txHash), col(F.cluster) as F.dstCluster, col(F.value), col(F.height))
+        .union(addressOutputs)
+    allInputs.join(allOutputs, F.txHash).as[SimpleClusterRelations]
+  }
+
+
+  def clusterRelations(
+      plainClusterRelations: Dataset[SimpleClusterRelations],
       clusterTags: Dataset[ClusterTags],
       explicitlyKnownAddresses: Dataset[KnownAddress],
       cluster: Dataset[Cluster],
       addresses: Dataset[Address],
       exchangeRates: Dataset[ExchangeRates]) = {
-    val fullClusterRelations = {
-      val addressInputs =
-        inputs.join(addressCluster, List(F.address), "left_anti")
-          .select(col(F.txHash), col(F.address) as F.srcCluster)
-      val addressOutputs =
-        outputs.join(addressCluster, List(F.address), "left_anti")
-          .select(col(F.txHash), col(F.address) as F.dstCluster, col(F.value), col(F.height))
-      val allInputs =
-        clusterInputs.select(col(F.txHash), col(F.cluster) as F.srcCluster)
-          .union(addressInputs)
-      val allOutputs =
-        clusterOutputs
-          .select(col(F.txHash), col(F.cluster) as F.dstCluster, col(F.value), col(F.height))
-          .union(addressOutputs)
-      val plainClusterRelations = allInputs.join(allOutputs, F.txHash)
-      toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value)).drop(F.height)
-    }
+    val fullClusterRelations =
+      toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
+        .drop(F.height)
     val props = {
       val addressProps =
         addresses.select(
