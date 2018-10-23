@@ -59,8 +59,8 @@ class TransformationSpec extends FlatSpec with Matchers with SparkEnvironment {
         case _ => a.toString()
       }
 
-    val testDir = "last_test"
-    val referenceDir = "test_success"
+    val testDir = "tests/result"
+    val referenceDir = "tests/reference"
     new File(testDir).mkdir()
 
     def printToFile() {
