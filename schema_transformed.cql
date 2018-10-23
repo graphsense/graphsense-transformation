@@ -1,5 +1,4 @@
 DROP KEYSPACE IF EXISTS graphsense_transformed;
-
 CREATE KEYSPACE graphsense_transformed WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
 
 USE graphsense_transformed;
@@ -16,57 +15,13 @@ CREATE TYPE value (
     usd double
 );
 
-CREATE TABLE exchange_rates (
-    height int PRIMARY KEY,
-    eur double,
-    usd double
-);
-
-CREATE TABLE block (
-    height int PRIMARY KEY,
-    block_hash blob,
-    timestamp int,
-    no_transactions int
-);
-
-CREATE TYPE tx_input_output (
-    address text,
-    value bigint
-);
-
-CREATE TABLE transaction (
-    tx_prefix text,
-    tx_hash blob,
-    height int,
-    timestamp int,
-    coinbase boolean,
-    total_input bigint,
-    total_output bigint,
-    inputs list<FROZEN<tx_input_output>>,
-    outputs list<FROZEN<tx_input_output>>,
-    PRIMARY KEY (tx_prefix, tx_hash)
-);
-
-CREATE TYPE tx_summary (
-    tx_hash blob,
-    no_inputs int,
-    no_outputs int,
-    total_input bigint,
-    total_output bigint
-);
-
-CREATE TABLE block_transactions (
-    height int PRIMARY KEY,
-    txs list<FROZEN<tx_summary>>
-);
-
 CREATE TABLE address_transactions (
     address_prefix text,
     address text,
     tx_hash blob,
     value bigint,
     height int,
-    tx_number int,
+    tx_index int,
     timestamp int,
     PRIMARY KEY (address_prefix, address, height, tx_hash)
 ) WITH CLUSTERING ORDER BY (address ASC, height DESC);
@@ -81,6 +36,18 @@ CREATE TABLE address (
     total_received frozen <value>,
     total_spent frozen <value>,
     PRIMARY KEY (address_prefix, address)
+);
+
+CREATE TABLE address_tags (
+    address text,
+    tag text,
+    tag_uri text,
+    description text,
+    actor_category text,
+    source text,
+    source_uri text,
+    timestamp int,
+    PRIMARY KEY (address, tag, source)
 );
 
 CREATE TYPE address_summary (
@@ -113,12 +80,12 @@ CREATE TABLE address_outgoing_relations (
 CREATE TABLE address_cluster (
     address_prefix text,
     address text,
-    cluster int,
+    cluster bigint,
     PRIMARY KEY (address_prefix, address)
 );
 
 CREATE TABLE cluster (
-    cluster int PRIMARY KEY,
+    cluster bigint PRIMARY KEY,
     no_addresses int,
     no_incoming_txs int,
     no_outgoing_txs int,
@@ -129,7 +96,7 @@ CREATE TABLE cluster (
 );
 
 CREATE TABLE cluster_addresses (
-    cluster int,
+    cluster bigint,
     address text,
     no_incoming_txs int,
     no_outgoing_txs int,
@@ -141,7 +108,7 @@ CREATE TABLE cluster_addresses (
 );
 
 CREATE TABLE cluster_tags (
-    cluster int,
+    cluster bigint,
     address text,
     tag text,
     tag_uri text,
@@ -151,6 +118,15 @@ CREATE TABLE cluster_tags (
     source_uri text,
     timestamp int,
     PRIMARY KEY (cluster, address, tag, source)
+);
+
+CREATE TABLE simple_cluster_relations (
+    tx_hash blob,
+    src_cluster text,
+    dst_cluster text,
+    value bigint,
+    height int,
+    PRIMARY KEY (height, src_cluster, value)
 );
 
 CREATE TYPE cluster_summary (
@@ -178,15 +154,3 @@ CREATE TABLE cluster_outgoing_relations (
     value frozen <value>,
     PRIMARY KEY (src_cluster, dst_category, value, dst_cluster)
 ) WITH CLUSTERING ORDER BY (dst_category DESC, value DESC);
-
-CREATE TABLE address_tags (
-    address text,
-    tag text,
-    tag_uri text,
-    description text,
-    actor_category text,
-    source text,
-    source_uri text,
-    timestamp int,
-    PRIMARY KEY (address, tag, source)
-);

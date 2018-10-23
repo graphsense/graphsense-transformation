@@ -28,5 +28,6 @@ lazy val root = (project in file(".")).
     libraryDependencies ++= List(
       scalaTest % Test,
       sparkSql % Provided,
-      sparkCassandraConnector % Provided)
+      sparkCassandraConnector % Provided,
+      "at.ac.ait" %% "linking" % "1.0")
   )
