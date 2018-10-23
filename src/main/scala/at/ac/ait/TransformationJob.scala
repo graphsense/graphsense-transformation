@@ -21,42 +21,47 @@ object TransformationJob {
   }
 
   case class AppArgs(
-      keyspace: String,
-      maxBlocks: Int  // TODO
+      source_keyspace: String,
+      target_keyspace: String
   )
 
   object AppArgs {
-    def empty = new AppArgs("", 0)
+    def empty = new AppArgs("", "")
   }
 
   def main(args: Array[String]) {
 
     val argsInstance: AppArgs = args.sliding(2, 1).toList.foldLeft(AppArgs.empty) {
       case (accumArgs, currArgs) => currArgs match {
-        case Array("--keyspace", keyspace) => accumArgs.copy(keyspace = keyspace)
-        case Array("--max_blocks", maxBlocks) => accumArgs.copy(maxBlocks = maxBlocks.toInt)
+        case Array("--source_keyspace", source_keyspace) =>
+          accumArgs.copy(source_keyspace = source_keyspace)
+        case Array("--target_keyspace", target_keyspace) =>
+          accumArgs.copy(target_keyspace = target_keyspace)
         case _ => accumArgs
       }
     }
 
-    if (argsInstance.maxBlocks < 0 || argsInstance.keyspace == "") {
+    if (argsInstance.source_keyspace == "" || argsInstance.target_keyspace == "") {
       Console.err.println("Usage: spark-submit [...] graphsense-transformation.jar" +
-        " --keyspace KEYSPACE" +
-        " --max_blocks NUM_BLOCKS")
+        " --source_keyspace SOURCE_KEYSPACE" +
+        " --target_keyspace TARGET_KEYSPACE")
       sys.exit(1)
     }
 
     val spark = SparkSession.builder.appName("GraphSense Transformation [dev]").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    val keyspace = argsInstance.keyspace
+    val src_keyspace = argsInstance.source_keyspace
+    val keyspace = argsInstance.target_keyspace
+    println("Source keyspace: " + src_keyspace)
+    println("Target keyspace: " + keyspace)
 
     import spark.implicits._
     val transactions =
-      spark.sparkContext.cassandraTable[Transaction](keyspace, "transaction").toDS()
+      spark.sparkContext.cassandraTable[Transaction](src_keyspace, "transaction").toDS()
     val exchangeRates =
-      spark.sparkContext.cassandraTable[ExchangeRates](keyspace, "exchange_rates").toDS()
-    val tags = spark.sparkContext.cassandraTable[Tag](keyspace, "tag").toDS()
+      spark.sparkContext.cassandraTable[ExchangeRates](src_keyspace, "exchange_rates").toDS()
+    val tags = spark.sparkContext.cassandraTable[Tag](src_keyspace, "tag").toDS()
 
     val transformation = new Transformation(spark, transactions, exchangeRates, tags)
 
