@@ -9,62 +9,41 @@ import scala.io.Source
 import at.ac.ait.{Fields => F}
 
 trait SparkEnvironment extends BeforeAndAfterAll { this: Suite =>
-  
+
   val conf = new SparkConf()
     .setAppName("Transformation Test")
     .setMaster("local")
+    .set("spark.sql.shuffle.partitions", "1")
 
   val spark = SparkSession.builder.config(conf).getOrCreate()
   spark.sparkContext.setLogLevel("WARN")
-  
-  import spark.implicits._
-  
-  def blockHash(n: Byte) = Array(n, n, n, n, n)
-  def tx(n: Byte) = Array(n, n, n, n, n, n)
-  def a(n: Int) = n + "address"
-  
-  val bitcoin: Long = 10000 * 10000
-  
-  val rawBlocks = List(
-      RawBlock(
-        0,
-        blockHash(1),
-        23,
-        1,
-        2,
-        List(tx(1), tx(2))
-      )
-  ).toDS()
-  
-  val rawTransactions = List(
-    RawTransaction(
-      0,
-      1,
-      tx(1),
-      23,
-      true,
-      List.empty,
-      List(RawOutput(bitcoin, 0, List(a(1))), RawOutput(bitcoin, 1, List(a(2))))),
-    RawTransaction(
-      0,
-      2,
-      tx(2),
-      23,
-      false,
-      List(RawInput(tx(1), 0), RawInput(tx(1), 1)),
-      List(RawOutput(2 * bitcoin, 0, List(a(3)))))).toDS()
 
-  val rawExchangeRates = List(RawExchangeRates(23, Some(4), Some(5))).toDS()
-  val rawTags = List(RawTag(a(1),"tag1","","","","","",12)).toDS()
-  val transformation = new Transformation(spark, rawBlocks, rawTransactions, rawExchangeRates, rawTags)
-  
+  import spark.implicits._
+
+  def blockHash(n: Byte) = Array(n, n, n, n, n)
+  def a(n: Int) = n + "address"
+
+  val transactions: Dataset[Transaction] =
+    Seq(Transaction("01010", blockHash(1), 23, 0, true, 0, 200000000, null,
+                    Seq(TxInputOutput(Seq(a(1)), 100000000, 1),
+                        TxInputOutput(Seq(a(2)), 100000000, 1)), 1),
+        Transaction("02020", blockHash(2), 23, 0, false, 200000000, 200000000,
+                    Seq(TxInputOutput(Seq(a(1)), 100000000, 1),
+                        TxInputOutput(Seq(a(2)), 100000000, 1)),
+                    Seq(TxInputOutput(Seq(a(3)), 200000000, 1)), 2))
+      .toDS()
+
+  val exchangeRates: Dataset[ExchangeRates] = Seq(ExchangeRates(23, 4, 5)).toDS()
+  val tag: Dataset[Tag] = List(Tag(a(1), "tag1", "", "", "", "", "", 12)).toDS()
+  val transformation = new Transformation(spark, transactions, exchangeRates, tag)
+
   override def afterAll() {
     spark.close()
   }
 }
 
 class TransformationSpec extends FlatSpec with Matchers with SparkEnvironment {
-  
+
   def fileTest(name: String, dataset: Dataset[_]) {
     val filename = name + ".txt"
     def formattedString(a: Any, inProduct: Boolean = false): String =
@@ -79,11 +58,11 @@ class TransformationSpec extends FlatSpec with Matchers with SparkEnvironment {
         case null => "null"
         case _ => a.toString()
       }
-    
+
     val testDir = "last_test"
     val referenceDir = "test_success"
     new File(testDir).mkdir()
-    
+
     def printToFile() {
       val f = new File(testDir + File.separator + filename)
       val p = new PrintWriter(f)
@@ -91,7 +70,7 @@ class TransformationSpec extends FlatSpec with Matchers with SparkEnvironment {
         dataset.collect().foreach(a => p.println(formattedString(a)))
       } finally { p.close() }
     }
-    
+
     def filesAreEqual() = {
       def fileContent(dir: String) = {
         val source = Source.fromFile(dir + File.separator + filename)
@@ -99,19 +78,15 @@ class TransformationSpec extends FlatSpec with Matchers with SparkEnvironment {
       }
       fileContent(testDir) == fileContent(referenceDir)
     }
-    
+
     s"The table $name" should "be correct" in {
       printToFile()
       filesAreEqual() shouldEqual true
     }
   }
-  
-  fileTest("blocks", transformation.blocks)
-  fileTest("addressTransactions", transformation.addressTransactions)
-  fileTest("transactions", transformation.transactions)
-  fileTest("blockTransactions", transformation.blockTransactions)
-  fileTest("exchangeRates", transformation.exchangeRates)
+
   fileTest("addresses", transformation.addresses)
+  fileTest("addressTransactions", transformation.addressTransactions)
   fileTest("addressCluster", transformation.addressCluster)
   fileTest("clusterAddresses", transformation.clusterAddresses.sort(F.cluster, F.address))
   fileTest("cluster", transformation.cluster)
