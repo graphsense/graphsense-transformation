@@ -18,57 +18,62 @@ class Transformation(
 
   val t = new Transformator(spark)
 
-  val regularInputs = transactions.withColumn("input", explode(col("inputs")))
-                        .filter(size(col("input.address")) === 1)
-                        .select(explode(col("input.address")) as "address",
-                                col("input.value"),
-                                col(F.txHash), col(F.height),
-                                col(F.txIndex), col(F.timestamp))
-                        .withColumn(F.addressPrefix, t.addressPrefixColumn)
-                        .as[RegularInput]
-                        .persist()
+  def computeRegularInputs(tx: Dataset[Transaction]): Dataset[RegularInput] = {
+    tx.withColumn("input", explode(col("inputs")))
+      .filter(size(col("input.address")) === 1)
+      .select(explode(col("input.address")) as "address",
+                      col("input.value"),
+                      col(F.txHash), col(F.height),
+                      col(F.txIndex), col(F.timestamp))
+      .withColumn(F.addressPrefix, t.addressPrefixColumn)
+      .as[RegularInput]
+  }
 
-  val regularOutputs = transactions
-                         .select(posexplode(col("outputs")) as Seq(F.n, "output"),
-                                 col(F.txHash), col(F.height), col(F.txIndex), col(F.timestamp))
-                         .filter(size(col("output.address")) === 1)
-                         .select(explode(col("output.address")) as "address",
-                                 col("output.value"), col(F.txHash), col(F.height),
-                                 col(F.txIndex), col(F.n), col(F.timestamp))
-                         .withColumn(F.addressPrefix, t.addressPrefixColumn)
-                         .as[RegularOutput]
-                         .persist()
+  def computeRegularOutputs(tx: Dataset[Transaction]): Dataset[RegularOutput] = {
+    tx.select(posexplode(col("outputs")) as Seq(F.n, "output"),
+                         col(F.txHash), col(F.height), col(F.txIndex), col(F.timestamp))
+      .filter(size(col("output.address")) === 1)
+      .select(explode(col("output.address")) as "address",
+                      col("output.value"), col(F.txHash), col(F.height),
+                      col(F.txIndex), col(F.n), col(F.timestamp))
+      .withColumn(F.addressPrefix, t.addressPrefixColumn)
+      .as[RegularOutput]
+  }
 
-  // table address_transactions
-  val addressTransactions = regularInputs.withColumn(F.value, -col(F.value))
-                              .union(regularOutputs.drop(F.n))
-                              .groupBy(F.txHash, F.address)
-                              .agg(sum(F.value) as F.value)
-                              .join(
-                                transactions
-                                  .select(F.txHash, F.height, F.txIndex, F.timestamp)
-                                  .distinct(),
-                                F.txHash)
-                              .withColumn(F.addressPrefix, t.addressPrefixColumn)
-                              .sort(F.addressPrefix)
-                              .as[AddressTransactions]
-                              .persist()
+  def computeAddressTransactions(
+      tx: Dataset[Transaction],
+      regInputs: Dataset[RegularInput],
+      regOutputs: Dataset[RegularOutput]): Dataset[AddressTransactions] = {
+    regInputs
+      .withColumn(F.value, -col(F.value))
+      .union(regOutputs.drop(F.n))
+      .groupBy(F.txHash, F.address)
+      .agg(sum(F.value) as F.value)
+      .join(tx.select(F.txHash, F.height, F.txIndex, F.timestamp).distinct(),
+            F.txHash)
+      .withColumn(F.addressPrefix, t.addressPrefixColumn)
+      .sort(F.addressPrefix)
+      .as[AddressTransactions]
+  }
 
-  def inAndOutParts[A](tableWithValue: Dataset[A])(implicit evidence: Encoder[A]) = (
-    tableWithValue.filter(col(F.value) < 0).withColumn(F.value, -col(F.value)).as[A],
-    tableWithValue.filter(col(F.value) > 0)
+  def computeTotalInput(tx: Dataset[Transaction]): Dataset[TotalInput] = {
+    tx.withColumn("input", explode(col("inputs")))
+      .select(F.txHash, "input.value")
+      .groupBy(F.txHash).agg(sum(F.value) as F.totalInput)
+      .as[TotalInput]
+  }
+
+  def splitTransactions[A](txTable: Dataset[A])(implicit evidence: Encoder[A]) = (
+    txTable.filter(col(F.value) < 0).withColumn(F.value, -col(F.value)).as[A],
+    txTable.filter(col(F.value) > 0)
   )
 
-  val (inputs, outputs) = inAndOutParts(addressTransactions)
-
-  val totalInput = transactions
-                     .withColumn("input", explode(col("inputs")))
-                     .select(F.txHash, "input.value")
-                     .groupBy(F.txHash).agg(sum(F.value) as F.totalInput)
-                     .as[TotalInput]
-                     .persist()
-
-  def statistics[A](all: Dataset[A], in: Dataset[A], out: Dataset[A], idColumn: String) = {
+  def computeStatistics[A](
+      all: Dataset[A],
+      in: Dataset[A],
+      out: Dataset[A],
+      idColumn: String,
+      exchangeRates: Dataset[ExchangeRates]) = {
     def statsPart(inOrOut: Dataset[_]) =
       t.toCurrencyDataFrame(exchangeRates, inOrOut, List(F.value)).groupBy(idColumn)
         .agg(
@@ -94,16 +99,26 @@ class Transformation(
       .withColumn(F.totalSpent, zeroValueIfNull(col(F.totalSpent)))
   }
 
+  val regularInputs = computeRegularInputs(transactions).persist()
+  val regularOutputs = computeRegularOutputs(transactions).persist()
+  // table address_transactions
+  val addressTransactions =
+    computeAddressTransactions(transactions, regularInputs, regularOutputs).persist()
+  val totalInput = computeTotalInput(transactions).persist()
+  val (inputs, outputs) = splitTransactions(addressTransactions)
+
   // table address
-  val addresses = statistics(addressTransactions, inputs, outputs, F.address)
+  val addresses = computeStatistics(addressTransactions, inputs, outputs, F.address, exchangeRates)
     .withColumn(F.addressPrefix, t.addressPrefixColumn)
     .as[Address]
     .sort(F.addressPrefix)
     .persist()
 
-  // clustering
+  // multiple input clustering
   // table address_cluster
   val addressCluster = t.addressCluster(regularInputs, regularOutputs).persist()
+
+  // table cluster_addresses
   val clusterAddresses =
     addressCluster.join(addresses, F.address)
       .as[ClusterAddresses]
@@ -120,42 +135,54 @@ class Transformation(
       .as[ClusterTransactions]
   }.persist()
 
-  val (clusterInputs, clusterOutputs) = inAndOutParts(clusterTransactions)
+  val (clusterInputs, clusterOutputs) = splitTransactions(clusterTransactions)
+
+  //table cluster
   val cluster = {
     val noAddresses =
       clusterAddresses.groupBy(F.cluster).agg(count("*") cast IntegerType as F.noAddresses)
-    statistics(clusterTransactions, clusterInputs, clusterOutputs, F.cluster)
+    computeStatistics(clusterTransactions, clusterInputs, clusterOutputs, F.cluster, exchangeRates)
       .join(noAddresses, F.cluster)
       .as[Cluster]
   }.persist()
+
+  // table cluster_tags
   val clusterTags = addressCluster.join(tags, F.address).as[ClusterTags].persist()
+
+  // table address_tags
   val filteredTags = tags.join(addresses, Seq(F.address), joinType="left_semi").as[Tag]
 
   val explicitlyKnownAddresses =
     tags.select(col(F.address), lit(2) as F.category).dropDuplicates().as[KnownAddress].persist()
 
-  val addressRelations = t.addressRelations(inputs,
-                                            outputs,
-                                            regularInputs,
-                                            totalInput,
-                                            explicitlyKnownAddresses,
-                                            clusterTags,
-                                            addresses,
-                                            exchangeRates)
-                           .persist()
+  // table address_incoming_relations/address_outgoing_relations
+  val addressRelations =
+    t.addressRelations(inputs,
+                       outputs,
+                       regularInputs,
+                       totalInput,
+                       explicitlyKnownAddresses,
+                       clusterTags,
+                       addresses,
+                       exchangeRates
+                      ).persist()
 
-  val simpleClusterRelations = t.simpleClusterRelations(clusterInputs,
-                                                        clusterOutputs,
-                                                        inputs,
-                                                        outputs,
-                                                        addressCluster)
-                                 .persist()
+  // table simple_cluster_relations
+  val simpleClusterRelations =
+    t.simpleClusterRelations(clusterInputs,
+                             clusterOutputs,
+                             inputs,
+                             outputs,
+                             addressCluster
+                            ).persist()
 
-  val clusterRelations = t.clusterRelations(simpleClusterRelations,
-                                            clusterTags,
-                                            explicitlyKnownAddresses,
-                                            cluster,
-                                            addresses,
-                                            exchangeRates).
-                           persist()
+  // table cluster_incoming_relations/cluster_outgoing_relations
+  val clusterRelations =
+    t.clusterRelations(simpleClusterRelations,
+                       clusterTags,
+                       explicitlyKnownAddresses,
+                       cluster,
+                       addresses,
+                       exchangeRates
+                      ).persist()
 }
