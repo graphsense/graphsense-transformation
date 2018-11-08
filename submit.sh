@@ -5,7 +5,6 @@ MEMORY="4g"
 SPARK_MASTER="local[*]"
 CASSANDRA_HOST="localhost"
 
-MAX_BLOCKGROUP=0
 SRC_KEYSPACE="graphsense_raw"
 TGT_KEYSPACE="graphsense_transformed"
 
@@ -74,8 +73,7 @@ done
 echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
          "and $MEMORY memory ...\n" \
          "- source keyspace: $SRC_KEYSPACE\n" \
-         "- target keyspace: $TGT_KEYSPACE\n" \
-         "- max blockgroup:  $MAX_BLOCKGROUP\n" \
+         "- target keyspace: $TGT_KEYSPACE\n"
 
 
 $SPARK_HOME/bin/spark-submit \
@@ -86,7 +84,6 @@ $SPARK_HOME/bin/spark-submit \
   --packages datastax:spark-cassandra-connector:2.0.6-s_2.11 \
              target/scala-2.11/graphsense-transformation_2.11-0.3.3.jar \
   --source_keyspace $SRC_KEYSPACE \
-  --target_keyspace $TGT_KEYSPACE \
-  --max_blockgroup $MAX_BLOCKGROUP
+  --target_keyspace $TGT_KEYSPACE
 
 exit $?
