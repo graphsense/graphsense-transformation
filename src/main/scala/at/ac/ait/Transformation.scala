@@ -2,7 +2,8 @@ package at.ac.ait
 
 import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.functions.
-  {col, count, explode, lit, max, min, posexplode, size, struct, sum, udf}
+  {col, count, explode, from_unixtime, lit, max, min, posexplode, size, struct, sum, udf}
+
 import org.apache.spark.sql.types.IntegerType
 
 import at.ac.ait.{Fields => F}
@@ -10,6 +11,7 @@ import at.ac.ait.{Fields => F}
 
 class Transformation(
     spark: SparkSession,
+    blocks: Dataset[Block],
     transactions: Dataset[Transaction],
     exchangeRates: Dataset[ExchangeRates],
     tags: Dataset[Tag]) {
@@ -99,6 +101,28 @@ class Transformation(
       .withColumn(F.totalSpent, zeroValueIfNull(col(F.totalSpent)))
   }
 
+  def computeSummaryStatistics(
+      blocks: Dataset[Block],
+      transactions: Dataset[Transaction],
+      addresses: Dataset[Address],
+      addressRelations: Dataset[AddressRelations],
+      cluster: Dataset[Cluster],
+      clusterRelations: Dataset[ClusterRelations]) = {
+    val noBlocks = blocks.count().toInt
+    val date = blocks.filter(col(F.height)===noBlocks-1)
+                     .select(col(F.timestamp))
+                     .first()
+                     .getInt(0)
+    Seq(SummaryStatistics(date,
+                          noBlocks,
+                          transactions.count().toInt,
+                          addresses.count().toInt,
+                          addressRelations.count().toInt,
+                          cluster.count().toInt,
+                          clusterRelations.count().toInt)).toDS()
+ }
+
+
   val regularInputs = computeRegularInputs(transactions).persist()
   val regularOutputs = computeRegularOutputs(transactions).persist()
   // table address_transactions
@@ -185,4 +209,12 @@ class Transformation(
                        addresses,
                        exchangeRates
                       ).persist()
+
+  val summaryStatistics =
+    computeSummaryStatistics(blocks,
+                             transactions,
+                             addresses,
+                             addressRelations,
+                             cluster,
+                             clusterRelations)
 }

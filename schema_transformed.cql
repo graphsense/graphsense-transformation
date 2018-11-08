@@ -154,3 +154,13 @@ CREATE TABLE cluster_outgoing_relations (
     value frozen <value>,
     PRIMARY KEY (src_cluster, dst_category, value, dst_cluster)
 ) WITH CLUSTERING ORDER BY (dst_category DESC, value DESC);
+
+CREATE TABLE summary_statistics (
+    timestamp int,
+    no_blocks int PRIMARY KEY,
+    no_transactions int,
+    no_addresses int,
+    no_address_relations int,
+    no_clusters int,
+    no_cluster_relations int,
+);

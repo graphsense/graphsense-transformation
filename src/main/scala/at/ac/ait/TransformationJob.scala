@@ -57,13 +57,15 @@ object TransformationJob {
     println("Target keyspace: " + keyspace)
 
     import spark.implicits._
+    val blocks =
+      spark.sparkContext.cassandraTable[Block](src_keyspace, "block").toDS()
     val transactions =
       spark.sparkContext.cassandraTable[Transaction](src_keyspace, "transaction").toDS()
     val exchangeRates =
       spark.sparkContext.cassandraTable[ExchangeRates](src_keyspace, "exchange_rates").toDS()
     val tags = spark.sparkContext.cassandraTable[Tag](src_keyspace, "tag").toDS()
 
-    val transformation = new Transformation(spark, transactions, exchangeRates, tags)
+    val transformation = new Transformation(spark, blocks, transactions, exchangeRates, tags)
 
     def save[A <: Product: ClassTag: TypeTag](table: Dataset[A], tableName: String) = {
       val description = "store " + tableName
@@ -72,7 +74,6 @@ object TransformationJob {
       time{table.rdd.saveToCassandra(keyspace, tableName)}
       ()
     }
-
 
     save(transformation.addressTransactions, "address_transactions")
     save(transformation.addresses, "address")
@@ -93,6 +94,8 @@ object TransformationJob {
     save(
       transformation.clusterRelations.sort(F.srcCluster, F.dstCluster),
       "cluster_outgoing_relations")
+
+    save(transformation.summaryStatistics, "summary_statistics")
 
     spark.stop()
   }

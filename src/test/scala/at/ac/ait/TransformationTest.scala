@@ -23,19 +23,21 @@ trait SparkEnvironment extends BeforeAndAfterAll { this: Suite =>
   def blockHash(n: Byte) = Array(n, n, n, n, n)
   def a(n: Int) = n + "address"
 
+  val blocks: Dataset[Block] = Seq(Block(0, blockHash(0), 0, 2)).toDS()
+
   val transactions: Dataset[Transaction] =
-    Seq(Transaction("01010", blockHash(1), 23, 0, true, 0, 200000000, null,
+    Seq(Transaction("01010", blockHash(1), 0, 0, true, 0, 200000000, null,
                     Seq(TxInputOutput(Seq(a(1)), 100000000, 1),
                         TxInputOutput(Seq(a(2)), 100000000, 1)), 1),
-        Transaction("02020", blockHash(2), 23, 0, false, 200000000, 200000000,
+        Transaction("02020", blockHash(2), 0, 0, false, 200000000, 200000000,
                     Seq(TxInputOutput(Seq(a(1)), 100000000, 1),
                         TxInputOutput(Seq(a(2)), 100000000, 1)),
                     Seq(TxInputOutput(Seq(a(3)), 200000000, 1)), 2))
       .toDS()
 
-  val exchangeRates: Dataset[ExchangeRates] = Seq(ExchangeRates(23, 4, 5)).toDS()
+  val exchangeRates: Dataset[ExchangeRates] = Seq(ExchangeRates(0, 4, 5)).toDS()
   val tag: Dataset[Tag] = List(Tag(a(1), "tag1", "", "", "", "", "", 12)).toDS()
-  val transformation = new Transformation(spark, transactions, exchangeRates, tag)
+  val transformation = new Transformation(spark, blocks, transactions, exchangeRates, tag)
 
   override def afterAll() {
     spark.close()
@@ -93,4 +95,5 @@ class TransformationSpec extends FlatSpec with Matchers with SparkEnvironment {
   fileTest("clusterTags", transformation.clusterTags)
   fileTest("addressRelations", transformation.addressRelations)
   fileTest("clusterRelations", transformation.clusterRelations)
+  fileTest("summaryStatistics", transformation.summaryStatistics)
 }

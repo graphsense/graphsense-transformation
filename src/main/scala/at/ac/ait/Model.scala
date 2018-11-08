@@ -1,12 +1,30 @@
 package at.ac.ait
 
-case class NormalizedAddress(id: Int, address: String)
+case class SummaryStatistics(
+    timestamp: Int,
+    noBlocks: Int,
+    noTransactions: Int,
+    noAddresses: Int,
+    noAddressRelations: Int,
+    noClusters: Int,
+    noClusterRelations: Int
+)
+
 case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
     override def iterator = inputs.iterator
 }
 
-case class TotalInput(txHash: Array[Byte], totalInput: Long)
-case class KnownAddress(address: String, category: Int)
+case class TotalInput(
+    txHash: Array[Byte],
+    totalInput: Long)
+
+case class KnownAddress(
+    address: String,
+    category: Int)
+
+case class NormalizedAddress(
+    id: Int,
+    address: String)
 
 case class Tag(
     address: String,
