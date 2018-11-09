@@ -10,6 +10,7 @@ import scala.annotation.tailrec
 import at.ac.ait.{Fields => F}
 import linking.common._
 
+
 class Transformator(spark: SparkSession) {
 
   import spark.implicits._
@@ -134,7 +135,7 @@ class Transformator(spark: SparkSession) {
       totalInput: Dataset[TotalInput],
       explicitlyKnownAddresses: Dataset[KnownAddress],
       clusterTags: Dataset[ClusterTags],
-      addresses: Dataset[Address],
+      addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates]) = {
     val fullAddressRelations = {
       val regularSum = "regularSum"
@@ -192,7 +193,7 @@ class Transformator(spark: SparkSession) {
   }
 
 
-  def simpleClusterRelations(
+  def plainClusterRelations(
       clusterInputs: Dataset[ClusterTransactions],
       clusterOutputs: Dataset[ClusterTransactions],
       inputs: Dataset[AddressTransactions],
@@ -211,16 +212,16 @@ class Transformator(spark: SparkSession) {
       clusterOutputs
         .select(col(F.txHash), col(F.cluster) as F.dstCluster, col(F.value), col(F.height))
         .union(addressOutputs)
-    allInputs.join(allOutputs, F.txHash).as[SimpleClusterRelations]
+    allInputs.join(allOutputs, F.txHash).as[PlainClusterRelations]
   }
 
 
   def clusterRelations(
-      plainClusterRelations: Dataset[SimpleClusterRelations],
+      plainClusterRelations: Dataset[PlainClusterRelations],
       clusterTags: Dataset[ClusterTags],
       explicitlyKnownAddresses: Dataset[KnownAddress],
-      cluster: Dataset[Cluster],
-      addresses: Dataset[Address],
+      cluster: Dataset[BasicCluster],
+      addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates]) = {
     val fullClusterRelations =
       toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))

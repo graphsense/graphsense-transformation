@@ -1,15 +1,5 @@
 package at.ac.ait
 
-case class SummaryStatistics(
-    timestamp: Int,
-    noBlocks: Int,
-    noTransactions: Int,
-    noAddresses: Int,
-    noAddressRelations: Int,
-    noClusters: Int,
-    noClusterRelations: Int
-)
-
 case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
     override def iterator = inputs.iterator
 }
@@ -97,6 +87,26 @@ case class ClusterSummary(
     totalReceived: Long,
     totalSpent: Long)
 
+case class BasicAddress(
+    addressPrefix: String,
+    address: String,
+    noIncomingTxs: Int,
+    noOutgoingTxs: Int,
+    firstTx: TxIdTime,
+    lastTx: TxIdTime,
+    totalReceived: Currency,
+    totalSpent: Currency)
+
+case class BasicCluster(
+    cluster: Int,
+    noAddresses: Int,
+    noIncomingTxs: Int,
+    noOutgoingTxs: Int,
+    firstTx: TxIdTime,
+    lastTx: TxIdTime,
+    totalReceived: Currency,
+    totalSpent: Currency)
+
 // SCHEMA TABLES
 
 case class ExchangeRates(
@@ -143,7 +153,9 @@ case class Address(
     firstTx: TxIdTime,
     lastTx: TxIdTime,
     totalReceived: Currency,
-    totalSpent: Currency)
+    totalSpent: Currency,
+    inDegree: Int,
+    outDegree: Int)
 
 case class AddressCluster(
     addressPrefix: String,
@@ -169,14 +181,16 @@ case class ClusterTransactions(
     timestamp: Int)
 
 case class Cluster(
-    cluster: Int,
+    cluster: String,
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
     lastTx: TxIdTime,
     totalReceived: Currency,
-    totalSpent: Currency)
+    totalSpent: Currency,
+    inDegree: Int,
+    outDegree: Int)
 
 case class AddressRelations(
     srcAddressPrefix: String,
@@ -190,7 +204,7 @@ case class AddressRelations(
     noTransactions: Int,
     estimatedValue: Currency)
 
-case class SimpleClusterRelations(
+case class PlainClusterRelations(
     txHash: Array[Byte],
     srcCluster: String,
     dstCluster: String,
@@ -206,3 +220,13 @@ case class ClusterRelations(
     dstProperties: ClusterSummary,
     noTransactions: Int,
     value: Currency)
+
+case class SummaryStatistics(
+    timestamp: Int,
+    noBlocks: Int,
+    noTransactions: Int,
+    noAddresses: Int,
+    noAddressRelations: Int,
+    noClusters: Int,
+    noClusterRelations: Int
+)

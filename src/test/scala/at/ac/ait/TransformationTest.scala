@@ -8,6 +8,7 @@ import scala.io.Source
 
 import at.ac.ait.{Fields => F}
 
+
 trait SparkEnvironment extends BeforeAndAfterAll { this: Suite =>
 
   val conf = new SparkConf()

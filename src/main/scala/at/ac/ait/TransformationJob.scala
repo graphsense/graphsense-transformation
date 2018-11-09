@@ -48,7 +48,7 @@ object TransformationJob {
       sys.exit(1)
     }
 
-    val spark = SparkSession.builder.appName("GraphSense Transformation [dev]").getOrCreate()
+    val spark = SparkSession.builder.appName("GraphSense Transformation").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
     val src_keyspace = argsInstance.source_keyspace
@@ -87,7 +87,7 @@ object TransformationJob {
     save(transformation.addressRelations.sort(F.dstAddressPrefix), "address_incoming_relations")
     save(transformation.addressRelations.sort(F.srcAddressPrefix), "address_outgoing_relations")
 
-    save(transformation.simpleClusterRelations.sort(F.srcCluster), "simple_cluster_relations")
+    save(transformation.plainClusterRelations.sort(F.srcCluster), "plain_cluster_relations")
     save(
       transformation.clusterRelations.sort(F.dstCluster, F.srcCluster),
       "cluster_incoming_relations")

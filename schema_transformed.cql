@@ -35,6 +35,8 @@ CREATE TABLE address (
     last_tx FROZEN <tx_id_time>,
     total_received frozen <value>,
     total_spent frozen <value>,
+    in_degree int,
+    out_degree int,
     PRIMARY KEY (address_prefix, address)
 );
 
@@ -85,14 +87,16 @@ CREATE TABLE address_cluster (
 );
 
 CREATE TABLE cluster (
-    cluster bigint PRIMARY KEY,
+    cluster text PRIMARY KEY,
     no_addresses int,
     no_incoming_txs int,
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
     last_tx FROZEN <tx_id_time>,
     total_received frozen <value>,
-    total_spent frozen <value>
+    total_spent frozen <value>,
+    in_degree int,
+    out_degree int
 );
 
 CREATE TABLE cluster_addresses (
@@ -120,7 +124,7 @@ CREATE TABLE cluster_tags (
     PRIMARY KEY (cluster, address, tag, source)
 );
 
-CREATE TABLE simple_cluster_relations (
+CREATE TABLE plain_cluster_relations (
     tx_hash blob,
     src_cluster text,
     dst_cluster text,
