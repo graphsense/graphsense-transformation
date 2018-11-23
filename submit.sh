@@ -15,10 +15,10 @@ if [ -z $SPARK_HOME ] ; then
 fi
 
 EXEC=$(basename "$0")
-USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--max_blockgroup MAX_BLOCKGROUP] [--src_keyspace SRC_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE]"
+USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--src_keyspace SRC_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE]"
 
 # parse command line options
-args=`getopt -o hc:m:s: --long src_keyspace:,tgt_keyspace:,max_blockgroup: -- "$@"`
+args=`getopt -o hc:m:s: --long src_keyspace:,tgt_keyspace: -- "$@"`
 eval set -- "$args"
 
 while true; do
@@ -45,10 +45,6 @@ while true; do
         ;;
         --tgt_keyspace)
             TGT_KEYSPACE=$2
-            shift 2
-        ;;
-        --max_blockgroup)
-            MAX_BLOCKGROUP=$2
             shift 2
         ;;
         --) # end of all options
@@ -81,6 +77,8 @@ $SPARK_HOME/bin/spark-submit \
   --master $SPARK_MASTER \
   --conf spark.executor.memory=$MEMORY \
   --conf spark.cassandra.connection.host=$CASSANDRA_HOST \
+  --conf spark.sql.shuffle.partitions=500 \
+  --conf spark.default.parallelism=500 \
   --packages datastax:spark-cassandra-connector:2.0.6-s_2.11 \
              target/scala-2.11/graphsense-transformation_2.11-0.3.3.jar \
   --source_keyspace $SRC_KEYSPACE \

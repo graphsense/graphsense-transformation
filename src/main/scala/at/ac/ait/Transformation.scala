@@ -10,7 +10,6 @@ import at.ac.ait.{Fields => F}
 
 class Transformation(
     spark: SparkSession,
-    blocks: Dataset[Block],
     transactions: Dataset[Transaction],
     exchangeRates: Dataset[ExchangeRates],
     tags: Dataset[Tag]) {
@@ -123,24 +122,25 @@ class Transformation(
   def computeSummaryStatistics(
       blocks: Dataset[Block],
       transactions: Dataset[Transaction],
-      addresses: Dataset[Address],
+      addresses: Dataset[BasicAddress],
       addressRelations: Dataset[AddressRelations],
-      cluster: Dataset[Cluster],
-      clusterRelations: Dataset[ClusterRelations]) = {
-    val noBlocks = blocks.count().toInt
+      cluster: Dataset[BasicCluster]) = {
+    val noBlocks = blocks.count()
     val date = blocks.filter(col(F.height)===noBlocks-1)
                      .select(col(F.timestamp))
                      .first()
                      .getInt(0)
     Seq(SummaryStatistics(date,
                           noBlocks,
-                          transactions.count().toInt,
-                          addresses.count().toInt,
-                          addressRelations.count().toInt,
-                          cluster.count().toInt,
-                          clusterRelations.count().toInt)).toDS()
+                          transactions.count(),
+                          addresses.count(),
+                          addressRelations.count(),
+                          cluster.count()))
+      .toDS()
  }
 
+
+  spark.sparkContext.setJobDescription("Start transformation")
 
   val regularInputs = computeRegularInputs(transactions).persist()
   val regularOutputs = computeRegularOutputs(transactions).persist()
@@ -157,6 +157,8 @@ class Transformation(
       .persist()
 
   // multiple input clustering
+  println("Perform clustering")
+  spark.sparkContext.setJobDescription("Perform clustering")
   // table address_cluster
   val addressCluster = t.addressCluster(regularInputs, regularOutputs).persist()
 
@@ -208,14 +210,14 @@ class Transformation(
                        exchangeRates
                       ).persist()
 
-  // table simple_cluster_relations
+  // table plain_cluster_relations
   val plainClusterRelations =
     t.plainClusterRelations(clusterInputs,
-                             clusterOutputs,
-                             inputs,
-                             outputs,
-                             addressCluster
-                            ).persist()
+                            clusterOutputs,
+                            inputs,
+                            outputs,
+                            addressCluster
+                           ).persist()
 
   // table cluster_incoming_relations/cluster_outgoing_relations
   val clusterRelations =
@@ -229,9 +231,10 @@ class Transformation(
 
   // table addresses
   // compute in/out degrees for address graph
+  spark.sparkContext.setJobDescription("Compute node degrees")
   val addresses =
     computeNodeDegrees(basicAddresses,
-                       addressRelations,
+                       addressRelations.select(col(F.srcAddress), col(F.dstAddress)),
                        F.srcAddress,
                        F.dstAddress,
                        F.address)
@@ -245,20 +248,12 @@ class Transformation(
   // clusterRelations includes also cluster of size 1 (using the address string as ID)
   val cluster =
     computeNodeDegrees(basicCluster.withColumn("cluster", $"cluster" cast StringType),
-                       clusterRelations,
+                       clusterRelations.select(col(F.srcCluster), col(F.dstCluster)),
                        F.srcCluster,
                        F.dstCluster,
                        F.cluster)
-    .join(basicCluster.select(col(F.cluster) cast StringType), Seq(F.cluster), "right")
-    .as[Cluster]
-    .persist()
-
-  // table summary_statistics
-  val summaryStatistics =
-    computeSummaryStatistics(blocks,
-                             transactions,
-                             addresses,
-                             addressRelations,
-                             cluster,
-                             clusterRelations)
+      .join(basicCluster.select(col(F.cluster) cast StringType), Seq(F.cluster), "right")
+      .withColumn(F.cluster, $"cluster" cast IntegerType)
+      .as[Cluster]
+      .persist()
 }

@@ -87,7 +87,7 @@ CREATE TABLE address_cluster (
 );
 
 CREATE TABLE cluster (
-    cluster text PRIMARY KEY,
+    cluster int PRIMARY KEY,
     no_addresses int,
     no_incoming_txs int,
     no_outgoing_txs int,
@@ -161,10 +161,9 @@ CREATE TABLE cluster_outgoing_relations (
 
 CREATE TABLE summary_statistics (
     timestamp int,
-    no_blocks int PRIMARY KEY,
-    no_transactions int,
-    no_addresses int,
-    no_address_relations int,
-    no_clusters int,
-    no_cluster_relations int,
+    no_blocks bigint PRIMARY KEY,
+    no_transactions bigint,
+    no_addresses bigint,
+    no_address_relations bigint,
+    no_clusters bigint
 );

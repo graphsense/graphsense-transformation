@@ -38,7 +38,13 @@ trait SparkEnvironment extends BeforeAndAfterAll { this: Suite =>
 
   val exchangeRates: Dataset[ExchangeRates] = Seq(ExchangeRates(0, 4, 5)).toDS()
   val tag: Dataset[Tag] = List(Tag(a(1), "tag1", "", "", "", "", "", 12)).toDS()
-  val transformation = new Transformation(spark, blocks, transactions, exchangeRates, tag)
+  val transformation = new Transformation(spark, transactions, exchangeRates, tag)
+  val summaryStatistics =
+    transformation.computeSummaryStatistics(blocks,
+                                            transactions,
+                                            transformation.basicAddresses,
+                                            transformation.addressRelations,
+                                            transformation.basicCluster)
 
   override def afterAll() {
     spark.close()
@@ -96,5 +102,5 @@ class TransformationSpec extends FlatSpec with Matchers with SparkEnvironment {
   fileTest("clusterTags", transformation.clusterTags)
   fileTest("addressRelations", transformation.addressRelations)
   fileTest("clusterRelations", transformation.clusterRelations)
-  fileTest("summaryStatistics", transformation.summaryStatistics)
+  fileTest("summaryStatistics", summaryStatistics)
 }

@@ -1,41 +1,5 @@
 package at.ac.ait
 
-case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
-    override def iterator = inputs.iterator
-}
-
-case class TotalInput(
-    txHash: Array[Byte],
-    totalInput: Long)
-
-case class KnownAddress(
-    address: String,
-    category: Int)
-
-case class NormalizedAddress(
-    id: Int,
-    address: String)
-
-case class Tag(
-    address: String,
-    tag: String,
-    tagUri: String,
-    description: String,
-    actorCategory: String,
-    source: String,
-    sourceUri: String,
-    timestamp: Int)
-
-case class ClusterTags(
-    cluster: Int,
-    address: String,
-    tag: String,
-    tagUri: String,
-    description: String,
-    actorCategory: String,
-    source: String,
-    sourceUri: String,
-    timestamp: Int)
 
 case class RegularInput(
     address: String,
@@ -54,7 +18,30 @@ case class RegularOutput(
     n: Int,
     timestamp: Int)
 
-// TRANSFORMED SCHEMA DATA TYPES
+case class TotalInput(
+    txHash: Array[Byte],
+    totalInput: Long)
+
+case class KnownAddress(
+    address: String,
+    category: Int)
+
+case class NormalizedAddress(
+    id: Int,
+    address: String)
+
+case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
+    override def iterator = inputs.iterator
+}
+
+// raw schema data types
+
+case class TxInputOutput(
+    address: Seq[String],
+    value: Long,
+    txType: Byte)
+
+// transformed schema data types
 
 case class TxSummary(
     txHash: Array[Byte],
@@ -62,11 +49,6 @@ case class TxSummary(
     noOutputs: Int,
     totalInput: Long,
     totalOutput: Long)
-
-case class TxInputOutput(
-    address: Seq[String],
-    value: Long,
-    txType: Byte)
 
 case class TxIdTime(
     height: Int,
@@ -87,32 +69,7 @@ case class ClusterSummary(
     totalReceived: Long,
     totalSpent: Long)
 
-case class BasicAddress(
-    addressPrefix: String,
-    address: String,
-    noIncomingTxs: Int,
-    noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
-    totalReceived: Currency,
-    totalSpent: Currency)
-
-case class BasicCluster(
-    cluster: Int,
-    noAddresses: Int,
-    noIncomingTxs: Int,
-    noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
-    totalReceived: Currency,
-    totalSpent: Currency)
-
-// SCHEMA TABLES
-
-case class ExchangeRates(
-    height: Int,
-    eur: Double,
-    usd: Double)
+// raw schema tables
 
 case class Block(
     height: Int,
@@ -132,6 +89,23 @@ case class Transaction(
     outputs: Seq[TxInputOutput],
     txIndex: Long)
 
+case class ExchangeRates(
+    height: Int,
+    eur: Double,
+    usd: Double)
+
+case class Tag(
+    address: String,
+    tag: String,
+    tagUri: String,
+    description: String,
+    actorCategory: String,
+    source: String,
+    sourceUri: String,
+    timestamp: Int)
+
+// transformed schema tables
+
 case class BlockTransactions(
     height: Int,
     txs: Seq[TxSummary])
@@ -144,6 +118,16 @@ case class AddressTransactions(
     height: Int,
     txIndex: Long,
     timestamp: Int)
+
+case class BasicAddress(
+    addressPrefix: String,
+    address: String,
+    noIncomingTxs: Int,
+    noOutgoingTxs: Int,
+    firstTx: TxIdTime,
+    lastTx: TxIdTime,
+    totalReceived: Currency,
+    totalSpent: Currency)
 
 case class Address(
     addressPrefix: String,
@@ -180,8 +164,18 @@ case class ClusterTransactions(
     txIndex: Long,
     timestamp: Int)
 
+case class BasicCluster(
+    cluster: Int,
+    noAddresses: Int,
+    noIncomingTxs: Int,
+    noOutgoingTxs: Int,
+    firstTx: TxIdTime,
+    lastTx: TxIdTime,
+    totalReceived: Currency,
+    totalSpent: Currency)
+
 case class Cluster(
-    cluster: String,
+    cluster: Int,
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
@@ -191,6 +185,17 @@ case class Cluster(
     totalSpent: Currency,
     inDegree: Int,
     outDegree: Int)
+
+case class ClusterTags(
+    cluster: Int,
+    address: String,
+    tag: String,
+    tagUri: String,
+    description: String,
+    actorCategory: String,
+    source: String,
+    sourceUri: String,
+    timestamp: Int)
 
 case class AddressRelations(
     srcAddressPrefix: String,
@@ -223,10 +228,9 @@ case class ClusterRelations(
 
 case class SummaryStatistics(
     timestamp: Int,
-    noBlocks: Int,
-    noTransactions: Int,
-    noAddresses: Int,
-    noAddressRelations: Int,
-    noClusters: Int,
-    noClusterRelations: Int
+    noBlocks: Long,
+    noTransactions: Long,
+    noAddresses: Long,
+    noAddressRelations: Long,
+    noClusters: Long
 )

@@ -1,5 +1,6 @@
 package at.ac.ait
 
+
 object Fields {
   val height = "height"
   val timestamp = "timestamp"
@@ -22,8 +23,7 @@ object Fields {
   val noAddresses = "noAddresses"
   val eur = "eur"
   val usd = "usd"
-  val id = "id"  // TODO
-  val addrId = "id"  // TODO
+  val addrId = "id"
   val cluster = "cluster"
   val srcAddress = "srcAddress"
   val dstAddress = "dstAddress"
