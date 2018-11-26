@@ -22,20 +22,29 @@ class Transformation(
     tx.withColumn("input", explode(col("inputs")))
       .filter(size(col("input.address")) === 1)
       .select(explode(col("input.address")) as "address",
-                      col("input.value"),
-                      col(F.txHash), col(F.height),
-                      col(F.txIndex), col(F.timestamp))
+              col("input.value"),
+              col(F.txHash),
+              col(F.height),
+              col(F.txIndex),
+              col(F.timestamp))
       .withColumn(F.addressPrefix, t.addressPrefixColumn)
       .as[RegularInput]
   }
 
   def computeRegularOutputs(tx: Dataset[Transaction]): Dataset[RegularOutput] = {
     tx.select(posexplode(col("outputs")) as Seq(F.n, "output"),
-                         col(F.txHash), col(F.height), col(F.txIndex), col(F.timestamp))
+              col(F.txHash),
+              col(F.height),
+              col(F.txIndex),
+              col(F.timestamp))
       .filter(size(col("output.address")) === 1)
       .select(explode(col("output.address")) as "address",
-                      col("output.value"), col(F.txHash), col(F.height),
-                      col(F.txIndex), col(F.n), col(F.timestamp))
+              col("output.value"),
+              col(F.txHash),
+              col(F.height),
+              col(F.txIndex),
+              col(F.n),
+              col(F.timestamp))
       .withColumn(F.addressPrefix, t.addressPrefixColumn)
       .as[RegularOutput]
   }
@@ -162,10 +171,9 @@ class Transformation(
   // table address_cluster
   val addressCluster = t.addressCluster(regularInputs, regularOutputs).persist()
 
-  // table cluster_addresses
-  val clusterAddresses =
+  val basicClusterAddresses =
     addressCluster.join(basicAddresses, F.address)
-      .as[ClusterAddresses]
+      .as[BasicClusterAddresses]
       .sort(F.cluster, F.address)
       .persist()
 
@@ -183,7 +191,7 @@ class Transformation(
 
   val basicCluster = {
     val noAddresses =
-      clusterAddresses.groupBy(F.cluster).agg(count("*") cast IntegerType as F.noAddresses)
+      basicClusterAddresses.groupBy(F.cluster).agg(count("*") cast IntegerType as F.noAddresses)
     computeStatistics(clusterTransactions, clusterInputs, clusterOutputs, F.cluster, exchangeRates)
       .join(noAddresses, F.cluster)
       .as[BasicCluster]
@@ -255,5 +263,14 @@ class Transformation(
       .join(basicCluster.select(col(F.cluster) cast StringType), Seq(F.cluster), "right")
       .withColumn(F.cluster, $"cluster" cast IntegerType)
       .as[Cluster]
+      .persist()
+
+  // table cluster_addresses
+  val clusterAddresses =
+    basicClusterAddresses
+      .join(addresses.select(col(F.address), col("inDegree"), col("outDegree")),
+            Seq(F.address),
+            "left")
+      .as[ClusterAddresses]
       .persist()
 }

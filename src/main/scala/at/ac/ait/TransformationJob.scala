@@ -58,7 +58,6 @@ object TransformationJob {
     cassandra.store(keyspace, "address_transactions", transformation.addressTransactions)
     cassandra.store(keyspace, "address_cluster", transformation.addressCluster)
     cassandra.store(keyspace, "address_tags", transformation.filteredTags)
-    cassandra.store(keyspace, "cluster_addresses", transformation.clusterAddresses)
     cassandra.store(keyspace, "cluster_tags", transformation.clusterTags)
 
     cassandra.store(
@@ -84,6 +83,7 @@ object TransformationJob {
 
     cassandra.store(keyspace, "address", transformation.addresses)
     cassandra.store(keyspace, "cluster", transformation.cluster)
+    cassandra.store(keyspace, "cluster_addresses", transformation.clusterAddresses)
 
     // table summary_statistics
     val summaryStatistics =

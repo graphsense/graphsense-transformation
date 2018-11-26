@@ -154,7 +154,9 @@ case class ClusterAddresses(
     firstTx: TxIdTime,
     lastTx: TxIdTime,
     totalReceived: Currency,
-    totalSpent: Currency)
+    totalSpent: Currency,
+    inDegree: Int,
+    outDegree: Int)
 
 case class ClusterTransactions(
     cluster: Int,
@@ -167,6 +169,16 @@ case class ClusterTransactions(
 case class BasicCluster(
     cluster: Int,
     noAddresses: Int,
+    noIncomingTxs: Int,
+    noOutgoingTxs: Int,
+    firstTx: TxIdTime,
+    lastTx: TxIdTime,
+    totalReceived: Currency,
+    totalSpent: Currency)
+
+case class BasicClusterAddresses(
+    cluster: Long,
+    address: String,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,

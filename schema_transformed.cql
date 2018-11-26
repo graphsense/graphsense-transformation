@@ -108,6 +108,8 @@ CREATE TABLE cluster_addresses (
     last_tx FROZEN <tx_id_time>,
     total_received frozen <value>,
     total_spent frozen <value>,
+    in_degree int,
+    out_degree int,
     PRIMARY KEY (cluster, address)
 );
 
