@@ -81,7 +81,7 @@ $SPARK_HOME/bin/spark-submit \
   --conf spark.default.parallelism=500 \
   --jars ~/.ivy2/local/at.ac.ait/graphsense-clustering_2.11/0.3.3/jars/graphsense-clustering_2.11.jar \
   --packages datastax:spark-cassandra-connector:2.0.6-s_2.11 \
-             target/scala-2.11/graphsense-transformation_2.11-0.3.3-SNAPSHOT.jar \
+             target/scala-2.11/graphsense-transformation_2.11-0.3.3.jar \
   --source_keyspace $SRC_KEYSPACE \
   --target_keyspace $TGT_KEYSPACE
 
