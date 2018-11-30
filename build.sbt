@@ -4,7 +4,7 @@ lazy val root = (project in file(".")).
   settings(
     inThisBuild(List(
       scalaVersion := "2.11.8",
-      version      := "0.3.2"
+      version      := "0.3.3"
     )),
     name := "graphsense-transformation",
     fork := true,
@@ -28,5 +28,6 @@ lazy val root = (project in file(".")).
     libraryDependencies ++= List(
       scalaTest % Test,
       sparkSql % Provided,
-      sparkCassandraConnector % Provided)
+      sparkCassandraConnector % Provided,
+      "at.ac.ait" %% "graphsense-clustering" % "0.3.3")
   )

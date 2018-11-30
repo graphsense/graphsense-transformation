@@ -5,7 +5,6 @@ MEMORY="4g"
 SPARK_MASTER="local[*]"
 CASSANDRA_HOST="localhost"
 
-MAX_BLOCKGROUP=0
 SRC_KEYSPACE="graphsense_raw"
 TGT_KEYSPACE="graphsense_transformed"
 
@@ -16,10 +15,10 @@ if [ -z $SPARK_HOME ] ; then
 fi
 
 EXEC=$(basename "$0")
-USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--max_blockgroup MAX_BLOCKGROUP] [--src_keyspace SRC_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE]"
+USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--src_keyspace SRC_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE]"
 
 # parse command line options
-args=`getopt -o hc:m:s: --long src_keyspace:,tgt_keyspace:,max_blockgroup: -- "$@"`
+args=`getopt -o hc:m:s: --long src_keyspace:,tgt_keyspace: -- "$@"`
 eval set -- "$args"
 
 while true; do
@@ -48,10 +47,6 @@ while true; do
             TGT_KEYSPACE=$2
             shift 2
         ;;
-        --max_blockgroup)
-            MAX_BLOCKGROUP=$2
-            shift 2
-        ;;
         --) # end of all options
             shift
             if [ "x$*" != "x" ] ; then
@@ -74,8 +69,7 @@ done
 echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
          "and $MEMORY memory ...\n" \
          "- source keyspace: $SRC_KEYSPACE\n" \
-         "- target keyspace: $TGT_KEYSPACE\n" \
-         "- max blockgroup:  $MAX_BLOCKGROUP\n" \
+         "- target keyspace: $TGT_KEYSPACE\n"
 
 
 $SPARK_HOME/bin/spark-submit \
@@ -83,10 +77,12 @@ $SPARK_HOME/bin/spark-submit \
   --master $SPARK_MASTER \
   --conf spark.executor.memory=$MEMORY \
   --conf spark.cassandra.connection.host=$CASSANDRA_HOST \
+  --conf spark.sql.shuffle.partitions=500 \
+  --conf spark.default.parallelism=500 \
+  --jars ~/.ivy2/local/at.ac.ait/graphsense-clustering_2.11/0.3.3/jars/graphsense-clustering_2.11.jar \
   --packages datastax:spark-cassandra-connector:2.0.6-s_2.11 \
-             target/scala-2.11/graphsense-transformation_2.11-0.3.2.jar \
+             target/scala-2.11/graphsense-transformation_2.11-0.3.3.jar \
   --source_keyspace $SRC_KEYSPACE \
-  --target_keyspace $TGT_KEYSPACE \
-  --max_blockgroup $MAX_BLOCKGROUP
+  --target_keyspace $TGT_KEYSPACE
 
 exit $?

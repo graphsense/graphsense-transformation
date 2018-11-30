@@ -1,17 +1,19 @@
 # GraphSense Transformation Pipeline
 
-The GraphSense Transformation Pipeline reads raw data, which is ingested into [Cassandra][apache-cassandra]
-by the [graphsense-datafeed][graphsense-datafeed] component, and computes de-normalized views, which are
-again stored in [Cassandra][apache-cassandra].
+The GraphSense Transformation Pipeline reads raw block data using
+[BlockSci][blocksci], which is ingested into [Cassandra][apache-cassandra]
+by the [graphsense-blocksci][graphsense-blocksci] component, and computes
+de-normalized views, which are again stored in Cassandra.
 
-Access to computed de-normalized views is subsequently provided by the [GraphSense REST][graphsense-rest]
-interface, which is used by the [graphsense-dashboard][graphsense-dashboard] component.
+Access to computed de-normalized views is subsequently provided by the
+[GraphSense REST][graphsense-rest] interface, which is used by the
+[graphsense-dashboard][graphsense-dashboard] component.
 
-This component is implemented using the [Apache Spark][apache-spark].
+This component is implemented using [Apache Spark][apache-spark].
 
 ## Local Development Environment Setup
 
-Make sure [Java 8][java] and [sbt > 1.0][scala-sbt] is installed:
+Make sure [Java 8][java] and [sbt >= 1.0][scala-sbt] is installed:
 
     java -version
     sbt about
@@ -64,7 +66,8 @@ Run the transformation pipeline on the localhost
 
 Check the running job using the local Spark UI at http://localhost:4040/jobs
 
-[graphsense-datafeed]: https://github.com/graphsense/graphsense-datafeed
+[blocksci]: https://github.com/citp/BlockSci
+[graphsense-blocksci]: https://github.com/graphsense/graphsense-blocksci
 [graphsense-dashboard]: https://github.com/graphsense/graphsense-dashboard
 [graphsense-rest]: https://github.com/graphsense/graphsense-rest
 [java]: https://java.com

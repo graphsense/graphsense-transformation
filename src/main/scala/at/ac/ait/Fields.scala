@@ -1,10 +1,11 @@
 package at.ac.ait
 
+
 object Fields {
   val height = "height"
   val timestamp = "timestamp"
   val txHash = "txHash"
-  val txNumber = "txNumber"
+  val txIndex = "txIndex"
   val txPrefix = "txPrefix"
   val value = "value"
   val addresses = "addresses"
@@ -12,12 +13,7 @@ object Fields {
   val addressPrefix = "addressPrefix"
   val totalInput = "totalInput"
   val totalOutput = "totalOutput"
-  val vin = "vin"
-  val vout = "vout"
   val n = "n"
-  val txs = "txs"
-  val inputs = "inputs"
-  val outputs = "outputs"
   val noIncomingTxs = "noIncomingTxs"
   val noOutgoingTxs = "noOutgoingTxs"
   val firstTx = "firstTx"
@@ -27,8 +23,7 @@ object Fields {
   val noAddresses = "noAddresses"
   val eur = "eur"
   val usd = "usd"
-  val txId = "txId"
-  val addrId = "addrId"
+  val addrId = "id"
   val cluster = "cluster"
   val srcAddress = "srcAddress"
   val dstAddress = "dstAddress"
