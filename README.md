@@ -67,7 +67,7 @@ Run the transformation pipeline on the localhost
 Check the running job using the local Spark UI at http://localhost:4040/jobs
 
 [blocksci]: https://github.com/citp/BlockSci
-[graphsense-datafeed]: https://github.com/graphsense/graphsense-blocksci
+[graphsense-blocksci]: https://github.com/graphsense/graphsense-blocksci
 [graphsense-dashboard]: https://github.com/graphsense/graphsense-dashboard
 [graphsense-rest]: https://github.com/graphsense/graphsense-rest
 [java]: https://java.com
