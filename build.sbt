@@ -29,5 +29,5 @@ lazy val root = (project in file(".")).
       scalaTest % Test,
       sparkSql % Provided,
       sparkCassandraConnector % Provided,
-      "at.ac.ait" %% "linking" % "1.0")
+      "at.ac.ait" %% "graphsense-clustering" % "0.3.3")
   )

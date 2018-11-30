@@ -8,7 +8,7 @@ import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
 
 import at.ac.ait.{Fields => F}
-import linking.common._
+import at.ac.ait.clustering.common._
 
 
 class Transformator(spark: SparkSession) {
