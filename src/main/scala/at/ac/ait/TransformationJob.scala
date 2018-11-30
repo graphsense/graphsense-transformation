@@ -86,6 +86,7 @@ object TransformationJob {
     cassandra.store(keyspace, "cluster_addresses", transformation.clusterAddresses)
 
     // table summary_statistics
+    spark.sparkContext.setJobDescription("Compute summary statistics")
     val summaryStatistics =
       transformation.computeSummaryStatistics(blocks,
                                               transactions,
