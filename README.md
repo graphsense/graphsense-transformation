@@ -3,7 +3,7 @@
 The GraphSense Transformation Pipeline reads raw block data using
 [BlockSci][blocksci], which is ingested into [Cassandra][apache-cassandra]
 by the [graphsense-blocksci][graphsense-blocksci] component, and computes
-de-normalized views, which are again stored in [Cassandra][apache-cassandra].
+de-normalized views, which are again stored in Cassandra.
 
 Access to computed de-normalized views is subsequently provided by the
 [GraphSense REST][graphsense-rest] interface, which is used by the
@@ -13,7 +13,7 @@ This component is implemented using [Apache Spark][apache-spark].
 
 ## Local Development Environment Setup
 
-Make sure [Java 8][java] and [sbt > 1.0][scala-sbt] is installed:
+Make sure [Java 8][java] and [sbt >= 1.0][scala-sbt] is installed:
 
     java -version
     sbt about
