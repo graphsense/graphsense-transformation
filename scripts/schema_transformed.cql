@@ -1,7 +1,7 @@
-DROP KEYSPACE IF EXISTS graphsense_transformed;
-CREATE KEYSPACE graphsense_transformed WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
+DROP KEYSPACE IF EXISTS btc_transformed;
+CREATE KEYSPACE btc_transformed WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
 
-USE graphsense_transformed;
+USE btc_transformed;
 
 CREATE TYPE tx_id_time (
     height int,

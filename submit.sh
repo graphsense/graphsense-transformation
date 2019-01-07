@@ -5,8 +5,8 @@ MEMORY="4g"
 SPARK_MASTER="local[*]"
 CASSANDRA_HOST="localhost"
 
-SRC_KEYSPACE="graphsense_raw"
-TGT_KEYSPACE="graphsense_transformed"
+SRC_KEYSPACE="btc_raw"
+TGT_KEYSPACE="btc_transformed"
 
 
 if [ -z $SPARK_HOME ] ; then

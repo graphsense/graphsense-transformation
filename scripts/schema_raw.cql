@@ -1,0 +1,63 @@
+DROP KEYSPACE IF EXISTS btc_raw;
+CREATE KEYSPACE btc_raw WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
+
+USE btc_raw;
+
+CREATE TABLE block (
+    height int PRIMARY KEY,
+    block_hash blob,
+    timestamp int,
+    no_transactions int
+);
+
+CREATE TYPE tx_input_output (
+    address list<text>,
+    value bigint,
+    tx_type smallint
+);
+
+CREATE TABLE transaction (
+    tx_prefix text,
+    tx_hash blob,
+    tx_index bigint,
+    height int,
+    timestamp int,
+    coinbase boolean,
+    coinjoin boolean,
+    total_input bigint,
+    total_output bigint,
+    inputs list<FROZEN<tx_input_output>>,
+    outputs list<FROZEN<tx_input_output>>,
+    PRIMARY KEY (tx_prefix, tx_hash)
+);
+
+CREATE TYPE tx_summary (
+    tx_hash blob,
+    no_inputs int,
+    no_outputs int,
+    total_input bigint,
+    total_output bigint
+);
+
+CREATE TABLE block_transactions (
+     height int PRIMARY KEY,
+     txs list<FROZEN<tx_summary>>
+);
+
+CREATE TABLE exchange_rates (
+    height int PRIMARY KEY,
+    eur    double,
+    usd    double
+);
+
+CREATE TABLE tag (
+    address text,
+    tag text,
+    tag_uri text,
+    description text,
+    actor_category text,
+    source text,
+    source_uri text,
+    timestamp int,
+    PRIMARY KEY (address, tag, source)
+);

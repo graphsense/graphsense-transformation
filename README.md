@@ -1,7 +1,7 @@
 # GraphSense Transformation Pipeline
 
-The GraphSense Transformation Pipeline reads raw block data using
-[BlockSci][blocksci], which is ingested into [Cassandra][apache-cassandra]
+The GraphSense Transformation Pipeline reads raw block data, which is
+ingested into [Cassandra][apache-cassandra]
 by the [graphsense-blocksci][graphsense-blocksci] component, and computes
 de-normalized views, which are again stored in Cassandra.
 
@@ -13,6 +13,8 @@ This component is implemented using [Apache Spark][apache-spark].
 
 ## Local Development Environment Setup
 
+### Prerequisites
+
 Make sure [Java 8][java] and [sbt >= 1.0][scala-sbt] is installed:
 
     java -version
@@ -20,37 +22,44 @@ Make sure [Java 8][java] and [sbt >= 1.0][scala-sbt] is installed:
 
 Install the [Scala IDE for Eclipse][scala-ide].
 
-Install the [sbteclipse][sbteclipse] plugin. Use either
+Install the [sbt Eclipse plugin][sbteclipse].
 
-- the global file at `~/.sbt/SBTVERSION/plugins/plugins.sbt`
-  (for `sbt` version 0.13 and up)
-- the project-specific file `graphsense-transformation/project/plugins.sbt`
+Create an Eclipse project file using `sbt`
 
-Create an eclipse project file using `sbt`
-
-    cp eclipse.sbt.disabled eclipse.sbt
     sbt eclipse
 
 Import project into the Scala-IDE via
 `File > Import... > Existing Projects into Workspace`
 
-Download, install, and test Apache Spark (version >= 2.2.0) in $SPARK_HOME:
+Download, install, and run [Apache Spark][apache-spark] (version >= 2.2.0) in $SPARK_HOME:
 
-    $SPARK_HOME/bin/spark-shell
+    $SPARK_HOME/sbin/start-master.sh
 
-## Local Transformation Pipeline Execution 
+Download, install, and run [Apache Cassandra][apache-cassandra] (version >= 3.1.1) in $CASSANDRA_HOME
 
-Make sure raw data has been imported into a running Apache Cassandra
-instance using the [graphsense-datafeed][graphsense-datafeed] service.
+    $CASSANDRA_HOME/bin/cassandra -f 
 
+### Ingest Raw Block Data
+
+Run the following script for ingesting raw block test data
+
+    ./scripts/ingest_test_data.sh
+
+This should create a keyspace `btc_raw` and these tables: `exchange_rates`, `tag` , `transaction`, `block`, `block_transactions`. Check as follows
+
+    cqlsh localhost
+    cqlsh:graphsense> use btc_raw;
+    cqlsh:btc_raw> desc tables;
+
+## Execute Transformation Locally 
 
 macOS only: make sure gnu-getopt is installed
 
     brew install gnu-getopt
 
-Create a keyspace for the transformed data
+Create the target keyspace for transformed data
 
-    cqlsh -f schema_transformed.cql
+    ./scripts/create_target_schema.sh
 
 Compile and test the implementation
 
@@ -60,21 +69,21 @@ Package the transformation pipeline
 
     sbt package
 
-Run the transformation pipeline on the localhost
+Run the transformation pipeline on localhost
 
-    bash submit.sh
+    ./submit.sh
 
 Check the running job using the local Spark UI at http://localhost:4040/jobs
 
-[blocksci]: https://github.com/citp/BlockSci
 [graphsense-blocksci]: https://github.com/graphsense/graphsense-blocksci
 [graphsense-dashboard]: https://github.com/graphsense/graphsense-dashboard
 [graphsense-rest]: https://github.com/graphsense/graphsense-rest
+
 [java]: https://java.com
+[scala-ide]: http://scala-ide.org/
 [scala-lang]: https://www.scala-lang.org/
 [scala-sbt]: http://www.scala-sbt.org
 [sbteclipse]: https://github.com/typesafehub/sbteclipse
+
 [apache-spark]: https://spark.apache.org/downloads.html
 [apache-cassandra]: http://cassandra.apache.org/
-[java]: https://java.com
-[scala-ide]: http://scala-ide.org/
