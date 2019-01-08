@@ -103,8 +103,9 @@ class Transformation(
       .join(txTimes.toDF(firstTxNumber, F.firstTx), firstTxNumber)
       .join(txTimes.toDF(lastTxNumber, F.lastTx), lastTxNumber)
       .drop(firstTxNumber, lastTxNumber)
-      .join(inStats, idColumn)
+      .join(inStats, List(idColumn), "left_outer")
       .join(outStats, List(idColumn), "left_outer").na.fill(0)
+      .withColumn(F.totalReceived, zeroValueIfNull(col(F.totalReceived)))
       .withColumn(F.totalSpent, zeroValueIfNull(col(F.totalSpent)))
   }
 
