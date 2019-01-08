@@ -22,7 +22,7 @@ class Transformation(
     tx.withColumn("input", explode(col("inputs")))
       .filter(size(col("input.address")) === 1)
       .select(explode(col("input.address")) as "address",
-              col("input.value"),
+              col("input.value") as "value",
               col(F.txHash),
               col(F.height),
               col(F.txIndex),
@@ -39,7 +39,7 @@ class Transformation(
               col(F.timestamp))
       .filter(size(col("output.address")) === 1)
       .select(explode(col("output.address")) as "address",
-              col("output.value"),
+              col("output.value") as "value",
               col(F.txHash),
               col(F.height),
               col(F.txIndex),

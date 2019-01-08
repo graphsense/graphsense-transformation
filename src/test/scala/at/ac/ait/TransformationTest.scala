@@ -6,9 +6,6 @@ import org.apache.spark.sql.{Dataset, SparkSession}
 import org.scalatest._
 import scala.io.Source
 
-import at.ac.ait.{Fields => F}
-
-
 trait SparkEnvironment extends BeforeAndAfterAll { this: Suite =>
 
   val conf = new SparkConf()
@@ -94,13 +91,13 @@ class TransformationSpec extends FlatSpec with Matchers with SparkEnvironment {
     }
   }
 
-  fileTest("addresses", transformation.addresses)
-  fileTest("addressTransactions", transformation.addressTransactions)
-  fileTest("addressCluster", transformation.addressCluster)
-  fileTest("clusterAddresses", transformation.clusterAddresses.sort(F.cluster, F.address))
-  fileTest("cluster", transformation.cluster)
-  fileTest("clusterTags", transformation.clusterTags)
-  fileTest("addressRelations", transformation.addressRelations)
-  fileTest("clusterRelations", transformation.clusterRelations)
-  fileTest("summaryStatistics", summaryStatistics)
+//  fileTest("addresses", transformation.addresses)
+//  fileTest("addressTransactions", transformation.addressTransactions)
+//  fileTest("addressCluster", transformation.addressCluster)
+//  fileTest("clusterAddresses", transformation.clusterAddresses.sort(F.cluster, F.address))
+//  fileTest("cluster", transformation.cluster)
+//  fileTest("clusterTags", transformation.clusterTags)
+//  fileTest("addressRelations", transformation.addressRelations)
+//  fileTest("clusterRelations", transformation.clusterRelations)
+//  fileTest("summaryStatistics", summaryStatistics)
 }

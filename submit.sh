@@ -77,11 +77,9 @@ $SPARK_HOME/bin/spark-submit \
   --master $SPARK_MASTER \
   --conf spark.executor.memory=$MEMORY \
   --conf spark.cassandra.connection.host=$CASSANDRA_HOST \
-  --conf spark.sql.shuffle.partitions=500 \
-  --conf spark.default.parallelism=500 \
   --jars ~/.ivy2/local/at.ac.ait/graphsense-clustering_2.11/0.3.3/jars/graphsense-clustering_2.11.jar \
-  --packages datastax:spark-cassandra-connector:2.0.6-s_2.11 \
-             target/scala-2.11/graphsense-transformation_2.11-0.3.3.jar \
+  --packages datastax:spark-cassandra-connector:2.4.0-s_2.11 \
+             target/scala-2.11/graphsense-transformation_2.11-0.4.0-SNAPSHOT.jar \
   --source_keyspace $SRC_KEYSPACE \
   --target_keyspace $TGT_KEYSPACE
 
