@@ -43,4 +43,11 @@ Block
 			|- 1HA8pfkmkDWbuB1bCKuELDNPbAptbYz1UB (317469341)
 
 
+Total number
+	|- Blocks: 3
+	|- Transactions: 6
+		|- coinbase: 3
+		|- coinjoin: 1
+	|- Outputs: 10
+	|- Inputs: 8
 
