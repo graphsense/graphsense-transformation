@@ -14,27 +14,25 @@ Block
 			|- 138cWsiAGpW9yqfjMVCCsFcnaiSHyoWMnJ (2500000)
 	|- 0xab20101c4ca509cd1bbb31bef15b96cc5f987e6438f770e105e41d012057930a
 		|- Inputs
-			|- 3LZRPjDWdA522AD21mrj2z7seqSbc1XWbZ (2500000)
+			|- 3LZRPjDWdA522AD21mrj2z7seqSbc1XWbZ (52190000)
 		|- Outputs
-			|- 3GkVE2wq2TUWjVQdsmA9ZfPMYYNRHD1Z4k (100000)
-			|- 3L5573GSD4B3k3PrSzxBN1PBK4D4BnKAKL (18902399)
-			|- 3Kawbc5pkpQPfmaoGCBiaw5t2uK6WBoVVe (33160000)
+			|- 3GkVE2wq2TUWjVQdsmA9ZfPMYYNRHD1Z4k (670000)
+			|- 3L5573GSD4B3k3PrSzxBN1PBK4D4BnKAKL (560000)
+			|- 3Kawbc5pkpQPfmaoGCBiaw5t2uK6WBoVVe (50932399)
 
 0x000000005c7ef94cf3eb3526aef2c9ec1352c33e7e869056cdffa3711d9b3eb5 (height 3)
 	|- 0xab301013f626405ddebf1a7b2e0af34253d09e80f9ef7f981ec1ec59d6200c1f
 		|- Outputs
 			|- 12751KvnaTTPMJbHbbercdTV48kL81BjX8 (2500000)
-	|- 0xab302096b6a9cb729ed6abe7cf220aa91ffcb095466da412206d2748e018f57c
+	|- 0xab30209910f327700e0f199972eed8ea7c6b1920e965f9cb48a92973e7325046
 		|- Inputs
-			|- 1PYJpdXDSHGKPNsfD6qX86QCpymWYaym61 (1000000)
-			|- 1234M3QLyHweartnx3ovpHaE268JEW6nod (596000)
-			|- 1M5FYjQY2TgBNNLnMMzi1QSVPYfFgLKU5S (357100)
-			|- 1CuZHQQ5K8dKLrkxMFqPyrPypihZYd62p5 (789810)
-			|- 15kcXCiXU5RjkgxZuxdFhpHpixmxGvPHpa (217044)
-			|- 1JKUL6bPWEkCaduLvQwDM6mBxeP9dM8Lhg (400000)
+ 			|- 1FDCgJ8m2xDyVmYuankk13XReVC2Zvs5cz (670000)
+ 			|- 1HxbaBMF2jXBVnagoHvaA6rLxmaYL8gb8T (2500000)
 		|- Outputs
-			|- 12EX149FPwZGSgyQnnt43SevapP2vrYxRG (71855)
-			|- 3GMUwgT88dsretroqpPYP5qrca9vBM9ruo (3239999)
+			|- 1MUzngtNnrQRXRqqRTeDmpULW8X1aaGWeR (100000)
+			|- 1231PgW8KbpwKkvACPhp13fcL6fM5sKGvy (520000)
+			|- 1Fufjpf9RM2aQsGedhSpbSCGRHrmLMJ7yY (100000)
+			|- 1iYSYHTpr2wMShaXTTNUzMohkpuV5p5ep (2350000)
 	|- 0xab3030c34bed7a86eef78534d72fd38c3c247c25d58be632201cb2027c9d2197
 		|- Inputs
 			|- 1C4m9TVCubnK6Hj4yGCpvh5M2XRYNNnpoJ (367370086)
@@ -48,6 +46,6 @@ Total number
 	|- Transactions: 6
 		|- coinbase: 3
 		|- coinjoin: 1
-	|- Outputs: 10
-	|- Inputs: 8
+	|- Outputs: 12
+	|- Inputs: 4
 
