@@ -52,38 +52,52 @@ object TransformationJob {
     val transactions = cassandra.load[Transaction](src_keyspace, "transaction")
     val exchangeRates = cassandra.load[ExchangeRates](src_keyspace, "exchange_rates")
     val tags = cassandra.load[Tag](src_keyspace, "tag")
-    
+
     val transformation = new Transformation(spark, transactions, exchangeRates, tags)
 
     println("Extracting transaction inputs")
     val regInputs = transformation.computeRegularInputs(transactions).persist()
     println(s"Regular Inputs ${regInputs.count}")
-    regInputs.show
+    regInputs.show()
 
     println("Extracting transaction outputs")
     val regOutputs = transformation.computeRegularOutputs(transactions).persist()
-    println(s"Regular Inputs ${regOutputs.count}")
-    regOutputs.show
-    
+    println(s"Regular Outputs ${regOutputs.count}")
+    regOutputs.show()
+
     println("Computing address transactions")
-    val addressTransactions = transformation
-      .computeAddressTransactions(transactions, regInputs, regOutputs).persist()
-    addressTransactions.show
+    val addressTransactions = 
+      transformation.computeAddressTransactions(transactions, regInputs, regOutputs).persist()
+    println(s"Address transactions ${addressTransactions.count}")
+    addressTransactions.show()
     cassandra.store(keyspace, "address_transactions", addressTransactions)
+
+    val(inputs, outputs) = transformation.splitTransactions(addressTransactions)
+
+    println("Computing address statistics")
+    val basicAddresses =
+      transformation.computeBasicAddresses(addressTransactions, inputs, outputs, exchangeRates).persist()
+    println(s"Addresses ${addressTransactions.count}")
+
 
     println("Computing address clusters")
     val addressClusters = transformation.t.addressCluster(regInputs, regOutputs).persist()
     addressClusters.show
     cassandra.store(keyspace, "address_cluster", addressClusters)
-    
+
     println("Computing address tags")
-    // TODO: refactor
-    val addressTags = transformation.filteredTags
-    addressTags.show
+    val addressTags = transformation.computeAddressTags(basicAddresses, tags).persist()
+    addressTags.show()
     cassandra.store(keyspace, "address_tags", addressTags)
-    
+
+    println("Computing address cluster")
+    val addressCluster = transformation.computeAddressCluster(regInputs, regOutputs).persist()
+    addressCluster.show()
+    cassandra.store(keyspace, "address_cluster", addressCluster)
+
     println("Computing cluster tags")
     // TODO: refactor
+    // val clusterTags = transformation.computeClusterTags(clusterAdresses, tags).persist()
     val clusterTags = transformation.clusterTags
     clusterTags.show
     cassandra.store(keyspace, "cluster_tags", clusterTags)
@@ -123,17 +137,17 @@ object TransformationJob {
     val clusterAddresses = transformation.clusterAddresses
     clusterAddresses.show
     cassandra.store(keyspace, "cluster_addresses", clusterAddresses)
-    
+
     println("Compute summary statistics")
     // TODO: refactor
     val summaryStatistics =
       transformation.computeSummaryStatistics(blocks,
                                               transactions,
-                                              transformation.basicAddresses,
+                                              basicAddresses,
                                               transformation.addressRelations,
                                               transformation.basicCluster)
     cassandra.store(keyspace, "summary_statistics", summaryStatistics)
-    
+
     spark.stop()
   }
 }

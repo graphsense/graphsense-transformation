@@ -102,7 +102,7 @@ class Transformator(spark: SparkSession) {
       basicAddressCluster.union(addressClusterRemainder)
     }
 
-    // assign in integer IDs to addresses
+    // assign integer IDs to addresses
     // .withColumn("id", monotonically_increasing_id) could be used instead of zipWithIndex,
     // but this assigns Long values instead of Int
     val orderWindow = Window.partitionBy(F.address).orderBy(F.txIndex, F.n)

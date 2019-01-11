@@ -65,13 +65,6 @@ class Transformation(
       .as[AddressTransactions]
   }
 
-  def computeTotalInput(tx: Dataset[Transaction]): Dataset[TotalInput] = {
-    tx.withColumn("input", explode(col("inputs")))
-      .select(F.txHash, "input.value")
-      .groupBy(F.txHash).agg(sum(F.value) as F.totalInput)
-      .as[TotalInput]
-  }
-
   def splitTransactions[A](txTable: Dataset[A])(implicit evidence: Encoder[A]) = (
     txTable.filter(col(F.value) < 0).withColumn(F.value, -col(F.value)).as[A],
     txTable.filter(col(F.value) > 0)
@@ -106,6 +99,37 @@ class Transformation(
       .join(inStats, idColumn)
       .join(outStats, List(idColumn), "left_outer").na.fill(0)
       .withColumn(F.totalSpent, zeroValueIfNull(col(F.totalSpent)))
+  }
+
+  def computeBasicAddresses(
+      addressTransactions: Dataset[AddressTransactions],
+      inputs: Dataset[AddressTransactions],
+      outputs: Dataset[AddressTransactions],
+      exchangeRates: Dataset[ExchangeRates]): Dataset[BasicAddress] = {
+    computeStatistics(addressTransactions, inputs, outputs, F.address, exchangeRates)
+      .withColumn(F.addressPrefix, t.addressPrefixColumn)
+      .as[BasicAddress]
+  }
+
+  def computeAddressCluster(
+      regularInputs: Dataset[RegularInput],
+      regularOutputs: Dataset[RegularOutput]): Dataset[AddressCluster] = {
+    t.addressCluster(regularInputs, regularOutputs)
+  }
+
+  def computeTotalInput(tx: Dataset[Transaction]): Dataset[TotalInput] = {
+    tx.withColumn("input", explode(col("inputs")))
+      .select(F.txHash, "input.value")
+      .groupBy(F.txHash).agg(sum(F.value) as F.totalInput)
+      .as[TotalInput]
+  }
+
+  def computeAddressTags(addresses: Dataset[BasicAddress], tags: Dataset[Tag]): Dataset[Tag] = {
+    tags.join(addresses, Seq(F.address), joinType="left_semi").as[Tag]
+  }
+
+  def computeClusterTags(addressCluster: Dataset[AddressCluster], tags: Dataset[Tag]): Dataset[ClusterTags] = {
+    addressCluster.join(tags, F.address).as[ClusterTags]
   }
 
   def computeNodeDegrees(
@@ -198,10 +222,10 @@ class Transformation(
   }.persist()
 
   // table cluster_tags
-  val clusterTags = addressCluster.join(tags, F.address).as[ClusterTags].persist()
+  val clusterTags = computeClusterTags(addressCluster, tags).persist()
 
   // table address_tags
-  val filteredTags = tags.join(basicAddresses, Seq(F.address), joinType="left_semi").as[Tag]
+  val filteredTags = computeAddressTags(basicAddresses, tags).persist()
 
   val explicitlyKnownAddresses =
     tags.select(col(F.address), lit(2) as F.category).dropDuplicates().as[KnownAddress].persist()
