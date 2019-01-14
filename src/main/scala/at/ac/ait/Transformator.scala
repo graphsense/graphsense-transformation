@@ -3,7 +3,7 @@ package at.ac.ait
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.
-  {col, collect_set, count, lit, round, row_number, substring, sum, udf, when}
+  {col, collect_set, count, explode, lit, round, row_number, substring, sum, udf, when}
 import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
 
@@ -132,49 +132,44 @@ class Transformator(spark: SparkSession) {
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
       regularInputs: Dataset[RegularInput],
-      totalInput: Dataset[TotalInput],
-      explicitlyKnownAddresses: Dataset[KnownAddress],
-      clusterTags: Dataset[ClusterTags],
+      transactions: Dataset[Transaction],
       addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates]) = {
     val fullAddressRelations = {
-      val regularSum = "regularSum"
-      val addressSum = "addressSum"
-      val inValue = "inValue"
-      val outValue = "outValue"
       val shortInputs =
-        inputs.select(col(F.txHash), col(F.address) as F.srcAddress, col(F.value) as inValue)
+        inputs.select(col(F.txHash), col(F.address) as F.srcAddress, col(F.value) as "inValue")
       val shortOutputs =
-        outputs.select(col(F.txHash), col(F.address) as F.dstAddress, col(F.value) as outValue)
-      val regularInputSum = regularInputs.groupBy(F.txHash).agg(sum(F.value) as regularSum)
-      val addressInputSum = inputs.groupBy(F.height, F.txHash).agg(sum(F.value) as addressSum)
+        outputs.select(col(F.txHash), col(F.address) as F.dstAddress, col(F.value) as "outValue")
+      val regularInputSum = regularInputs.groupBy(F.txHash).agg(sum(F.value) as "regularSum")
+      val addressInputSum = inputs.groupBy(F.height, F.txHash).agg(sum(F.value) as "addressSum")
+      val totalInput = transactions
+        .withColumn("input", explode(col("inputs")))
+        .select(F.txHash, "input.value")
+        .groupBy(F.txHash).agg(sum(F.value) as F.totalInput)
       val reducedInputSum =
         addressInputSum.join(regularInputSum, F.txHash)
           .join(totalInput, F.txHash)
           .select(
             col(F.height),
             col(F.txHash),
-            col(F.totalInput) - col(regularSum) + col(addressSum) as F.totalInput)
+            col(F.totalInput) - col("regularSum") + col("addressSum") as F.totalInput)
       val plainAddressRelations =
         shortInputs.join(shortOutputs, F.txHash)
           .join(reducedInputSum, F.txHash)
           .withColumn(
             F.estimatedValue,
-            round(col(inValue) / col(F.totalInput) * col(outValue)) cast LongType)
-          .drop(F.totalInput, inValue, outValue)
+            round(col("inValue") / col(F.totalInput) * col("outValue")) cast LongType)
+          .drop(F.totalInput, "inValue", "outValue")
+      // TODO exchangeRates needed?
       toCurrencyDataFrame(exchangeRates, plainAddressRelations, List(F.estimatedValue))
         .drop(F.height)
     }
-    val knownAddresses = {
-      val implicitlyKnownAddresses =
-        clusterTags.select(col(F.address), lit(1) as F.category).dropDuplicates().as[KnownAddress]
-      explicitlyKnownAddresses.union(implicitlyKnownAddresses)
-        .groupBy(F.address).max(F.category)
-    }
+
     val props =
       addresses.select(
         col(F.address),
         udf(AddressSummary).apply(col("totalReceived.satoshi"), col("totalSpent.satoshi")))
+
     fullAddressRelations.groupBy(F.srcAddress, F.dstAddress)
       .agg(
         count(F.txHash) cast IntegerType as F.noTransactions,
@@ -182,9 +177,6 @@ class Transformator(spark: SparkSession) {
           sum("estimatedValue.satoshi"),
           sum("estimatedValue.eur"),
           sum("estimatedValue.usd")) as F.estimatedValue)
-      .join(knownAddresses.toDF(F.srcAddress, F.srcCategory), List(F.srcAddress), "left_outer")
-      .join(knownAddresses.toDF(F.dstAddress, F.dstCategory), List(F.dstAddress), "left_outer")
-      .na.fill(0)
       .join(props.toDF(F.srcAddress, F.srcProperties), F.srcAddress)
       .join(props.toDF(F.dstAddress, F.dstProperties), F.dstAddress)
       .withColumn(F.srcAddressPrefix, substring(col(F.srcAddress), 0, 5))

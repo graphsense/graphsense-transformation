@@ -18,10 +18,6 @@ case class RegularOutput(
     n: Int,
     timestamp: Int)
 
-case class TotalInput(
-    txHash: Array[Byte],
-    totalInput: Long)
-
 case class KnownAddress(
     address: String,
     category: Int)
@@ -214,8 +210,6 @@ case class AddressRelations(
     dstAddressPrefix: String,
     srcAddress: String,
     dstAddress: String,
-    srcCategory: Int,
-    dstCategory: Int,
     srcProperties: AddressSummary,
     dstProperties: AddressSummary,
     noTransactions: Int,

@@ -49,22 +49,6 @@ class Transformation(
       .as[RegularOutput]
   }
 
-  def computeAddressTransactions(
-      tx: Dataset[Transaction],
-      regInputs: Dataset[RegularInput],
-      regOutputs: Dataset[RegularOutput]): Dataset[AddressTransactions] = {
-    regInputs
-      .withColumn(F.value, -col(F.value))
-      .union(regOutputs.drop(F.n))
-      .groupBy(F.txHash, F.address)
-      .agg(sum(F.value) as F.value)
-      .join(tx.select(F.txHash, F.height, F.txIndex, F.timestamp).distinct(),
-            F.txHash)
-      .withColumn(F.addressPrefix, t.addressPrefixColumn)
-      .sort(F.addressPrefix)
-      .as[AddressTransactions]
-  }
-
   def splitTransactions[A](txTable: Dataset[A])(implicit evidence: Encoder[A]) = (
     txTable.filter(col(F.value) < 0).withColumn(F.value, -col(F.value)).as[A],
     txTable.filter(col(F.value) > 0)
@@ -101,37 +85,6 @@ class Transformation(
       .withColumn(F.totalSpent, zeroValueIfNull(col(F.totalSpent)))
   }
 
-  def computeBasicAddresses(
-      addressTransactions: Dataset[AddressTransactions],
-      inputs: Dataset[AddressTransactions],
-      outputs: Dataset[AddressTransactions],
-      exchangeRates: Dataset[ExchangeRates]): Dataset[BasicAddress] = {
-    computeStatistics(addressTransactions, inputs, outputs, F.address, exchangeRates)
-      .withColumn(F.addressPrefix, t.addressPrefixColumn)
-      .as[BasicAddress]
-  }
-
-  def computeAddressCluster(
-      regularInputs: Dataset[RegularInput],
-      regularOutputs: Dataset[RegularOutput]): Dataset[AddressCluster] = {
-    t.addressCluster(regularInputs, regularOutputs)
-  }
-
-  def computeTotalInput(tx: Dataset[Transaction]): Dataset[TotalInput] = {
-    tx.withColumn("input", explode(col("inputs")))
-      .select(F.txHash, "input.value")
-      .groupBy(F.txHash).agg(sum(F.value) as F.totalInput)
-      .as[TotalInput]
-  }
-
-  def computeAddressTags(addresses: Dataset[BasicAddress], tags: Dataset[Tag]): Dataset[Tag] = {
-    tags.join(addresses, Seq(F.address), joinType="left_semi").as[Tag]
-  }
-
-  def computeClusterTags(addressCluster: Dataset[AddressCluster], tags: Dataset[Tag]): Dataset[ClusterTags] = {
-    addressCluster.join(tags, F.address).as[ClusterTags]
-  }
-
   def computeNodeDegrees(
       nodes: Dataset[_],
       edges: Dataset[_],
@@ -150,6 +103,70 @@ class Transformation(
       .join(inDegree, Seq(joinCol), "outer")
       .join(outDegree, Seq(joinCol), "outer")
       .na.fill(0)
+  }
+
+  def computeAddressTransactions(
+      tx: Dataset[Transaction],
+      regInputs: Dataset[RegularInput],
+      regOutputs: Dataset[RegularOutput]): Dataset[AddressTransactions] = {
+    regInputs
+      .withColumn(F.value, -col(F.value))
+      .union(regOutputs.drop(F.n))
+      .groupBy(F.txHash, F.address)
+      .agg(sum(F.value) as F.value)
+      .join(tx.select(F.txHash, F.height, F.txIndex, F.timestamp).distinct(),
+            F.txHash)
+      .withColumn(F.addressPrefix, t.addressPrefixColumn)
+      .sort(F.addressPrefix)
+      .as[AddressTransactions]
+  }
+
+  def computeBasicAddresses(
+      addressTransactions: Dataset[AddressTransactions],
+      inputs: Dataset[AddressTransactions],
+      outputs: Dataset[AddressTransactions],
+      exchangeRates: Dataset[ExchangeRates]): Dataset[BasicAddress] = {
+    computeStatistics(addressTransactions, inputs, outputs, F.address, exchangeRates)
+      .withColumn(F.addressPrefix, t.addressPrefixColumn)
+      .as[BasicAddress]
+  }
+
+  def computeAddressRelations(
+      inputs: Dataset[AddressTransactions],
+      outputs: Dataset[AddressTransactions],
+      regularInputs: Dataset[RegularInput],
+      transactions: Dataset[Transaction],
+      addresses: Dataset[BasicAddress],
+      exchangeRates: Dataset[ExchangeRates]): Dataset[AddressRelations] = {
+    t.addressRelations(inputs, outputs, regularInputs, transactions, addresses, exchangeRates)
+  }
+
+  def computeAddresses(
+      basicAddresses: Dataset[BasicAddress],
+      addressRelations: Dataset[AddressRelations]): Dataset[Address] = {
+    computeNodeDegrees(basicAddresses,
+                       addressRelations.select(col(F.srcAddress), col(F.dstAddress)),
+                       F.srcAddress,
+                       F.dstAddress,
+                       F.address)
+      .sort(F.addressPrefix)
+      .as[Address]
+  }
+
+  def computeAddressTags(addresses: Dataset[BasicAddress], tags: Dataset[Tag]): Dataset[Tag] = {
+    tags.join(addresses, Seq(F.address), joinType="left_semi").as[Tag]
+  }
+
+  def computeAddressCluster(
+      regularInputs: Dataset[RegularInput],
+      regularOutputs: Dataset[RegularOutput]): Dataset[AddressCluster] = {
+    t.addressCluster(regularInputs, regularOutputs)
+  }
+
+  def computeClusterTags(
+      addressCluster: Dataset[AddressCluster],
+      tags: Dataset[Tag]): Dataset[ClusterTags] = {
+    addressCluster.join(tags, F.address).as[ClusterTags]
   }
 
   def computeSummaryStatistics(
@@ -180,7 +197,7 @@ class Transformation(
   // table address_transactions
   val addressTransactions =
     computeAddressTransactions(transactions, regularInputs, regularOutputs).persist()
-  val totalInput = computeTotalInput(transactions).persist()
+
   val (inputs, outputs) = splitTransactions(addressTransactions)
 
   val basicAddresses =
@@ -235,9 +252,7 @@ class Transformation(
     t.addressRelations(inputs,
                        outputs,
                        regularInputs,
-                       totalInput,
-                       explicitlyKnownAddresses,
-                       clusterTags,
+                       transactions,
                        basicAddresses,
                        exchangeRates
                       ).persist()

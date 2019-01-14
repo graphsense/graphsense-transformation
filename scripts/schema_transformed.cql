@@ -61,23 +61,21 @@ CREATE TABLE address_incoming_relations (
     dst_address_prefix text,
     dst_address text,
     src_address text,
-    src_category int,    // 0 = unknown, 1 = implicit tag, 2 = explicit tag, 3 = manually entered label
     src_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (dst_address_prefix, dst_address, src_category, estimated_value, src_address)
-) WITH CLUSTERING ORDER BY (dst_address ASC, src_category DESC, estimated_value DESC);
+    PRIMARY KEY (dst_address_prefix, dst_address, estimated_value, src_address)
+) WITH CLUSTERING ORDER BY (dst_address ASC, estimated_value DESC);
 
 CREATE TABLE address_outgoing_relations (
     src_address_prefix text,
     src_address text,
     dst_address text,
-    dst_category int,    // 0 = unknown, 1 = implicit tag, 2 = explicit tag, 3 = manually entered label
     dst_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (src_address_prefix, src_address, dst_category, estimated_value, dst_address)
-) WITH CLUSTERING ORDER BY (src_address ASC, dst_category DESC, estimated_value DESC);
+    PRIMARY KEY (src_address_prefix, src_address, estimated_value, dst_address)
+) WITH CLUSTERING ORDER BY (src_address ASC, estimated_value DESC);
 
 CREATE TABLE address_cluster (
     address_prefix text,
