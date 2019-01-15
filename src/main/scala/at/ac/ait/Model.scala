@@ -225,8 +225,6 @@ case class PlainClusterRelations(
 case class ClusterRelations(
     srcCluster: String,
     dstCluster: String,
-    srcCategory: Int,
-    dstCategory: Int,
     srcProperties: ClusterSummary,
     dstProperties: ClusterSummary,
     noTransactions: Int,

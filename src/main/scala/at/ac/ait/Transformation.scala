@@ -2,17 +2,13 @@ package at.ac.ait
 
 import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.functions.
-  {col, count, explode, lit, max, min, posexplode, size, struct, sum, udf}
+  {col, count, explode, max, min, posexplode, size, struct, sum, udf}
 import org.apache.spark.sql.types.{IntegerType, StringType}
 
 import at.ac.ait.{Fields => F}
 
 
-class Transformation(
-    spark: SparkSession,
-    transactions: Dataset[Transaction],
-    exchangeRates: Dataset[ExchangeRates],
-    tags: Dataset[Tag]) {
+class Transformation(spark: SparkSession) {
 
   import spark.implicits._
 
@@ -55,6 +51,7 @@ class Transformation(
   )
 
   def computeStatistics[A](
+      transactions: Dataset[Transaction],
       all: Dataset[A],
       in: Dataset[A],
       out: Dataset[A],
@@ -122,11 +119,12 @@ class Transformation(
   }
 
   def computeBasicAddresses(
+      transactions: Dataset[Transaction],
       addressTransactions: Dataset[AddressTransactions],
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
       exchangeRates: Dataset[ExchangeRates]): Dataset[BasicAddress] = {
-    computeStatistics(addressTransactions, inputs, outputs, F.address, exchangeRates)
+    computeStatistics(transactions, addressTransactions, inputs, outputs, F.address, exchangeRates)
       .withColumn(F.addressPrefix, t.addressPrefixColumn)
       .as[BasicAddress]
   }
@@ -163,6 +161,87 @@ class Transformation(
     t.addressCluster(regularInputs, regularOutputs)
   }
 
+  def computeBasicClusterAddresses(
+      basicAddresses: Dataset[BasicAddress],
+      addressCluster: Dataset[AddressCluster]): Dataset[BasicClusterAddresses] = {
+    addressCluster.join(basicAddresses, F.address)
+      .as[BasicClusterAddresses]
+      .sort(F.cluster, F.address)
+  }
+
+  def computeClusterTransactions(
+      inputs: Dataset[AddressTransactions],
+      outputs: Dataset[AddressTransactions],
+      transactions: Dataset[Transaction],
+      addressCluster: Dataset[AddressCluster]): Dataset[ClusterTransactions] = {
+    val clusteredInputs = inputs.join(addressCluster, F.address)
+    val clusteredOutputs = outputs.join(addressCluster, F.address)
+    clusteredInputs.withColumn(F.value, -col(F.value))
+      .union(clusteredOutputs)
+      .groupBy(F.txHash, F.cluster).agg(sum(F.value) as F.value)
+      .join(transactions.select(F.txHash, F.height, F.txIndex, F.timestamp), F.txHash)
+      .as[ClusterTransactions]
+  }
+
+  def computeBasicCluster(
+      transactions: Dataset[Transaction],
+      basicClusterAddresses: Dataset[BasicClusterAddresses],
+      clusterTransactions: Dataset[ClusterTransactions],
+      clusterInputs: Dataset[ClusterTransactions],
+      clusterOutputs: Dataset[ClusterTransactions],
+      exchangeRates: Dataset[ExchangeRates]): Dataset[BasicCluster] = {
+    val noAddresses =
+      basicClusterAddresses.groupBy(F.cluster).agg(count("*") cast IntegerType as F.noAddresses)
+    computeStatistics(transactions,
+                      clusterTransactions,
+                      clusterInputs,
+                      clusterOutputs,
+                      F.cluster,
+                      exchangeRates)
+      .join(noAddresses, F.cluster)
+      .as[BasicCluster]
+  }
+
+  def computePlainClusterRelations(
+      clusterInputs: Dataset[ClusterTransactions],
+      clusterOutputs: Dataset[ClusterTransactions],
+      inputs: Dataset[AddressTransactions],
+      outputs: Dataset[AddressTransactions],
+      addressCluster: Dataset[AddressCluster]): Dataset[PlainClusterRelations] = {
+    t.plainClusterRelations(clusterInputs, clusterOutputs, inputs, outputs, addressCluster)
+  }
+
+  def computeClusterRelations(
+      plainClusterRelations: Dataset[PlainClusterRelations],
+      cluster: Dataset[BasicCluster],
+      addresses: Dataset[BasicAddress],
+      exchangeRates: Dataset[ExchangeRates]): Dataset[ClusterRelations] = {
+    t.clusterRelations(plainClusterRelations, cluster, addresses, exchangeRates)
+  }
+
+  def computeClusterAddresses(
+      addresses: Dataset[Address],
+      basicClusterAddresses: Dataset[BasicClusterAddresses]): Dataset[ClusterAddresses] = {
+    basicClusterAddresses
+      .join(addresses.select(col(F.address), col("inDegree"), col("outDegree")),
+            Seq(F.address),
+            "left")
+      .as[ClusterAddresses]
+  }
+
+  def computeCluster(
+      basicCluster: Dataset[BasicCluster],
+      clusterRelations: Dataset[ClusterRelations]): Dataset[Cluster] = {
+    computeNodeDegrees(basicCluster.withColumn("cluster", $"cluster" cast StringType),
+                       clusterRelations.select(col(F.srcCluster), col(F.dstCluster)),
+                       F.srcCluster,
+                       F.dstCluster,
+                       F.cluster)
+      .join(basicCluster.select(col(F.cluster) cast StringType), Seq(F.cluster), "right")
+      .withColumn(F.cluster, $"cluster" cast IntegerType)
+      .as[Cluster]
+  }
+
   def computeClusterTags(
       addressCluster: Dataset[AddressCluster],
       tags: Dataset[Tag]): Dataset[ClusterTags] = {
@@ -189,127 +268,91 @@ class Transformation(
       .toDS()
  }
 
+//  spark.sparkContext.setJobDescription("Start transformation")
 
-  spark.sparkContext.setJobDescription("Start transformation")
-
-  val regularInputs = computeRegularInputs(transactions).persist()
-  val regularOutputs = computeRegularOutputs(transactions).persist()
+//  val regularInputs = computeRegularInputs(transactions).persist()
+//  val regularOutputs = computeRegularOutputs(transactions).persist()
   // table address_transactions
-  val addressTransactions =
-    computeAddressTransactions(transactions, regularInputs, regularOutputs).persist()
+//  val addressTransactions =
+//    computeAddressTransactions(transactions, regularInputs, regularOutputs).persist()
 
-  val (inputs, outputs) = splitTransactions(addressTransactions)
+//  val (inputs, outputs) = splitTransactions(addressTransactions)
 
-  val basicAddresses =
-    computeStatistics(addressTransactions, inputs, outputs, F.address, exchangeRates)
-      .withColumn(F.addressPrefix, t.addressPrefixColumn)
-      .as[BasicAddress]
-      .persist()
+//  val basicAddresses =
+//    computeStatistics(addressTransactions, inputs, outputs, F.address, exchangeRates)
+//      .withColumn(F.addressPrefix, t.addressPrefixColumn)
+//      .as[BasicAddress]
+//      .persist()
 
   // multiple input clustering
-  println("Perform clustering")
-  spark.sparkContext.setJobDescription("Perform clustering")
+//  println("Perform clustering")
+//  spark.sparkContext.setJobDescription("Perform clustering")
   // table address_cluster
-  val addressCluster = t.addressCluster(regularInputs, regularOutputs).persist()
+//  val addressCluster = t.addressCluster(regularInputs, regularOutputs).persist()
 
-  val basicClusterAddresses =
-    addressCluster.join(basicAddresses, F.address)
-      .as[BasicClusterAddresses]
-      .sort(F.cluster, F.address)
-      .persist()
+//  val basicClusterAddresses =
+//    computeBasicClusterAddresses(basicAddresses, addressCluster).persist()
 
-  val clusterTransactions = {
-    val clusteredInputs = inputs.join(addressCluster, F.address)
-    val clusteredOutputs = outputs.join(addressCluster, F.address)
-    clusteredInputs.withColumn(F.value, -col(F.value))
-      .union(clusteredOutputs)
-      .groupBy(F.txHash, F.cluster).agg(sum(F.value) as F.value)
-      .join(transactions.select(F.txHash, F.height, F.txIndex, F.timestamp), F.txHash)
-      .as[ClusterTransactions]
-  }.persist()
+//  val clusterTransactions =
+//    computeClusterTransactions(inputs, outputs, transactions, addressCluster).persist()
 
-  val (clusterInputs, clusterOutputs) = splitTransactions(clusterTransactions)
+//  val (clusterInputs, clusterOutputs) = splitTransactions(clusterTransactions)
 
-  val basicCluster = {
-    val noAddresses =
-      basicClusterAddresses.groupBy(F.cluster).agg(count("*") cast IntegerType as F.noAddresses)
-    computeStatistics(clusterTransactions, clusterInputs, clusterOutputs, F.cluster, exchangeRates)
-      .join(noAddresses, F.cluster)
-      .as[BasicCluster]
-  }.persist()
+//  val basicCluster =
+//    computeBasicCluster(basicClusterAddresses,
+//                        clusterTransactions,
+//                        clusterInputs,
+//                        clusterOutputs,
+//                        exchangeRates).persist()
 
   // table cluster_tags
-  val clusterTags = computeClusterTags(addressCluster, tags).persist()
+//  val clusterTags = computeClusterTags(addressCluster, tags).persist()
 
   // table address_tags
-  val filteredTags = computeAddressTags(basicAddresses, tags).persist()
+//  val filteredTags = computeAddressTags(basicAddresses, tags).persist()
 
-  val explicitlyKnownAddresses =
-    tags.select(col(F.address), lit(2) as F.category).dropDuplicates().as[KnownAddress].persist()
+//  val explicitlyKnownAddresses =
+//    tags.select(col(F.address), lit(2) as F.category).dropDuplicates().as[KnownAddress].persist()
 
   // table address_incoming_relations/address_outgoing_relations
-  val addressRelations =
-    t.addressRelations(inputs,
-                       outputs,
-                       regularInputs,
-                       transactions,
-                       basicAddresses,
-                       exchangeRates
-                      ).persist()
+//  val addressRelations =
+//    t.addressRelations(inputs,
+//                       outputs,
+//                       regularInputs,
+//                       transactions,
+//                       basicAddresses,
+//                       exchangeRates
+//                      ).persist()
 
   // table plain_cluster_relations
-  val plainClusterRelations =
-    t.plainClusterRelations(clusterInputs,
-                            clusterOutputs,
-                            inputs,
-                            outputs,
-                            addressCluster
-                           ).persist()
+//  val plainClusterRelations =
+//    t.plainClusterRelations(clusterInputs,
+//                            clusterOutputs,
+//                            inputs,
+//                            outputs,
+//                            addressCluster
+//                           ).persist()
 
   // table cluster_incoming_relations/cluster_outgoing_relations
-  val clusterRelations =
-    t.clusterRelations(plainClusterRelations,
-                       clusterTags,
-                       explicitlyKnownAddresses,
-                       basicCluster,
-                       basicAddresses,
-                       exchangeRates
-                      ).persist()
+//  val clusterRelations =
+//    t.clusterRelations(plainClusterRelations,
+//                       basicCluster,
+//                       basicAddresses,
+//                       exchangeRates
+//                      ).persist()
 
   // table addresses
   // compute in/out degrees for address graph
-  spark.sparkContext.setJobDescription("Compute node degrees")
-  val addresses =
-    computeNodeDegrees(basicAddresses,
-                       addressRelations.select(col(F.srcAddress), col(F.dstAddress)),
-                       F.srcAddress,
-                       F.dstAddress,
-                       F.address)
-      .sort(F.addressPrefix)
-      .as[Address]
-      .persist()
+//  spark.sparkContext.setJobDescription("Compute node degrees")
+//  val addresses = computeAddresses(basicAddresses, addressRelations).persist()
 
   // table cluster
   // compute in/out degrees for cluster graph
   // basicCluster contains only clusters of size > 1 with an integer ID
   // clusterRelations includes also cluster of size 1 (using the address string as ID)
-  val cluster =
-    computeNodeDegrees(basicCluster.withColumn("cluster", $"cluster" cast StringType),
-                       clusterRelations.select(col(F.srcCluster), col(F.dstCluster)),
-                       F.srcCluster,
-                       F.dstCluster,
-                       F.cluster)
-      .join(basicCluster.select(col(F.cluster) cast StringType), Seq(F.cluster), "right")
-      .withColumn(F.cluster, $"cluster" cast IntegerType)
-      .as[Cluster]
-      .persist()
+//  val cluster = computeCluster(basicCluster, clusterRelations).persist()
 
   // table cluster_addresses
-  val clusterAddresses =
-    basicClusterAddresses
-      .join(addresses.select(col(F.address), col("inDegree"), col("outDegree")),
-            Seq(F.address),
-            "left")
-      .as[ClusterAddresses]
-      .persist()
+//  val clusterAddresses =
+//    computeClusterAddresses(addresses, basicClusterAddresses).persist()
 }

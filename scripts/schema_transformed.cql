@@ -142,22 +142,20 @@ CREATE TYPE cluster_summary (
 CREATE TABLE cluster_incoming_relations (
     dst_cluster text,
     src_cluster text,
-    src_category int,    // 0 = unknown, 2 = tag, 3 = manually entered label
     src_properties FROZEN <cluster_summary>,
     no_transactions int,
     value frozen <value>,
-    PRIMARY KEY (dst_cluster, src_category, value, src_cluster)
-) WITH CLUSTERING ORDER BY (src_category DESC, value DESC);
+    PRIMARY KEY (dst_cluster, value, src_cluster)
+);
 
 CREATE TABLE cluster_outgoing_relations (
     src_cluster text,
     dst_cluster text,
-    dst_category int,    // 0 = unknown, 2 = tag, 3 = manually entered label
     dst_properties FROZEN <cluster_summary>,
     no_transactions int,
     value frozen <value>,
-    PRIMARY KEY (src_cluster, dst_category, value, dst_cluster)
-) WITH CLUSTERING ORDER BY (dst_category DESC, value DESC);
+    PRIMARY KEY (src_cluster, value, dst_cluster)
+);
 
 CREATE TABLE summary_statistics (
     timestamp int,
