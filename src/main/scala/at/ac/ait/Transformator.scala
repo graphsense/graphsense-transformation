@@ -136,10 +136,7 @@ class Transformator(spark: SparkSession) {
       addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates]) = {
     val fullAddressRelations = {
-      val shortInputs =
-        inputs.select(col(F.txHash), col(F.address) as F.srcAddress, col(F.value) as "inValue")
-      val shortOutputs =
-        outputs.select(col(F.txHash), col(F.address) as F.dstAddress, col(F.value) as "outValue")
+
       val regularInputSum = regularInputs.groupBy(F.txHash).agg(sum(F.value) as "regularSum")
       val addressInputSum = inputs.groupBy(F.height, F.txHash).agg(sum(F.value) as "addressSum")
       val totalInput = transactions
@@ -149,16 +146,19 @@ class Transformator(spark: SparkSession) {
       val reducedInputSum =
         addressInputSum.join(regularInputSum, F.txHash)
           .join(totalInput, F.txHash)
-          .select(
-            col(F.height),
-            col(F.txHash),
-            col(F.totalInput) - col("regularSum") + col("addressSum") as F.totalInput)
+          .select(col(F.height),
+                  col(F.txHash),
+                  col(F.totalInput) - col("regularSum") + col("addressSum") as F.totalInput)
+      reducedInputSum.show()
       val plainAddressRelations =
-        shortInputs.join(shortOutputs, F.txHash)
+        inputs.select(col(F.txHash), col(F.address) as F.srcAddress, col(F.value) as "inValue")
+          .join(outputs.select(col(F.txHash),
+                               col(F.address) as F.dstAddress,
+                               col(F.value) as "outValue"),
+                F.txHash)
           .join(reducedInputSum, F.txHash)
-          .withColumn(
-            F.estimatedValue,
-            round(col("inValue") / col(F.totalInput) * col("outValue")) cast LongType)
+          .withColumn(F.estimatedValue,
+                      round(col("inValue")/col(F.totalInput)*col("outValue")) cast LongType)
           .drop(F.totalInput, "inValue", "outValue")
       // TODO exchangeRates needed?
       toCurrencyDataFrame(exchangeRates, plainAddressRelations, List(F.estimatedValue))
