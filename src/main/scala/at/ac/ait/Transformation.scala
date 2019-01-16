@@ -142,6 +142,7 @@ class Transformation(spark: SparkSession) {
   def computeAddresses(
       basicAddresses: Dataset[BasicAddress],
       addressRelations: Dataset[AddressRelations]): Dataset[Address] = {
+    // compute in/out degrees for address graph
     computeNodeDegrees(basicAddresses,
                        addressRelations.select(col(F.srcAddress), col(F.dstAddress)),
                        F.srcAddress,
@@ -232,6 +233,9 @@ class Transformation(spark: SparkSession) {
   def computeCluster(
       basicCluster: Dataset[BasicCluster],
       clusterRelations: Dataset[ClusterRelations]): Dataset[Cluster] = {
+    // compute in/out degrees for cluster graph
+    // basicCluster contains only clusters of size > 1 with an integer ID
+    // clusterRelations includes also cluster of size 1 (using the address string as ID)
     computeNodeDegrees(basicCluster.withColumn("cluster", $"cluster" cast StringType),
                        clusterRelations.select(col(F.srcCluster), col(F.dstCluster)),
                        F.srcCluster,
@@ -267,92 +271,4 @@ class Transformation(spark: SparkSession) {
                           cluster.count()))
       .toDS()
  }
-
-//  spark.sparkContext.setJobDescription("Start transformation")
-
-//  val regularInputs = computeRegularInputs(transactions).persist()
-//  val regularOutputs = computeRegularOutputs(transactions).persist()
-  // table address_transactions
-//  val addressTransactions =
-//    computeAddressTransactions(transactions, regularInputs, regularOutputs).persist()
-
-//  val (inputs, outputs) = splitTransactions(addressTransactions)
-
-//  val basicAddresses =
-//    computeStatistics(addressTransactions, inputs, outputs, F.address, exchangeRates)
-//      .withColumn(F.addressPrefix, t.addressPrefixColumn)
-//      .as[BasicAddress]
-//      .persist()
-
-  // multiple input clustering
-//  println("Perform clustering")
-//  spark.sparkContext.setJobDescription("Perform clustering")
-  // table address_cluster
-//  val addressCluster = t.addressCluster(regularInputs, regularOutputs).persist()
-
-//  val basicClusterAddresses =
-//    computeBasicClusterAddresses(basicAddresses, addressCluster).persist()
-
-//  val clusterTransactions =
-//    computeClusterTransactions(inputs, outputs, transactions, addressCluster).persist()
-
-//  val (clusterInputs, clusterOutputs) = splitTransactions(clusterTransactions)
-
-//  val basicCluster =
-//    computeBasicCluster(basicClusterAddresses,
-//                        clusterTransactions,
-//                        clusterInputs,
-//                        clusterOutputs,
-//                        exchangeRates).persist()
-
-  // table cluster_tags
-//  val clusterTags = computeClusterTags(addressCluster, tags).persist()
-
-  // table address_tags
-//  val filteredTags = computeAddressTags(basicAddresses, tags).persist()
-
-//  val explicitlyKnownAddresses =
-//    tags.select(col(F.address), lit(2) as F.category).dropDuplicates().as[KnownAddress].persist()
-
-  // table address_incoming_relations/address_outgoing_relations
-//  val addressRelations =
-//    t.addressRelations(inputs,
-//                       outputs,
-//                       regularInputs,
-//                       transactions,
-//                       basicAddresses,
-//                       exchangeRates
-//                      ).persist()
-
-  // table plain_cluster_relations
-//  val plainClusterRelations =
-//    t.plainClusterRelations(clusterInputs,
-//                            clusterOutputs,
-//                            inputs,
-//                            outputs,
-//                            addressCluster
-//                           ).persist()
-
-  // table cluster_incoming_relations/cluster_outgoing_relations
-//  val clusterRelations =
-//    t.clusterRelations(plainClusterRelations,
-//                       basicCluster,
-//                       basicAddresses,
-//                       exchangeRates
-//                      ).persist()
-
-  // table addresses
-  // compute in/out degrees for address graph
-//  spark.sparkContext.setJobDescription("Compute node degrees")
-//  val addresses = computeAddresses(basicAddresses, addressRelations).persist()
-
-  // table cluster
-  // compute in/out degrees for cluster graph
-  // basicCluster contains only clusters of size > 1 with an integer ID
-  // clusterRelations includes also cluster of size 1 (using the address string as ID)
-//  val cluster = computeCluster(basicCluster, clusterRelations).persist()
-
-  // table cluster_addresses
-//  val clusterAddresses =
-//    computeClusterAddresses(addresses, basicClusterAddresses).persist()
 }

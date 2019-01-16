@@ -210,8 +210,6 @@ class Transformator(spark: SparkSession) {
 
   def clusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelations],
-      //clusterTags: Dataset[ClusterTags],
-      //explicitlyKnownAddresses: Dataset[KnownAddress],
       cluster: Dataset[BasicCluster],
       addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates]) = {
@@ -234,10 +232,6 @@ class Transformator(spark: SparkSession) {
             col("totalSpent.satoshi")))
         .union(addressProps)
     }
-    //val knownCluster =
-    //  clusterTags.select(col(F.cluster), lit(2))
-    //    .dropDuplicates()
-    //    .union(explicitlyKnownAddresses.toDF(F.cluster, F.category))
     fullClusterRelations.groupBy(F.srcCluster, F.dstCluster)
       .agg(
         count(F.txHash) cast IntegerType as F.noTransactions,
@@ -245,10 +239,6 @@ class Transformator(spark: SparkSession) {
           sum("value.satoshi"),
           sum("value.eur"),
           sum("value.usd")) as F.value)
-      // TODO
-      //.join(knownCluster.toDF(F.srcCluster, F.srcCategory), List(F.srcCluster), "left_outer")
-      //.join(knownCluster.toDF(F.dstCluster, F.dstCategory), List(F.dstCluster), "left_outer")
-      //.na.fill(0)
       .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
       .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
       .as[ClusterRelations]
