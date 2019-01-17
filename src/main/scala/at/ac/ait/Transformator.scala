@@ -148,8 +148,9 @@ class Transformator(spark: SparkSession) {
           .join(totalInput, F.txHash)
           .select(col(F.height),
                   col(F.txHash),
+                  // regularSum == addressSum, unless input address is used as output in same tx
                   col(F.totalInput) - col("regularSum") + col("addressSum") as F.totalInput)
-      reducedInputSum.show()
+
       val plainAddressRelations =
         inputs.select(col(F.txHash), col(F.address) as F.srcAddress, col(F.value) as "inValue")
           .join(outputs.select(col(F.txHash),

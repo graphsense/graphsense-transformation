@@ -58,25 +58,23 @@ class Transformation(spark: SparkSession) {
       idColumn: String,
       exchangeRates: Dataset[ExchangeRates]) = {
     def statsPart(inOrOut: Dataset[_]) =
-      t.toCurrencyDataFrame(exchangeRates, inOrOut, List(F.value)).groupBy(idColumn)
-        .agg(
-          count(F.txHash) cast IntegerType,
-          udf(Currency).apply(sum("value.satoshi"), sum("value.eur"), sum("value.usd")))
+      t.toCurrencyDataFrame(exchangeRates, inOrOut, List(F.value))
+        .groupBy(idColumn)
+        .agg(count(F.txHash) cast IntegerType,
+             udf(Currency).apply(sum("value.satoshi"), sum("value.eur"), sum("value.usd")))
     val inStats = statsPart(out).toDF(idColumn, F.noIncomingTxs, F.totalReceived)
     val outStats = statsPart(in).toDF(idColumn, F.noOutgoingTxs, F.totalSpent)
-    val firstTxNumber = "firstTxNumber"
-    val lastTxNumber = "lastTxNumber"
     val txTimes = transactions.select(col(F.txIndex), struct(F.height, F.txHash, F.timestamp))
     val zeroValueIfNull = udf[Currency, Row] { b =>
       if (b != null) Currency(b.getAs[Long](0), b.getAs[Double](1), b.getAs[Double](2))
       else Currency(0, 0, 0)
     }
     all.groupBy(idColumn)
-      .agg(min(F.txIndex) as firstTxNumber,
-           max(F.txIndex) as lastTxNumber)
-      .join(txTimes.toDF(firstTxNumber, F.firstTx), firstTxNumber)
-      .join(txTimes.toDF(lastTxNumber, F.lastTx), lastTxNumber)
-      .drop(firstTxNumber, lastTxNumber)
+      .agg(min(F.txIndex) as "firstTxNumber",
+           max(F.txIndex) as "lastTxNumber")
+      .join(txTimes.toDF("firstTxNumber", F.firstTx), "firstTxNumber")
+      .join(txTimes.toDF("lastTxNumber", F.lastTx), "lastTxNumber")
+      .drop("firstTxNumber", "lastTxNumber")
       .join(inStats, idColumn)
       .join(outStats, List(idColumn), "left_outer").na.fill(0)
       .withColumn(F.totalSpent, zeroValueIfNull(col(F.totalSpent)))
