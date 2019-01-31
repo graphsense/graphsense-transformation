@@ -7,7 +7,8 @@ case class RegularInput(
     value: Long,
     height: Int,
     txIndex: Long,
-    timestamp: Int)
+    timestamp: Int,
+    coinJoin: Boolean)
 
 case class RegularOutput(
     address: String,
@@ -15,12 +16,9 @@ case class RegularOutput(
     value: Long,
     height: Int,
     txIndex: Long,
-    n: Int,
-    timestamp: Int)
-
-case class KnownAddress(
-    address: String,
-    category: Int)
+    timestamp: Int,
+    coinJoin: Boolean,
+    n: Int)
 
 case class NormalizedAddress(
     id: Int,
@@ -79,6 +77,7 @@ case class Transaction(
     height: Int,
     timestamp: Int,
     coinbase: Boolean,
+    coinjoin: Boolean,
     totalInput: Long,
     totalOutput: Long,
     inputs: Seq[TxInputOutput],

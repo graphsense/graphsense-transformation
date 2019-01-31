@@ -161,7 +161,6 @@ class Transformator(spark: SparkSession) {
           .withColumn(F.estimatedValue,
                       round(col("inValue")/col(F.totalInput)*col("outValue")) cast LongType)
           .drop(F.totalInput, "inValue", "outValue")
-      // TODO exchangeRates needed?
       toCurrencyDataFrame(exchangeRates, plainAddressRelations, List(F.estimatedValue))
         .drop(F.height)
     }

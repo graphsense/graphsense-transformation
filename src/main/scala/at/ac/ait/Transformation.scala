@@ -22,7 +22,8 @@ class Transformation(spark: SparkSession) {
               col(F.txHash),
               col(F.height),
               col(F.txIndex),
-              col(F.timestamp))
+              col(F.timestamp),
+              col(F.coinjoin))
       .withColumn(F.addressPrefix, t.addressPrefixColumn)
       .as[RegularInput]
   }
@@ -32,7 +33,8 @@ class Transformation(spark: SparkSession) {
               col(F.txHash),
               col(F.height),
               col(F.txIndex),
-              col(F.timestamp))
+              col(F.timestamp),
+              col(F.coinjoin))
       .filter(size(col("output.address")) === 1)
       .select(explode(col("output.address")) as "address",
               col("output.value") as "value",
@@ -40,7 +42,8 @@ class Transformation(spark: SparkSession) {
               col(F.height),
               col(F.txIndex),
               col(F.n),
-              col(F.timestamp))
+              col(F.timestamp),
+              col(F.coinjoin))
       .withColumn(F.addressPrefix, t.addressPrefixColumn)
       .as[RegularOutput]
   }
@@ -156,14 +159,24 @@ class Transformation(spark: SparkSession) {
 
   def computeAddressCluster(
       regularInputs: Dataset[RegularInput],
-      regularOutputs: Dataset[RegularOutput]): Dataset[AddressCluster] = {
-    t.addressCluster(regularInputs, regularOutputs)
+      regularOutputs: Dataset[RegularOutput],
+      removeCoinJoin: Boolean): Dataset[AddressCluster] = {
+    if (removeCoinJoin) {
+      println("Clustering without coinjoin inputs")
+      t.addressCluster(regularInputs.filter($"coinjoin" === false),
+                       regularOutputs)
+    } else {
+      println("Clustering with coinjoin inputs")
+      t.addressCluster(regularInputs, regularOutputs)
+    }
   }
 
   def computeBasicClusterAddresses(
       basicAddresses: Dataset[BasicAddress],
       addressCluster: Dataset[AddressCluster]): Dataset[BasicClusterAddresses] = {
-    addressCluster.join(basicAddresses, F.address)
+    addressCluster
+      .join(basicAddresses, List(F.address, F.addressPrefix))
+      .drop("addressPrefix")
       .as[BasicClusterAddresses]
       .sort(F.cluster, F.address)
   }

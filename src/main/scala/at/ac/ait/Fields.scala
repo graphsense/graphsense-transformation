@@ -24,6 +24,7 @@ object Fields {
   val eur = "eur"
   val usd = "usd"
   val addrId = "id"
+  val coinjoin = "coinJoin"
   val cluster = "cluster"
   val srcAddress = "srcAddress"
   val dstAddress = "dstAddress"
