@@ -2,6 +2,7 @@ package at.ac.ait
 
 
 case class RegularInput(
+    addressPrefix: String,
     address: String,
     txHash: Array[Byte],
     value: Long,
@@ -11,6 +12,7 @@ case class RegularInput(
     coinJoin: Boolean)
 
 case class RegularOutput(
+    addressPrefix: String,
     address: String,
     txHash: Array[Byte],
     value: Long,
@@ -142,7 +144,7 @@ case class AddressCluster(
     cluster: Int)
 
 case class ClusterAddresses(
-    cluster: Long,
+    cluster: Int,
     address: String,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
@@ -172,7 +174,7 @@ case class BasicCluster(
     totalSpent: Currency)
 
 case class BasicClusterAddresses(
-    cluster: Long,
+    cluster: Int,
     address: String,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,

@@ -80,7 +80,7 @@ CREATE TABLE address_outgoing_relations (
 CREATE TABLE address_cluster (
     address_prefix text,
     address text,
-    cluster bigint,
+    cluster int,
     PRIMARY KEY (address_prefix, address)
 );
 
@@ -98,7 +98,7 @@ CREATE TABLE cluster (
 );
 
 CREATE TABLE cluster_addresses (
-    cluster bigint,
+    cluster int,
     address text,
     no_incoming_txs int,
     no_outgoing_txs int,
@@ -112,7 +112,7 @@ CREATE TABLE cluster_addresses (
 );
 
 CREATE TABLE cluster_tags (
-    cluster bigint,
+    cluster int,
     address text,
     tag text,
     tag_uri text,
