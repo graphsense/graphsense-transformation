@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/graphsense/graphsense-transformation.svg?branch=feature%2Fspark24)](https://travis-ci.org/graphsense/graphsense-transformation)
+[![Build Status](https://travis-ci.org/graphsense/graphsense-transformation.svg?branch=develop)](https://travis-ci.org/graphsense/graphsense-transformation)
 
 # GraphSense Transformation Pipeline
 
