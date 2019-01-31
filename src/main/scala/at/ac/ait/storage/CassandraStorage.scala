@@ -34,7 +34,7 @@ class CassandraStorage(spark: SparkSession) {
       tableName: String,
       df: Dataset[T]) = {
 
-    spark.sparkContext.setJobDescription(s"Table ${tableName}")
+    spark.sparkContext.setJobDescription(s"Writing table ${tableName}")
     val dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     val timestamp = LocalDateTime.now().format(dtf)
     println(s"[$timestamp] Writing table ${tableName}")

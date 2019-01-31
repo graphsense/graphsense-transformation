@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/graphsense/graphsense-transformation.svg?branch=develop)](https://travis-ci.org/graphsense/graphsense-transformation)
+
 # GraphSense Transformation Pipeline
 
 The GraphSense Transformation Pipeline reads raw block data, which is

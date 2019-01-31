@@ -53,46 +53,131 @@ object TransformationJob {
     val exchangeRates = cassandra.load[ExchangeRates](src_keyspace, "exchange_rates")
     val tags = cassandra.load[Tag](src_keyspace, "tag")
 
-    val transformation = new Transformation(spark, transactions, exchangeRates, tags)
+    val transformation = new Transformation(spark)
 
-    cassandra.store(keyspace, "address_transactions", transformation.addressTransactions)
-    cassandra.store(keyspace, "address_cluster", transformation.addressCluster)
-    cassandra.store(keyspace, "address_tags", transformation.filteredTags)
-    cassandra.store(keyspace, "cluster_tags", transformation.clusterTags)
+    println("Extracting transaction inputs")
+    val regInputs = transformation.computeRegularInputs(transactions).persist()
 
-    cassandra.store(
-      keyspace,
-      "address_incoming_relations",
-      transformation.addressRelations.sort(F.dstAddressPrefix))
-    cassandra.store(
-      keyspace,
-      "address_outgoing_relations",
-      transformation.addressRelations.sort(F.srcAddressPrefix))
-    cassandra.store(
-      keyspace,
-      "plain_cluster_relations",
-      transformation.plainClusterRelations.sort(F.srcCluster))
-    cassandra.store(
-      keyspace,
-      "cluster_incoming_relations",
-      transformation.clusterRelations.sort(F.dstCluster, F.srcCluster))
-    cassandra.store(
-      keyspace,
-      "cluster_outgoing_relations",
-      transformation.clusterRelations.sort(F.srcCluster, F.dstCluster))
+    println("Extracting transaction outputs")
+    val regOutputs = transformation.computeRegularOutputs(transactions).persist()
 
-    cassandra.store(keyspace, "address", transformation.addresses)
-    cassandra.store(keyspace, "cluster", transformation.cluster)
-    cassandra.store(keyspace, "cluster_addresses", transformation.clusterAddresses)
+    println("Computing address transactions")
+    val addressTransactions =
+      transformation.computeAddressTransactions(transactions, regInputs, regOutputs).persist()
+    cassandra.store(keyspace, "address_transactions", addressTransactions)
 
-    // table summary_statistics
-    spark.sparkContext.setJobDescription("Compute summary statistics")
+    val (inputs, outputs) = transformation.splitTransactions(addressTransactions)
+    inputs.persist()
+    outputs.persist()
+
+    println("Computing address statistics")
+    val basicAddresses =
+      transformation.computeBasicAddresses(transactions,
+                                           addressTransactions,
+                                           inputs,
+                                           outputs,
+                                           exchangeRates
+                                          ).persist()
+
+    println("Computing address relations")
+    val addressRelations =
+      transformation.computeAddressRelations(inputs,
+                                             outputs,
+                                             regInputs,
+                                             transactions,
+                                             basicAddresses,
+                                             exchangeRates
+                                            ).persist()
+    cassandra.store(keyspace,
+                    "address_incoming_relations",
+                    addressRelations.sort(F.dstAddressPrefix))
+    cassandra.store(keyspace,
+                    "address_outgoing_relations",
+                    addressRelations.sort(F.srcAddressPrefix))
+
+    println("Computing addresses")
+    val addresses = transformation.computeAddresses(basicAddresses, addressRelations)
+    cassandra.store(keyspace, "address", addresses)
+
+    println("Computing address tags")
+    val addressTags = transformation.computeAddressTags(basicAddresses, tags).persist()
+    cassandra.store(keyspace, "address_tags", addressTags)
+
+    spark.sparkContext.setJobDescription("Perform clustering")
+    println("Computing address clusters")
+    val addressCluster = transformation.computeAddressCluster(regInputs, regOutputs, true).persist()
+    cassandra.store(keyspace, "address_cluster", addressCluster)
+
+    println("Computing basic cluster addresses")
+    val basicClusterAddresses =
+      transformation.computeBasicClusterAddresses(basicAddresses, addressCluster).persist()
+
+    println("Computing cluster transactions")
+    val clusterTransactions =
+      transformation.computeClusterTransactions(inputs, outputs, transactions, addressCluster)
+        .persist()
+
+    val (clusterInputs, clusterOutputs) = transformation.splitTransactions(clusterTransactions)
+    clusterInputs.persist()
+    clusterOutputs.persist()
+
+    println("Computing cluster statistics")
+    val basicCluster =
+      transformation.computeBasicCluster(transactions,
+                                         basicClusterAddresses,
+                                         clusterTransactions,
+                                         clusterInputs,
+                                         clusterOutputs,
+                                         exchangeRates
+                                        ).persist()
+
+    println("Computing plain cluster relations")
+    val plainClusterRelations =
+      transformation.computePlainClusterRelations(clusterInputs,
+                                                  clusterOutputs,
+                                                  inputs,
+                                                  outputs,
+                                                  addressCluster
+                                                 ).persist()
+    cassandra.store(keyspace,
+                    "plain_cluster_relations",
+                    plainClusterRelations.sort(F.srcCluster))
+
+    println("Computing cluster relations")
+    val clusterRelations =
+      transformation.computeClusterRelations(plainClusterRelations,
+                                             basicCluster,
+                                             basicAddresses,
+                                             exchangeRates
+                                            ).persist()
+    cassandra.store(keyspace,
+                    "cluster_incoming_relations",
+                    clusterRelations.sort(F.dstCluster, F.srcCluster))
+    cassandra.store(keyspace,
+                    "cluster_outgoing_relations",
+                    clusterRelations.sort(F.dstCluster, F.dstCluster))
+
+    println("Computing clusters")
+    val clusters = transformation.computeCluster(basicCluster, clusterRelations).persist()
+    cassandra.store(keyspace, "cluster", clusters)
+
+    println("Computing cluster addresses")
+    val clusterAddresses =
+      transformation.computeClusterAddresses(addresses, basicClusterAddresses).persist()
+    cassandra.store(keyspace, "cluster_addresses", clusterAddresses)
+
+    println("Computing cluster tags")
+    val clusterTags = transformation.computeClusterTags(addressCluster, tags).persist()
+    cassandra.store(keyspace, "cluster_tags", clusterTags)
+
+    println("Compute summary statistics")
     val summaryStatistics =
       transformation.computeSummaryStatistics(blocks,
                                               transactions,
-                                              transformation.basicAddresses,
-                                              transformation.addressRelations,
-                                              transformation.basicCluster)
+                                              basicAddresses,
+                                              addressRelations,
+                                              basicCluster)
+    summaryStatistics.show()
     cassandra.store(keyspace, "summary_statistics", summaryStatistics)
 
     spark.stop()
