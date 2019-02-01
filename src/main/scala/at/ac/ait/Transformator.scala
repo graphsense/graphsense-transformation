@@ -8,7 +8,7 @@ import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
 
 import at.ac.ait.{Fields => F}
-import at.ac.ait.clustering.common._
+import at.ac.ait.clustering._
 
 
 class Transformator(spark: SparkSession) {
@@ -68,7 +68,9 @@ class Transformator(spark: SparkSession) {
               .as[InputIdSet]
               .rdd
               .toLocalIterator
-        spark.sparkContext.parallelize(Clustering.getClustersMutable(inputGroups).toSeq).toDS()
+        spark.sparkContext.parallelize(
+          MultipleInputClustering.getClustersMutable(inputGroups).toSeq
+        ).toDS()
       }
 
       val reprAddrId = "reprAddrId"
