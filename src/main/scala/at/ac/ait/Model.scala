@@ -2,29 +2,25 @@ package at.ac.ait
 
 
 case class RegularInput(
+    addressPrefix: String,
     address: String,
     txHash: Array[Byte],
     value: Long,
     height: Int,
     txIndex: Long,
-    timestamp: Int)
+    timestamp: Int,
+    coinJoin: Boolean)
 
 case class RegularOutput(
+    addressPrefix: String,
     address: String,
     txHash: Array[Byte],
     value: Long,
     height: Int,
     txIndex: Long,
-    n: Int,
-    timestamp: Int)
-
-case class TotalInput(
-    txHash: Array[Byte],
-    totalInput: Long)
-
-case class KnownAddress(
-    address: String,
-    category: Int)
+    timestamp: Int,
+    coinJoin: Boolean,
+    n: Int)
 
 case class NormalizedAddress(
     id: Int,
@@ -83,6 +79,7 @@ case class Transaction(
     height: Int,
     timestamp: Int,
     coinbase: Boolean,
+    coinjoin: Boolean,
     totalInput: Long,
     totalOutput: Long,
     inputs: Seq[TxInputOutput],
@@ -147,7 +144,7 @@ case class AddressCluster(
     cluster: Int)
 
 case class ClusterAddresses(
-    cluster: Long,
+    cluster: Int,
     address: String,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
@@ -177,7 +174,7 @@ case class BasicCluster(
     totalSpent: Currency)
 
 case class BasicClusterAddresses(
-    cluster: Long,
+    cluster: Int,
     address: String,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
@@ -214,8 +211,6 @@ case class AddressRelations(
     dstAddressPrefix: String,
     srcAddress: String,
     dstAddress: String,
-    srcCategory: Int,
-    dstCategory: Int,
     srcProperties: AddressSummary,
     dstProperties: AddressSummary,
     noTransactions: Int,
@@ -231,8 +226,6 @@ case class PlainClusterRelations(
 case class ClusterRelations(
     srcCluster: String,
     dstCluster: String,
-    srcCategory: Int,
-    dstCategory: Int,
     srcProperties: ClusterSummary,
     dstProperties: ClusterSummary,
     noTransactions: Int,

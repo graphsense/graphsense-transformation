@@ -5,8 +5,8 @@ MEMORY="4g"
 SPARK_MASTER="local[*]"
 CASSANDRA_HOST="localhost"
 
-SRC_KEYSPACE="graphsense_raw"
-TGT_KEYSPACE="graphsense_transformed"
+SRC_KEYSPACE="btc_raw"
+TGT_KEYSPACE="btc_transformed"
 
 
 if [ -z $SPARK_HOME ] ; then
@@ -77,11 +77,9 @@ $SPARK_HOME/bin/spark-submit \
   --master $SPARK_MASTER \
   --conf spark.executor.memory=$MEMORY \
   --conf spark.cassandra.connection.host=$CASSANDRA_HOST \
-  --conf spark.sql.shuffle.partitions=500 \
-  --conf spark.default.parallelism=500 \
-  --jars ~/.ivy2/local/at.ac.ait/graphsense-clustering_2.11/0.3.3/jars/graphsense-clustering_2.11.jar \
-  --packages datastax:spark-cassandra-connector:2.0.6-s_2.11 \
-             target/scala-2.11/graphsense-transformation_2.11-0.3.3.jar \
+  --jars ~/.ivy2/local/at.ac.ait/graphsense-clustering_2.11/0.4.0/jars/graphsense-clustering_2.11.jar \
+  --packages datastax:spark-cassandra-connector:2.4.0-s_2.11 \
+             target/scala-2.11/graphsense-transformation_2.11-0.4.0.jar \
   --source_keyspace $SRC_KEYSPACE \
   --target_keyspace $TGT_KEYSPACE
 

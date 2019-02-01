@@ -1,11 +1,10 @@
-tests/
 eclipse.sbt
 
 # sbt
 target/
 
 # test
-/last_test/
+tests/result/
 
 # IDE
 /bin/

@@ -1,0 +1,2 @@
+{"address": "1HxbaBMF2jXBVnagoHvaA6rLxmaYL8gb8T", "tag": "Mining Service", "source": "test.com", "actor_category": "Mining Service", "description": "some miner", "source_uri": "https://example.org/miner", "tag_uri": "", "timestamp": 1524470607}
+{"address": "15kcXCiXU5RjkgxZuxdFhpHpixmxGvPHpa", "tag": "John Doe", "source": "johndoe.com", "actor_category": "Unclear", "description": "dummy data", "source_uri": "https://example.com/tags", "tag_uri": "", "timestamp": 1532249114}
