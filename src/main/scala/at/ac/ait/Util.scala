@@ -1,6 +1,5 @@
 package at.ac.ait
 
-
 object Util {
 
   import java.util.concurrent.TimeUnit

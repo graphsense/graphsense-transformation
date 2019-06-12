@@ -1,6 +1,5 @@
 package at.ac.ait
 
-
 object Fields {
   val height = "height"
   val timestamp = "timestamp"
