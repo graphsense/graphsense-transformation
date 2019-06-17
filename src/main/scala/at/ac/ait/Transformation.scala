@@ -29,11 +29,19 @@ class Transformation(spark: SparkSession) {
       .select(
         explode(col("input.address")) as "address",
         col("input.value") as "value",
-        col(F.txHash),
-        col(F.height),
-        col(F.txIndex),
-        col(F.timestamp),
-        col(F.coinjoin)
+        col(F.txHash)
+      )
+      .groupBy(F.txHash, F.address)
+      .agg(sum(F.value) as F.value)
+      .join(
+        tx.select(
+          col(F.txHash),
+          col(F.height),
+          col(F.txIndex),
+          col(F.timestamp),
+          col(F.coinjoin)
+        ),
+        Seq(F.txHash)
       )
       .withColumn(F.addressPrefix, t.addressPrefixColumn)
       .as[RegularInput]
@@ -52,9 +60,9 @@ class Transformation(spark: SparkSession) {
       )
       .filter(size(col("output.address")) === 1)
       .select(
+        col(F.txHash),
         explode(col("output.address")) as "address",
         col("output.value") as "value",
-        col(F.txHash),
         col(F.height),
         col(F.txIndex),
         col(F.n),
