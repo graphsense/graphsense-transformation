@@ -8,22 +8,29 @@ import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.{DataType, StructType}
 import org.scalatest._
 
-
 trait SparkSessionTestWrapper {
 
   lazy val spark: SparkSession = {
-    SparkSession.builder().master("local").appName("Transformation Test").getOrCreate()
+    SparkSession
+      .builder()
+      .master("local")
+      .appName("Transformation Test")
+      .getOrCreate()
   }
 }
 
-
-class TransformationTest extends FunSuite with SparkSessionTestWrapper with DataFrameComparer {
+class TransformationTest
+    extends FunSuite
+    with SparkSessionTestWrapper
+    with DataFrameComparer {
 
   def readJson[A: Encoder: TypeTag](file: String): Dataset[A] = {
     // https://docs.databricks.com/spark/latest/faq/schema-from-case-class.html
     val schema = ScalaReflection.schemaFor[A].dataType.asInstanceOf[StructType]
     val newSchema = DataType
-      .fromJson(schema.json.replace("\"type\":\"binary\"", "\"type\":\"string\""))
+      .fromJson(
+        schema.json.replace("\"type\":\"binary\"", "\"type\":\"string\"")
+      )
       .asInstanceOf[StructType]
     spark.read.schema(newSchema).json(file).as[A]
   }
@@ -31,15 +38,23 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
   def setNullableStateForAllColumns[A](ds: Dataset[A]): DataFrame = {
     val df = ds.toDF()
     val schema =
-      DataType.fromJson(df.schema.json.replace("\"nullable\":false", "\"nullable\":true"))
-              .asInstanceOf[StructType]
+      DataType
+        .fromJson(
+          df.schema.json.replace("\"nullable\":false", "\"nullable\":true")
+        )
+        .asInstanceOf[StructType]
     df.sqlContext.createDataFrame(df.rdd, schema)
   }
 
-  def assertDataFrameEquality[A](actualDS: Dataset[A], expectedDS: Dataset[A]): Unit = {
+  def assertDataFrameEquality[A](
+      actualDS: Dataset[A],
+      expectedDS: Dataset[A]
+  ): Unit = {
     val colOrder = expectedDS.columns map col
-    assertSmallDataFrameEquality(setNullableStateForAllColumns(actualDS.select(colOrder: _*)),
-                                 setNullableStateForAllColumns(expectedDS))
+    assertSmallDataFrameEquality(
+      setNullableStateForAllColumns(actualDS.select(colOrder: _*)),
+      setNullableStateForAllColumns(expectedDS)
+    )
   }
 
   spark.sparkContext.setLogLevel("WARN")
@@ -51,9 +66,9 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
   // input data
   val blocks = readJson[Block](inputDir + "/test_blocks.json")
   val transactions = readJson[Transaction](inputDir + "test_txs.json")
-  val exchangeRates = readJson[ExchangeRates](inputDir + "test_exchange_rates.json")
+  val exchangeRates =
+    readJson[ExchangeRates](inputDir + "test_exchange_rates.json")
   val attributionTags = readJson[Tag](inputDir + "test_tags.json")
-
 
   // transformation pipeline
   val t = new Transformation(spark)
@@ -65,52 +80,66 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
   inputs.persist()
   outputs.persist()
   val basicAddresses =
-    t.computeBasicAddresses(transactions,
-                            addressTransactions,
-                            inputs,
-                            outputs,
-                            exchangeRates
-                           ).persist()
+    t.computeBasicAddresses(
+        transactions,
+        addressTransactions,
+        inputs,
+        outputs,
+        exchangeRates
+      )
+      .persist()
   val addressRelations =
-    t.computeAddressRelations(inputs,
-                              outputs,
-                              regInputs,
-                              transactions,
-                              basicAddresses,
-                              exchangeRates
-                             ).persist()
+    t.computeAddressRelations(
+        inputs,
+        outputs,
+        regInputs,
+        transactions,
+        basicAddresses,
+        exchangeRates
+      )
+      .persist()
   val addresses = t.computeAddresses(basicAddresses, addressRelations)
-  val addressCluster = t.computeAddressCluster(regInputs, regOutputs, true).persist()
-  val addressClusterCoinjoin = t.computeAddressCluster(regInputs, regOutputs, false).persist()
+  val addressCluster =
+    t.computeAddressCluster(regInputs, regOutputs, true).persist()
+  val addressClusterCoinjoin =
+    t.computeAddressCluster(regInputs, regOutputs, false).persist()
   val basicClusterAddresses =
-    t.computeBasicClusterAddresses(basicAddresses, addressClusterCoinjoin).persist()
+    t.computeBasicClusterAddresses(basicAddresses, addressClusterCoinjoin)
+      .persist()
   val clusterTransactions =
-    t.computeClusterTransactions(inputs, outputs, transactions, addressClusterCoinjoin).persist()
+    t.computeClusterTransactions(
+        inputs,
+        outputs,
+        transactions,
+        addressClusterCoinjoin
+      )
+      .persist()
   val (clusterInputs, clusterOutputs) = t.splitTransactions(clusterTransactions)
   clusterInputs.persist()
   clusterOutputs.persist()
   val basicCluster =
-    t.computeBasicCluster(transactions,
-                          basicClusterAddresses,
-                          clusterTransactions,
-                          clusterInputs,
-                          clusterOutputs,
-                          exchangeRates
-                         ).persist()
+    t.computeBasicCluster(
+        transactions,
+        basicClusterAddresses,
+        clusterTransactions,
+        clusterInputs,
+        clusterOutputs,
+        exchangeRates
+      )
+      .persist()
   val plainClusterRelations =
-    t.computePlainClusterRelations(clusterInputs,
-                                   clusterOutputs
-                                  ).persist()
+    t.computePlainClusterRelations(clusterInputs, clusterOutputs).persist()
   val clusterRelations =
-    t.computeClusterRelations(plainClusterRelations,
-                              basicCluster,
-                              basicAddresses,
-                              exchangeRates
-                             ).persist()
+    t.computeClusterRelations(
+        plainClusterRelations,
+        basicCluster,
+        basicAddresses,
+        exchangeRates
+      )
+      .persist()
   val cluster = t.computeCluster(basicCluster, clusterRelations).persist()
   val clusterAddresses =
     t.computeClusterAddresses(addresses, basicClusterAddresses).persist()
-
 
   note("test address graph")
 
@@ -123,7 +152,8 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
     assertDataFrameEquality(regOutputs, regOutputsRef)
   }
   test("addressTransactions") {
-    val addressTransactionsRef = readJson[AddressTransactions](refDir + "address_txs.json")
+    val addressTransactionsRef =
+      readJson[AddressTransactions](refDir + "address_txs.json")
     assertDataFrameEquality(addressTransactions, addressTransactionsRef)
   }
   test("inputs") {
@@ -135,11 +165,13 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
     assertDataFrameEquality(outputs, outputsRef)
   }
   test("basicAddresses") {
-    val basicAddressesRef = readJson[BasicAddress](refDir + "basic_addresses.json")
+    val basicAddressesRef =
+      readJson[BasicAddress](refDir + "basic_addresses.json")
     assertDataFrameEquality(basicAddresses, basicAddressesRef)
   }
   test("addressRelations") {
-    val addressRelationsRef = readJson[AddressRelations](refDir + "address_relations.json")
+    val addressRelationsRef =
+      readJson[AddressRelations](refDir + "address_relations.json")
     assertDataFrameEquality(addressRelations, addressRelationsRef)
   }
   test("addresses") {
@@ -147,7 +179,8 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
     assertDataFrameEquality(addresses, addressesRef)
   }
   test("addressTag") {
-    val addressTags = t.computeAddressTags(basicAddresses, attributionTags).persist()
+    val addressTags =
+      t.computeAddressTags(basicAddresses, attributionTags).persist()
     val addressTagsRef = readJson[Tag](refDir + "address_tags.json")
     assertDataFrameEquality(addressTags, addressTagsRef)
   }
@@ -155,11 +188,13 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
   note("test cluster graph")
 
   test("addressCluster without coinjoin inputs") {
-    val addressClusterRef = readJson[AddressCluster](refDir + "address_cluster.json")
+    val addressClusterRef =
+      readJson[AddressCluster](refDir + "address_cluster.json")
     assertDataFrameEquality(addressCluster, addressClusterRef)
   }
   test("addressCluster all inputs") {
-    val addressClusterRef = readJson[AddressCluster](refDir + "address_cluster_with_coinjoin.json")
+    val addressClusterRef =
+      readJson[AddressCluster](refDir + "address_cluster_with_coinjoin.json")
     assertDataFrameEquality(addressClusterCoinjoin, addressClusterRef)
   }
   test("basicClusterAddresses") {
@@ -168,15 +203,18 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
     assertDataFrameEquality(basicClusterAddresses, basicClusterAddressesRef)
   }
   test("clusterTransactions") {
-    val clusterTransactionsRef = readJson[ClusterTransactions](refDir + "cluster_txs.json")
+    val clusterTransactionsRef =
+      readJson[ClusterTransactions](refDir + "cluster_txs.json")
     assertDataFrameEquality(clusterTransactions, clusterTransactionsRef)
   }
   test("clusterInputs") {
-    val clusterInputsRef = readJson[ClusterTransactions](refDir + "cluster_inputs.json")
+    val clusterInputsRef =
+      readJson[ClusterTransactions](refDir + "cluster_inputs.json")
     assertDataFrameEquality(clusterInputs, clusterInputsRef)
   }
   test("clusterOutputs") {
-    val clusterOutputsRef = readJson[ClusterTransactions](refDir + "cluster_outputs.json")
+    val clusterOutputsRef =
+      readJson[ClusterTransactions](refDir + "cluster_outputs.json")
     assertDataFrameEquality(clusterOutputs, clusterOutputsRef)
   }
   test("basicCluster") {
@@ -189,7 +227,8 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
     assertDataFrameEquality(plainClusterRelations, plainClusterRelationsRef)
   }
   test("clusterRelations") {
-    val clusterRelationsRef = readJson[ClusterRelations](refDir + "cluster_relations.json")
+    val clusterRelationsRef =
+      readJson[ClusterRelations](refDir + "cluster_relations.json")
     assertDataFrameEquality(clusterRelations, clusterRelationsRef)
   }
   test("clusters") {
@@ -197,11 +236,13 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
     assertDataFrameEquality(cluster, clusterRef)
   }
   test("clusterAdresses") {
-    val clusterAddressesRef = readJson[ClusterAddresses](refDir + "cluster_addresses.json")
+    val clusterAddressesRef =
+      readJson[ClusterAddresses](refDir + "cluster_addresses.json")
     assertDataFrameEquality(clusterAddresses, clusterAddressesRef)
   }
   test("clusterTags") {
-    val clusterTags = t.computeClusterTags(addressClusterCoinjoin, attributionTags).persist()
+    val clusterTags =
+      t.computeClusterTags(addressClusterCoinjoin, attributionTags).persist()
     val clusterTagsRef = readJson[ClusterTags](refDir + "cluster_tags.json")
     assertDataFrameEquality(clusterTags, clusterTagsRef)
   }
@@ -210,12 +251,15 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
 
   test("summary statistics") {
     val summaryStatistics =
-      t.computeSummaryStatistics(blocks,
-                                 transactions,
-                                 basicAddresses,
-                                 addressRelations,
-                                 basicCluster)
-    val summaryStatisticsRef = readJson[SummaryStatistics](refDir + "summary_statistics.json")
+      t.computeSummaryStatistics(
+        blocks,
+        transactions,
+        basicAddresses,
+        addressRelations,
+        basicCluster
+      )
+    val summaryStatisticsRef =
+      readJson[SummaryStatistics](refDir + "summary_statistics.json")
     assertDataFrameEquality(summaryStatistics, summaryStatisticsRef)
   }
 }
