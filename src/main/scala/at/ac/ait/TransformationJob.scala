@@ -1,64 +1,45 @@
 package at.ac.ait
 
 import org.apache.spark.sql.SparkSession
+import org.rogach.scallop._
 
 import at.ac.ait.{Fields => F}
 import at.ac.ait.storage._
 
 object TransformationJob {
 
-  case class AppArgs(
-      source_keyspace: String,
-      target_keyspace: String
-  )
-
-  object AppArgs {
-    def empty = new AppArgs("", "")
+  class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
+    val rawKeyspace =
+      opt[String]("raw_keyspace", required = true, descr = "Raw keyspace")
+    val targetKeyspace = opt[String](
+      "target_keyspace",
+      required = true,
+      descr = "Transformed keyspace"
+    )
+    verify()
   }
 
   def main(args: Array[String]) {
 
-    val argsInstance: AppArgs =
-      args.sliding(2, 1).toList.foldLeft(AppArgs.empty) {
-        case (accumArgs, currArgs) =>
-          currArgs match {
-            case Array("--source_keyspace", source_keyspace) =>
-              accumArgs.copy(source_keyspace = source_keyspace)
-            case Array("--target_keyspace", target_keyspace) =>
-              accumArgs.copy(target_keyspace = target_keyspace)
-            case _ => accumArgs
-          }
-      }
-
-    if (argsInstance.source_keyspace == "" || argsInstance.target_keyspace == "") {
-      Console.err.println(
-        "Usage: spark-submit [...] graphsense-transformation.jar" +
-          " --source_keyspace SOURCE_KEYSPACE" +
-          " --target_keyspace TARGET_KEYSPACE"
-      )
-      sys.exit(1)
-    }
-
-    val src_keyspace = argsInstance.source_keyspace
-    val keyspace = argsInstance.target_keyspace
+    val conf = new Conf(args)
 
     val spark = SparkSession.builder
-      .appName(s"GraphSense Transformation [$keyspace]")
+      .appName("GraphSense Transformation [%s]".format(conf.targetKeyspace()))
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    println("Source keyspace: " + src_keyspace)
-    println("Target keyspace: " + keyspace)
+    println("Raw keyspace:    " + conf.rawKeyspace())
+    println("Target keyspace: " + conf.targetKeyspace())
 
     import spark.implicits._
 
     val cassandra = new CassandraStorage(spark)
 
-    val blocks = cassandra.load[Block](src_keyspace, "block")
-    val transactions = cassandra.load[Transaction](src_keyspace, "transaction")
+    val blocks = cassandra.load[Block](conf.rawKeyspace(), "block")
+    val transactions = cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
     val exchangeRates =
-      cassandra.load[ExchangeRates](src_keyspace, "exchange_rates")
-    val tags = cassandra.load[Tag](src_keyspace, "tag")
+      cassandra.load[ExchangeRates](conf.rawKeyspace(), "exchange_rates")
+    val tags = cassandra.load[Tag](conf.rawKeyspace(), "tag")
 
     val transformation = new Transformation(spark)
 
@@ -74,7 +55,7 @@ object TransformationJob {
       transformation
         .computeAddressTransactions(transactions, regInputs, regOutputs)
         .persist()
-    cassandra.store(keyspace, "address_transactions", addressTransactions)
+    cassandra.store(conf.targetKeyspace(), "address_transactions", addressTransactions)
 
     val (inputs, outputs) =
       transformation.splitTransactions(addressTransactions)
@@ -106,12 +87,12 @@ object TransformationJob {
         )
         .persist()
     cassandra.store(
-      keyspace,
+      conf.targetKeyspace(),
       "address_incoming_relations",
       addressRelations.sort(F.dstAddressPrefix)
     )
     cassandra.store(
-      keyspace,
+      conf.targetKeyspace(),
       "address_outgoing_relations",
       addressRelations.sort(F.srcAddressPrefix)
     )
@@ -119,19 +100,19 @@ object TransformationJob {
     println("Computing addresses")
     val addresses =
       transformation.computeAddresses(basicAddresses, addressRelations)
-    cassandra.store(keyspace, "address", addresses)
+    cassandra.store(conf.targetKeyspace(), "address", addresses)
 
     println("Computing address tags")
     val addressTags =
       transformation.computeAddressTags(basicAddresses, tags).persist()
-    cassandra.store(keyspace, "address_tags", addressTags)
+    cassandra.store(conf.targetKeyspace(), "address_tags", addressTags)
 
     spark.sparkContext.setJobDescription("Perform clustering")
     println("Computing address clusters")
     val addressCluster = transformation
       .computeAddressCluster(regInputs, regOutputs, true)
       .persist()
-    cassandra.store(keyspace, "address_cluster", addressCluster)
+    cassandra.store(conf.targetKeyspace(), "address_cluster", addressCluster)
 
     println("Computing basic cluster addresses")
     val basicClusterAddresses =
@@ -177,7 +158,7 @@ object TransformationJob {
         )
         .persist()
     cassandra.store(
-      keyspace,
+      conf.targetKeyspace(),
       "plain_cluster_relations",
       plainClusterRelations.sort(F.srcCluster)
     )
@@ -193,12 +174,12 @@ object TransformationJob {
         )
         .persist()
     cassandra.store(
-      keyspace,
+      conf.targetKeyspace(),
       "cluster_incoming_relations",
       clusterRelations.sort(F.dstCluster, F.srcCluster)
     )
     cassandra.store(
-      keyspace,
+      conf.targetKeyspace(),
       "cluster_outgoing_relations",
       clusterRelations.sort(F.dstCluster, F.dstCluster)
     )
@@ -206,19 +187,19 @@ object TransformationJob {
     println("Computing clusters")
     val clusters =
       transformation.computeCluster(basicCluster, clusterRelations).persist()
-    cassandra.store(keyspace, "cluster", clusters)
+    cassandra.store(conf.targetKeyspace(), "cluster", clusters)
 
     println("Computing cluster addresses")
     val clusterAddresses =
       transformation
         .computeClusterAddresses(addresses, basicClusterAddresses)
         .persist()
-    cassandra.store(keyspace, "cluster_addresses", clusterAddresses)
+    cassandra.store(conf.targetKeyspace(), "cluster_addresses", clusterAddresses)
 
     println("Computing cluster tags")
     val clusterTags =
       transformation.computeClusterTags(addressCluster, tags).persist()
-    cassandra.store(keyspace, "cluster_tags", clusterTags)
+    cassandra.store(conf.targetKeyspace(), "cluster_tags", clusterTags)
 
     println("Compute summary statistics")
     val summaryStatistics =
@@ -230,7 +211,7 @@ object TransformationJob {
         basicCluster
       )
     summaryStatistics.show()
-    cassandra.store(keyspace, "summary_statistics", summaryStatistics)
+    cassandra.store(conf.targetKeyspace(), "summary_statistics", summaryStatistics)
 
     spark.stop()
   }
