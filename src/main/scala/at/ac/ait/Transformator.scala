@@ -3,6 +3,7 @@ package at.ac.ait
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
+  coalesce,
   col,
   collect_set,
   count,
@@ -12,8 +13,7 @@ import org.apache.spark.sql.functions.{
   row_number,
   substring,
   sum,
-  udf,
-  when
+  udf
 }
 import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
@@ -56,19 +56,27 @@ class Transformator(spark: SparkSession) {
 
   def addressCluster(
       regularInputs: Dataset[RegularInput],
-      regularOutputs: Dataset[RegularOutput]
+      regularOutputs: Dataset[RegularOutput],
+      removeCoinJoin: Boolean
   ) = {
 
-    def plainAddressCluster(basicTxInputAddresses: DataFrame) = {
+    def plainAddressCluster(
+        basicTxInputAddresses: DataFrame,
+        removeCoinJoin: Boolean
+    ) = {
 
       val addrCount = count(F.addrId).over(Window.partitionBy(F.txIndex))
 
       // filter transactions with multiple input addresses
-      val collectiveInputAddresses =
+      val collectiveInputAddresses = if (removeCoinJoin) {
+        println("Clustering without coinjoin inputs")
+        basicTxInputAddresses.filter(col(F.coinjoin) === false)
+      } else {
+        println("Clustering with coinjoin inputs")
         basicTxInputAddresses
-          .select(col(F.txIndex), col(F.addrId), addrCount as "count")
-          .filter(col("count") > 1)
-          .select(col(F.txIndex), col(F.addrId))
+      }.select(col(F.txIndex), col(F.addrId), addrCount as "count")
+        .filter(col("count") > 1)
+        .select(col(F.txIndex), col(F.addrId))
 
       // compute number of transaction per address
       val transactionCount =
@@ -113,7 +121,6 @@ class Transformator(spark: SparkSession) {
           .filter(col("count") === 1)
           .select(F.addrId)
           .join(collectiveInputAddresses, F.addrId)
-          .toDF(F.addrId, F.txIndex)
           .join(addressMax, F.txIndex)
           .select(F.addrId, reprAddrId)
       }
@@ -127,18 +134,16 @@ class Transformator(spark: SparkSession) {
           )
           .select(
             col(F.addrId),
-            when(col(F.cluster).isNotNull, col(F.cluster)) otherwise col(
-              reprAddrId
-            ) as F.cluster
+            coalesce(col(F.cluster), col(reprAddrId)) as F.cluster
           )
           .as[Result[Int]]
 
-      basicAddressCluster.union(addressClusterRemainder)
+      basicAddressCluster.union(addressClusterRemainder).toDF()
     }
 
     // assign integer IDs to addresses
     // .withColumn("id", monotonically_increasing_id) could be used instead of zipWithIndex,
-    // but this assigns Long values instead of Int
+    // (assigns Long values instead of Int)
     val orderWindow = Window.partitionBy(F.address).orderBy(F.txIndex, F.n)
     val normalizedAddresses =
       regularOutputs
@@ -154,10 +159,18 @@ class Transformator(spark: SparkSession) {
 
     val inputIds = regularInputs
       .join(normalizedAddresses, F.address)
-      .select(F.txIndex, F.addrId)
+      .select(F.txIndex, F.addrId, F.coinjoin)
 
     // perform multiple-input clustering
-    plainAddressCluster(inputIds)
+    val addressCluster = plainAddressCluster(inputIds, removeCoinJoin)
+    val singleAddressCluster = normalizedAddresses
+      .select(F.addrId)
+      .distinct
+      .join(addressCluster, Seq(F.addrId), "left_anti")
+      .withColumn(F.cluster, col(F.addrId))
+
+    singleAddressCluster
+      .union(addressCluster)
       .join(normalizedAddresses, F.addrId)
       .select(addressPrefixColumn, col(F.address), col(F.cluster))
       .as[AddressCluster]
@@ -247,38 +260,21 @@ class Transformator(spark: SparkSession) {
 
   def plainClusterRelations(
       clusterInputs: Dataset[ClusterTransactions],
-      clusterOutputs: Dataset[ClusterTransactions],
-      inputs: Dataset[AddressTransactions],
-      outputs: Dataset[AddressTransactions],
-      addressCluster: Dataset[AddressCluster]
+      clusterOutputs: Dataset[ClusterTransactions]
   ) = {
-    val addressInputs =
-      inputs
-        .join(addressCluster, List(F.address), "left_anti")
-        .select(col(F.txHash), col(F.address) as F.srcCluster)
-    val addressOutputs =
-      outputs
-        .join(addressCluster, List(F.address), "left_anti")
-        .select(
-          col(F.txHash),
-          col(F.address) as F.dstCluster,
-          col(F.value),
-          col(F.height)
-        )
-    val allInputs =
-      clusterInputs
-        .select(col(F.txHash), col(F.cluster) as F.srcCluster)
-        .union(addressInputs)
-    val allOutputs =
-      clusterOutputs
-        .select(
-          col(F.txHash),
-          col(F.cluster) as F.dstCluster,
-          col(F.value),
-          col(F.height)
-        )
-        .union(addressOutputs)
-    allInputs.join(allOutputs, F.txHash).as[PlainClusterRelations]
+    clusterInputs
+      .select(col(F.txHash), col(F.cluster) as F.srcCluster)
+      .join(
+        clusterOutputs
+          .select(
+            col(F.txHash),
+            col(F.cluster) as F.dstCluster,
+            col(F.value),
+            col(F.height)
+          ),
+        Seq(F.txHash)
+      )
+      .as[PlainClusterRelations]
   }
 
   def clusterRelations(

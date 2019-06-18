@@ -173,10 +173,7 @@ object TransformationJob {
       transformation
         .computePlainClusterRelations(
           clusterInputs,
-          clusterOutputs,
-          inputs,
-          outputs,
-          addressCluster
+          clusterOutputs
         )
         .persist()
     cassandra.store(

@@ -213,15 +213,15 @@ case class AddressRelations(
 
 case class PlainClusterRelations(
     txHash: Array[Byte],
-    srcCluster: String,
-    dstCluster: String,
+    srcCluster: Int,
+    dstCluster: Int,
     value: Long,
     height: Int
 )
 
 case class ClusterRelations(
-    srcCluster: String,
-    dstCluster: String,
+    srcCluster: Int,
+    dstCluster: Int,
     srcProperties: ClusterSummary,
     dstProperties: ClusterSummary,
     noTransactions: Int,

@@ -99,10 +99,7 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
                          ).persist()
   val plainClusterRelations =
     t.computePlainClusterRelations(clusterInputs,
-                                   clusterOutputs,
-                                   inputs,
-                                   outputs,
-                                   addressClusterCoinjoin
+                                   clusterOutputs
                                   ).persist()
   val clusterRelations =
     t.computeClusterRelations(plainClusterRelations,
@@ -110,7 +107,7 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
                               basicAddresses,
                               exchangeRates
                              ).persist()
-  val clusters = t.computeCluster(basicCluster, clusterRelations).persist()
+  val cluster = t.computeCluster(basicCluster, clusterRelations).persist()
   val clusterAddresses =
     t.computeClusterAddresses(addresses, basicClusterAddresses).persist()
 
@@ -196,8 +193,8 @@ class TransformationTest extends FunSuite with SparkSessionTestWrapper with Data
     assertDataFrameEquality(clusterRelations, clusterRelationsRef)
   }
   test("clusters") {
-    val clustersRef = readJson[Cluster](refDir + "clusters.json")
-    assertDataFrameEquality(clusters, clustersRef)
+    val clusterRef = readJson[Cluster](refDir + "cluster.json")
+    assertDataFrameEquality(cluster, clusterRef)
   }
   test("clusterAdresses") {
     val clusterAddressesRef = readJson[ClusterAddresses](refDir + "cluster_addresses.json")

@@ -126,8 +126,8 @@ CREATE TABLE cluster_tags (
 
 CREATE TABLE plain_cluster_relations (
     tx_hash blob,
-    src_cluster text,
-    dst_cluster text,
+    src_cluster int,
+    dst_cluster int,
     value bigint,
     height int,
     PRIMARY KEY (height, src_cluster, value)

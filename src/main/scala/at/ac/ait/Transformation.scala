@@ -224,16 +224,7 @@ class Transformation(spark: SparkSession) {
       regularOutputs: Dataset[RegularOutput],
       removeCoinJoin: Boolean
   ): Dataset[AddressCluster] = {
-    if (removeCoinJoin) {
-      println("Clustering without coinjoin inputs")
-      t.addressCluster(
-        regularInputs.filter($"coinjoin" === false),
-        regularOutputs
-      )
-    } else {
-      println("Clustering with coinjoin inputs")
-      t.addressCluster(regularInputs, regularOutputs)
-    }
+    t.addressCluster(regularInputs, regularOutputs, removeCoinJoin)
   }
 
   def computeBasicClusterAddresses(
@@ -292,17 +283,11 @@ class Transformation(spark: SparkSession) {
 
   def computePlainClusterRelations(
       clusterInputs: Dataset[ClusterTransactions],
-      clusterOutputs: Dataset[ClusterTransactions],
-      inputs: Dataset[AddressTransactions],
-      outputs: Dataset[AddressTransactions],
-      addressCluster: Dataset[AddressCluster]
+      clusterOutputs: Dataset[ClusterTransactions]
   ): Dataset[PlainClusterRelations] = {
     t.plainClusterRelations(
       clusterInputs,
-      clusterOutputs,
-      inputs,
-      outputs,
-      addressCluster
+      clusterOutputs
     )
   }
 
