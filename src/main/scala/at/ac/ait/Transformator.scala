@@ -319,6 +319,7 @@ class Transformator(spark: SparkSession) {
       )
       .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
       .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
+      .drop(F.addressPrefix)
       .as[ClusterRelations]
   }
 }

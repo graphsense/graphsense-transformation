@@ -98,7 +98,9 @@ class TransformationTest
         exchangeRates
       )
       .persist()
-  val addresses = t.computeAddresses(basicAddresses, addressRelations)
+  val addresses = t.computeAddresses(basicAddresses, addressRelations).persist()
+  val addressTags =
+    t.computeAddressTags(basicAddresses, attributionTags, "BTC").persist()
   val addressCluster =
     t.computeAddressCluster(regInputs, regOutputs, true).persist()
   val addressClusterCoinjoin =
@@ -138,6 +140,8 @@ class TransformationTest
       )
       .persist()
   val cluster = t.computeCluster(basicCluster, clusterRelations).persist()
+  val clusterTags =
+    t.computeClusterTags(addressClusterCoinjoin, addressTags).persist()
   val clusterAddresses =
     t.computeClusterAddresses(addresses, basicClusterAddresses).persist()
 
@@ -179,9 +183,7 @@ class TransformationTest
     assertDataFrameEquality(addresses, addressesRef)
   }
   test("addressTag") {
-    val addressTags =
-      t.computeAddressTags(basicAddresses, attributionTags).persist()
-    val addressTagsRef = readJson[Tag](refDir + "address_tags.json")
+    val addressTagsRef = readJson[AddressTags](refDir + "address_tags.json")
     assertDataFrameEquality(addressTags, addressTagsRef)
   }
 
@@ -241,8 +243,6 @@ class TransformationTest
     assertDataFrameEquality(clusterAddresses, clusterAddressesRef)
   }
   test("clusterTags") {
-    val clusterTags =
-      t.computeClusterTags(addressClusterCoinjoin, attributionTags).persist()
     val clusterTagsRef = readJson[ClusterTags](refDir + "cluster_tags.json")
     assertDataFrameEquality(clusterTags, clusterTagsRef)
   }

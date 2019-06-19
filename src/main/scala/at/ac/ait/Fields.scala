@@ -20,6 +20,7 @@ object Fields {
   val totalReceived = "totalReceived"
   val totalSpent = "totalSpent"
   val noAddresses = "noAddresses"
+  val currency = "currency"
   val eur = "eur"
   val usd = "usd"
   val addrId = "id"

@@ -214,9 +214,14 @@ class Transformation(spark: SparkSession) {
 
   def computeAddressTags(
       addresses: Dataset[BasicAddress],
-      tags: Dataset[Tag]
-  ): Dataset[Tag] = {
-    tags.join(addresses, Seq(F.address), joinType = "left_semi").as[Tag]
+      tags: Dataset[Tag],
+      currency: String
+  ): Dataset[AddressTags] = {
+    tags
+      .filter(col(F.currency) === currency)
+      .drop(col(F.currency))
+      .join(addresses, Seq(F.address), joinType = "left_semi")
+      .as[AddressTags]
   }
 
   def computeAddressCluster(
@@ -337,7 +342,7 @@ class Transformation(spark: SparkSession) {
 
   def computeClusterTags(
       addressCluster: Dataset[AddressCluster],
-      tags: Dataset[Tag]
+      tags: Dataset[AddressTags]
   ): Dataset[ClusterTags] = {
     addressCluster.join(tags, F.address).as[ClusterTags]
   }

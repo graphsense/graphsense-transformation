@@ -82,13 +82,12 @@ case class ExchangeRates(height: Int, eur: Double, usd: Double)
 
 case class Tag(
     address: String,
-    tag: String,
-    tagUri: String,
-    description: String,
-    actorCategory: String,
+    label: String,
     source: String,
-    sourceUri: String,
-    timestamp: Int
+    tagpackUri: String,
+    currency: String,
+    lastmod: Int,
+    category: String
 )
 
 // transformed schema tables
@@ -127,6 +126,15 @@ case class Address(
     totalSpent: Currency,
     inDegree: Int,
     outDegree: Int
+)
+
+case class AddressTags(
+    address: String,
+    label: String,
+    source: String,
+    tagpackUri: String,
+    lastmod: Int,
+    category: String
 )
 
 case class AddressCluster(addressPrefix: String, address: String, cluster: Int)
@@ -191,13 +199,11 @@ case class Cluster(
 case class ClusterTags(
     cluster: Int,
     address: String,
-    tag: String,
-    tagUri: String,
-    description: String,
-    actorCategory: String,
+    label: String,
     source: String,
-    sourceUri: String,
-    timestamp: Int
+    tagpackUri: String,
+    lastmod: Int,
+    category: String
 )
 
 case class AddressRelations(
