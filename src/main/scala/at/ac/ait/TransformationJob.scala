@@ -1,6 +1,7 @@
 package at.ac.ait
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.col
 import org.rogach.scallop._
 
 import at.ac.ait.{Fields => F}
@@ -49,6 +50,14 @@ object TransformationJob {
     val exchangeRates =
       cassandra.load[ExchangeRates](conf.rawKeyspace(), "exchange_rates")
     val tags = cassandra.load[Tag](conf.tagKeyspace(), "tag_by_address")
+
+    val noBlocks = blocks.count()
+    val lastBlockTimestamp = blocks
+      .filter(col(F.height) === noBlocks - 1)
+      .select(col(F.timestamp))
+      .first()
+      .getInt(0)
+    val noTransactions = transactions.count()
 
     val transformation = new Transformation(spark)
 
@@ -99,6 +108,7 @@ object TransformationJob {
           exchangeRates
         )
         .persist()
+    val noAddressRelations = addressRelations.count()
     cassandra.store(
       conf.targetKeyspace(),
       "address_incoming_relations",
@@ -113,6 +123,7 @@ object TransformationJob {
     println("Computing addresses")
     val addresses =
       transformation.computeAddresses(basicAddresses, addressRelations)
+    val noAddresses = addresses.count()
     cassandra.store(conf.targetKeyspace(), "address", addresses)
 
     println("Computing address tags")
@@ -120,6 +131,7 @@ object TransformationJob {
       transformation
         .computeAddressTags(basicAddresses, tags, conf.currency())
         .persist()
+    val noAddressTags = addressTags.count()
     cassandra.store(conf.targetKeyspace(), "address_tags", addressTags)
 
     spark.sparkContext.setJobDescription("Perform clustering")
@@ -202,6 +214,7 @@ object TransformationJob {
     println("Computing cluster")
     val cluster =
       transformation.computeCluster(basicCluster, clusterRelations).persist()
+    val noCluster = cluster.count()
     cassandra.store(conf.targetKeyspace(), "cluster", cluster)
 
     println("Computing cluster addresses")
@@ -222,12 +235,14 @@ object TransformationJob {
 
     println("Compute summary statistics")
     val summaryStatistics =
-      transformation.computeSummaryStatistics(
-        blocks,
-        transactions,
-        basicAddresses,
-        addressRelations,
-        basicCluster
+      transformation.summaryStatistics(
+        lastBlockTimestamp,
+        noBlocks,
+        noTransactions,
+        noAddresses,
+        noAddressRelations,
+        noCluster,
+        noAddressTags
       )
     summaryStatistics.show()
     cassandra.store(

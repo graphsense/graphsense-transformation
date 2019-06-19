@@ -240,5 +240,6 @@ case class SummaryStatistics(
     noTransactions: Long,
     noAddresses: Long,
     noAddressRelations: Long,
-    noClusters: Long
+    noClusters: Long,
+    noTags: Long
 )

@@ -8,6 +8,8 @@ import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.{DataType, StructType}
 import org.scalatest._
 
+import at.ac.ait.{Fields => F}
+
 trait SparkSessionTestWrapper {
 
   lazy val spark: SparkSession = {
@@ -70,15 +72,27 @@ class TransformationTest
     readJson[ExchangeRates](inputDir + "test_exchange_rates.json")
   val attributionTags = readJson[Tag](inputDir + "test_tags.json")
 
+  val noBlocks = blocks.count()
+  val lastBlockTimestamp = blocks
+    .filter(col(F.height) === noBlocks - 1)
+    .select(col(F.timestamp))
+    .first()
+    .getInt(0)
+  val noTransactions = transactions.count()
+
   // transformation pipeline
   val t = new Transformation(spark)
+
   val regInputs = t.computeRegularInputs(transactions).persist()
   val regOutputs = t.computeRegularOutputs(transactions).persist()
+
   val addressTransactions =
     t.computeAddressTransactions(transactions, regInputs, regOutputs).persist()
+
   val (inputs, outputs) = t.splitTransactions(addressTransactions)
   inputs.persist()
   outputs.persist()
+
   val basicAddresses =
     t.computeBasicAddresses(
         transactions,
@@ -88,6 +102,7 @@ class TransformationTest
         exchangeRates
       )
       .persist()
+
   val addressRelations =
     t.computeAddressRelations(
         inputs,
@@ -98,16 +113,25 @@ class TransformationTest
         exchangeRates
       )
       .persist()
+  val noAddressRelations = addressRelations.count()
+
   val addresses = t.computeAddresses(basicAddresses, addressRelations).persist()
+  val noAddresses = addresses.count()
+
   val addressTags =
     t.computeAddressTags(basicAddresses, attributionTags, "BTC").persist()
+  val noAddressTags = addressTags.count()
+
   val addressCluster =
     t.computeAddressCluster(regInputs, regOutputs, true).persist()
+
   val addressClusterCoinjoin =
     t.computeAddressCluster(regInputs, regOutputs, false).persist()
+
   val basicClusterAddresses =
     t.computeBasicClusterAddresses(basicAddresses, addressClusterCoinjoin)
       .persist()
+
   val clusterTransactions =
     t.computeClusterTransactions(
         inputs,
@@ -116,9 +140,11 @@ class TransformationTest
         addressClusterCoinjoin
       )
       .persist()
+
   val (clusterInputs, clusterOutputs) = t.splitTransactions(clusterTransactions)
   clusterInputs.persist()
   clusterOutputs.persist()
+
   val basicCluster =
     t.computeBasicCluster(
         transactions,
@@ -129,8 +155,10 @@ class TransformationTest
         exchangeRates
       )
       .persist()
+
   val plainClusterRelations =
     t.computePlainClusterRelations(clusterInputs, clusterOutputs).persist()
+
   val clusterRelations =
     t.computeClusterRelations(
         plainClusterRelations,
@@ -139,11 +167,26 @@ class TransformationTest
         exchangeRates
       )
       .persist()
+
   val cluster = t.computeCluster(basicCluster, clusterRelations).persist()
+  val noCluster = cluster.count()
+
   val clusterTags =
     t.computeClusterTags(addressClusterCoinjoin, addressTags).persist()
+
   val clusterAddresses =
     t.computeClusterAddresses(addresses, basicClusterAddresses).persist()
+
+  val summaryStatistics =
+    t.summaryStatistics(
+      lastBlockTimestamp,
+      noBlocks,
+      noTransactions,
+      noAddresses,
+      noAddressRelations,
+      noCluster,
+      noAddressTags
+    )
 
   note("test address graph")
 
@@ -250,14 +293,6 @@ class TransformationTest
   note("summary statistics for address and cluster graph")
 
   test("summary statistics") {
-    val summaryStatistics =
-      t.computeSummaryStatistics(
-        blocks,
-        transactions,
-        basicAddresses,
-        addressRelations,
-        basicCluster
-      )
     val summaryStatisticsRef =
       readJson[SummaryStatistics](refDir + "summary_statistics.json")
     assertDataFrameEquality(summaryStatistics, summaryStatisticsRef)

@@ -347,27 +347,24 @@ class Transformation(spark: SparkSession) {
     addressCluster.join(tags, F.address).as[ClusterTags]
   }
 
-  def computeSummaryStatistics(
-      blocks: Dataset[Block],
-      transactions: Dataset[Transaction],
-      addresses: Dataset[BasicAddress],
-      addressRelations: Dataset[AddressRelations],
-      cluster: Dataset[BasicCluster]
+  def summaryStatistics(
+      lastBlockTimestamp: Int,
+      noBlocks: Long,
+      noTransactions: Long,
+      noAddresses: Long,
+      noAddressRelations: Long,
+      noCluster: Long,
+      noTags: Long
   ) = {
-    val noBlocks = blocks.count()
-    val date = blocks
-      .filter(col(F.height) === noBlocks - 1)
-      .select(col(F.timestamp))
-      .first()
-      .getInt(0)
     Seq(
       SummaryStatistics(
-        date,
+        lastBlockTimestamp,
         noBlocks,
-        transactions.count(),
-        addresses.count(),
-        addressRelations.count(),
-        cluster.count()
+        noTransactions,
+        noAddresses,
+        noAddressRelations,
+        noCluster,
+        noTags
       )
     ).toDS()
   }

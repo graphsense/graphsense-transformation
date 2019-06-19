@@ -159,5 +159,6 @@ CREATE TABLE summary_statistics (
     no_transactions bigint,
     no_addresses bigint,
     no_address_relations bigint,
-    no_clusters bigint
+    no_clusters bigint,
+    no_tags bigint
 );
