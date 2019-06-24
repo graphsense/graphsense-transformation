@@ -3,9 +3,6 @@ eclipse.sbt
 # sbt
 target/
 
-# test
-tests/result/
-
 # IDE
 /bin/
 /.settings/
