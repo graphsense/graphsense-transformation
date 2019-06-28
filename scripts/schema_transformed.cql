@@ -1,5 +1,5 @@
 DROP KEYSPACE IF EXISTS btc_transformed;
-CREATE KEYSPACE btc_transformed WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
+CREATE KEYSPACE btc_transformed WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
 USE btc_transformed;
 
@@ -42,14 +42,12 @@ CREATE TABLE address (
 
 CREATE TABLE address_tags (
     address text,
-    tag text,
-    tag_uri text,
-    description text,
-    actor_category text,
+    label text,
     source text,
-    source_uri text,
-    timestamp int,
-    PRIMARY KEY (address, tag, source)
+    tagpack_uri text,
+    lastmod int,
+    category text,
+    PRIMARY KEY (address, label, source, tagpack_uri)
 );
 
 CREATE TYPE address_summary (
@@ -114,20 +112,18 @@ CREATE TABLE cluster_addresses (
 CREATE TABLE cluster_tags (
     cluster int,
     address text,
-    tag text,
-    tag_uri text,
-    description text,
-    actor_category text,
+    label text,
     source text,
-    source_uri text,
-    timestamp int,
-    PRIMARY KEY (cluster, address, tag, source)
+    tagpack_uri text,
+    lastmod int,
+    category text,
+    PRIMARY KEY (cluster, address, label, source, tagpack_uri)
 );
 
 CREATE TABLE plain_cluster_relations (
     tx_hash blob,
-    src_cluster text,
-    dst_cluster text,
+    src_cluster int,
+    dst_cluster int,
     value bigint,
     height int,
     PRIMARY KEY (height, src_cluster, value)
@@ -163,5 +159,6 @@ CREATE TABLE summary_statistics (
     no_transactions bigint,
     no_addresses bigint,
     no_address_relations bigint,
-    no_clusters bigint
+    no_clusters bigint,
+    no_tags bigint
 );

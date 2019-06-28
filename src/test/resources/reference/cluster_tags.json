@@ -1,1 +1,1 @@
-{"address":"1HxbaBMF2jXBVnagoHvaA6rLxmaYL8gb8T","addressPrefix":"1Hxba","cluster":3,"tag":"Mining Service","description":"some miner","source":"test.com","timestamp":1524470607}
+{"address":"1HxbaBMF2jXBVnagoHvaA6rLxmaYL8gb8T","cluster":3,"label":"Mining Service","source":"test.com","tagpackUri":"https://example.org/miner","lastmod":1524470607,"category":"Mining Service"}

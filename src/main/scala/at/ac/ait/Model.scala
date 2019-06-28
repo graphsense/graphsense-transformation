@@ -1,6 +1,5 @@
 package at.ac.ait
 
-
 case class RegularInput(
     addressPrefix: String,
     address: String,
@@ -9,7 +8,8 @@ case class RegularInput(
     height: Int,
     txIndex: Long,
     timestamp: Int,
-    coinJoin: Boolean)
+    coinJoin: Boolean
+)
 
 case class RegularOutput(
     addressPrefix: String,
@@ -20,22 +20,18 @@ case class RegularOutput(
     txIndex: Long,
     timestamp: Int,
     coinJoin: Boolean,
-    n: Int)
+    n: Int
+)
 
-case class NormalizedAddress(
-    id: Int,
-    address: String)
+case class NormalizedAddress(id: Int, address: String)
 
 case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
-    override def iterator = inputs.iterator
+  override def iterator = inputs.iterator
 }
 
 // raw schema data types
 
-case class TxInputOutput(
-    address: Seq[String],
-    value: Long,
-    txType: Byte)
+case class TxInputOutput(address: Seq[String], value: Long, txType: Byte)
 
 // transformed schema data types
 
@@ -44,26 +40,20 @@ case class TxSummary(
     noInputs: Int,
     noOutputs: Int,
     totalInput: Long,
-    totalOutput: Long)
+    totalOutput: Long
+)
 
-case class TxIdTime(
-    height: Int,
-    txHash: Array[Byte],
-    timestamp: Int)
+case class TxIdTime(height: Int, txHash: Array[Byte], timestamp: Int)
 
-case class Currency(
-    satoshi: Long,
-    eur: Double,
-    usd: Double)
+case class Currency(satoshi: Long, eur: Double, usd: Double)
 
-case class AddressSummary(
-    totalReceived: Long,
-    totalSpent: Long)
+case class AddressSummary(totalReceived: Long, totalSpent: Long)
 
 case class ClusterSummary(
     noAddresses: Int,
     totalReceived: Long,
-    totalSpent: Long)
+    totalSpent: Long
+)
 
 // raw schema tables
 
@@ -71,7 +61,8 @@ case class Block(
     height: Int,
     blockHash: Array[Byte],
     timestamp: Int,
-    noTransactions: Int)
+    noTransactions: Int
+)
 
 case class Transaction(
     txPrefix: String,
@@ -84,28 +75,24 @@ case class Transaction(
     totalOutput: Long,
     inputs: Seq[TxInputOutput],
     outputs: Seq[TxInputOutput],
-    txIndex: Long)
+    txIndex: Long
+)
 
-case class ExchangeRates(
-    height: Int,
-    eur: Double,
-    usd: Double)
+case class ExchangeRates(height: Int, eur: Double, usd: Double)
 
 case class Tag(
     address: String,
-    tag: String,
-    tagUri: String,
-    description: String,
-    actorCategory: String,
+    label: String,
     source: String,
-    sourceUri: String,
-    timestamp: Int)
+    tagpackUri: String,
+    currency: String,
+    lastmod: Int,
+    category: String
+)
 
 // transformed schema tables
 
-case class BlockTransactions(
-    height: Int,
-    txs: Seq[TxSummary])
+case class BlockTransactions(height: Int, txs: Seq[TxSummary])
 
 case class AddressTransactions(
     addressPrefix: String,
@@ -114,7 +101,8 @@ case class AddressTransactions(
     value: Long,
     height: Int,
     txIndex: Long,
-    timestamp: Int)
+    timestamp: Int
+)
 
 case class BasicAddress(
     addressPrefix: String,
@@ -124,7 +112,8 @@ case class BasicAddress(
     firstTx: TxIdTime,
     lastTx: TxIdTime,
     totalReceived: Currency,
-    totalSpent: Currency)
+    totalSpent: Currency
+)
 
 case class Address(
     addressPrefix: String,
@@ -136,12 +125,19 @@ case class Address(
     totalReceived: Currency,
     totalSpent: Currency,
     inDegree: Int,
-    outDegree: Int)
+    outDegree: Int
+)
 
-case class AddressCluster(
-    addressPrefix: String,
+case class AddressTags(
     address: String,
-    cluster: Int)
+    label: String,
+    source: String,
+    tagpackUri: String,
+    lastmod: Int,
+    category: String
+)
+
+case class AddressCluster(addressPrefix: String, address: String, cluster: Int)
 
 case class ClusterAddresses(
     cluster: Int,
@@ -153,7 +149,8 @@ case class ClusterAddresses(
     totalReceived: Currency,
     totalSpent: Currency,
     inDegree: Int,
-    outDegree: Int)
+    outDegree: Int
+)
 
 case class ClusterTransactions(
     cluster: Int,
@@ -161,7 +158,8 @@ case class ClusterTransactions(
     value: Long,
     height: Int,
     txIndex: Long,
-    timestamp: Int)
+    timestamp: Int
+)
 
 case class BasicCluster(
     cluster: Int,
@@ -171,7 +169,8 @@ case class BasicCluster(
     firstTx: TxIdTime,
     lastTx: TxIdTime,
     totalReceived: Currency,
-    totalSpent: Currency)
+    totalSpent: Currency
+)
 
 case class BasicClusterAddresses(
     cluster: Int,
@@ -181,7 +180,8 @@ case class BasicClusterAddresses(
     firstTx: TxIdTime,
     lastTx: TxIdTime,
     totalReceived: Currency,
-    totalSpent: Currency)
+    totalSpent: Currency
+)
 
 case class Cluster(
     cluster: Int,
@@ -193,18 +193,18 @@ case class Cluster(
     totalReceived: Currency,
     totalSpent: Currency,
     inDegree: Int,
-    outDegree: Int)
+    outDegree: Int
+)
 
 case class ClusterTags(
     cluster: Int,
     address: String,
-    tag: String,
-    tagUri: String,
-    description: String,
-    actorCategory: String,
+    label: String,
     source: String,
-    sourceUri: String,
-    timestamp: Int)
+    tagpackUri: String,
+    lastmod: Int,
+    category: String
+)
 
 case class AddressRelations(
     srcAddressPrefix: String,
@@ -214,22 +214,25 @@ case class AddressRelations(
     srcProperties: AddressSummary,
     dstProperties: AddressSummary,
     noTransactions: Int,
-    estimatedValue: Currency)
+    estimatedValue: Currency
+)
 
 case class PlainClusterRelations(
     txHash: Array[Byte],
-    srcCluster: String,
-    dstCluster: String,
+    srcCluster: Int,
+    dstCluster: Int,
     value: Long,
-    height: Int)
+    height: Int
+)
 
 case class ClusterRelations(
-    srcCluster: String,
-    dstCluster: String,
+    srcCluster: Int,
+    dstCluster: Int,
     srcProperties: ClusterSummary,
     dstProperties: ClusterSummary,
     noTransactions: Int,
-    value: Currency)
+    value: Currency
+)
 
 case class SummaryStatistics(
     timestamp: Int,
@@ -237,5 +240,6 @@ case class SummaryStatistics(
     noTransactions: Long,
     noAddresses: Long,
     noAddressRelations: Long,
-    noClusters: Long
+    noClusters: Long,
+    noTags: Long
 )
