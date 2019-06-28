@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Changed
+- Fixed bug in cluster graph computation
+- Changed model of cluster graph; every entity has now integer IDs
+### Added
+- Parser for command-line arguments (scallop)
 
 ## [0.4.0] - 2019-02-01
 ### Changed
