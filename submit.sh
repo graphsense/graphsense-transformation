@@ -89,9 +89,9 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   --master "$SPARK_MASTER" \
   --conf spark.executor.memory="$MEMORY" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
-  --jars ~/.ivy2/local/at.ac.ait/graphsense-clustering_2.11/0.4.0/jars/graphsense-clustering_2.11.jar \
+  --jars ~/.ivy2/local/at.ac.ait/graphsense-clustering_2.11/0.4.1/jars/graphsense-clustering_2.11.jar \
   --packages datastax:spark-cassandra-connector:2.4.0-s_2.11,org.rogach:scallop_2.11:3.3.1 \
-  target/scala-2.11/graphsense-transformation_2.11-0.4.1-SNAPSHOT.jar \
+  target/scala-2.11/graphsense-transformation_2.11-0.4.1.jar \
   --currency "$CURRENCY" \
   --raw_keyspace "$RAW_KEYSPACE" \
   --tag_keyspace "$TAG_KEYSPACE" \
