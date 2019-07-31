@@ -136,8 +136,8 @@ CREATE TYPE cluster_summary (
 );
 
 CREATE TABLE cluster_incoming_relations (
-    dst_cluster text,
-    src_cluster text,
+    dst_cluster int,
+    src_cluster int,
     src_properties FROZEN <cluster_summary>,
     no_transactions int,
     value frozen <value>,
@@ -145,8 +145,8 @@ CREATE TABLE cluster_incoming_relations (
 );
 
 CREATE TABLE cluster_outgoing_relations (
-    src_cluster text,
-    dst_cluster text,
+    src_cluster int,
+    dst_cluster int,
     dst_properties FROZEN <cluster_summary>,
     no_transactions int,
     value frozen <value>,
