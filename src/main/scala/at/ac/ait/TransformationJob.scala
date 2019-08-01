@@ -208,7 +208,7 @@ object TransformationJob {
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_outgoing_relations",
-      clusterRelations.sort(F.dstCluster, F.dstCluster)
+      clusterRelations.sort(F.srcCluster, F.dstCluster)
     )
 
     println("Computing cluster")
