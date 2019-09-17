@@ -13,7 +13,6 @@ import at.ac.ait.Util._
 
 class CassandraStorage(spark: SparkSession) {
 
-   import com.datastax.spark.connector._
    import spark.implicits._
    import com.datastax.spark.connector._
 
