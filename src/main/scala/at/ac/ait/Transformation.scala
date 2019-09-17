@@ -1,6 +1,7 @@
 package at.ac.ait
 
 import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
+import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   col,
   count,
@@ -8,6 +9,7 @@ import org.apache.spark.sql.functions.{
   max,
   min,
   posexplode,
+  row_number,
   size,
   struct,
   sum,
@@ -71,6 +73,25 @@ class Transformation(spark: SparkSession) {
       )
       .withColumn(F.addressPrefix, t.addressPrefixColumn)
       .as[RegularOutput]
+  }
+
+  def computeAddressIds(
+      regularOutputs: Dataset[RegularOutput]
+  ): Dataset[NormalizedAddress] = {
+    // assign integer IDs to addresses
+    // .withColumn("id", monotonically_increasing_id) could be used instead of zipWithIndex,
+    // (assigns Long values instead of Int)
+    val orderWindow = Window.partitionBy(F.address).orderBy(F.txIndex, F.n)
+    regularOutputs
+      .withColumn("rowNumber", row_number().over(orderWindow))
+      .filter(col("rowNumber") === 1)
+      .sort(F.txIndex, F.n)
+      .select(F.address)
+      .map(_ getString 0)
+      .rdd
+      .zipWithIndex()
+      .map { case ((a, id)) => NormalizedAddress(id.toInt + 1, a) }
+      .toDS()
   }
 
   def splitTransactions[A](txTable: Dataset[A])(implicit evidence: Encoder[A]) =
