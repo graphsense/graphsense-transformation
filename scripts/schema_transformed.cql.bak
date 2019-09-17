@@ -62,8 +62,8 @@ CREATE TABLE address_incoming_relations (
     src_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (dst_address_prefix, dst_address, src_address)
-);
+    PRIMARY KEY (dst_address_prefix, dst_address, estimated_value, src_address)
+) WITH CLUSTERING ORDER BY (dst_address ASC, estimated_value DESC);
 
 CREATE TABLE address_outgoing_relations (
     src_address_prefix text,
@@ -72,8 +72,8 @@ CREATE TABLE address_outgoing_relations (
     dst_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (src_address_prefix, src_address, dst_address)
-);
+    PRIMARY KEY (src_address_prefix, src_address, estimated_value, dst_address)
+) WITH CLUSTERING ORDER BY (src_address ASC, estimated_value DESC);
 
 CREATE TABLE address_cluster (
     address_prefix text,
@@ -141,7 +141,7 @@ CREATE TABLE cluster_incoming_relations (
     src_properties FROZEN <cluster_summary>,
     no_transactions int,
     value frozen <value>,
-    PRIMARY KEY (dst_cluster, src_cluster)
+    PRIMARY KEY (dst_cluster, value, src_cluster)
 );
 
 CREATE TABLE cluster_outgoing_relations (
@@ -150,7 +150,7 @@ CREATE TABLE cluster_outgoing_relations (
     dst_properties FROZEN <cluster_summary>,
     no_transactions int,
     value frozen <value>,
-    PRIMARY KEY (src_cluster, dst_cluster)
+    PRIMARY KEY (src_cluster, value, dst_cluster)
 );
 
 CREATE TABLE summary_statistics (
