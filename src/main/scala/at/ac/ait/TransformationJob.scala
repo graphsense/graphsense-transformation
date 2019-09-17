@@ -1,7 +1,7 @@
 package at.ac.ait
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, lower}
 import org.rogach.scallop._
 
 import at.ac.ait.{Fields => F}
@@ -131,7 +131,11 @@ object TransformationJob {
       transformation
         .computeAddressTags(basicAddresses, tags, conf.currency())
         .persist()
-    val noAddressTags = addressTags.count()
+    val noAddressTags = addressTags
+      .select($"label")
+      .withColumn("label", lower($"label"))
+      .distinct()
+      .count()
     cassandra.store(conf.targetKeyspace(), "address_tags", addressTags)
 
     spark.sparkContext.setJobDescription("Perform clustering")
