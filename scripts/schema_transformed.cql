@@ -120,15 +120,6 @@ CREATE TABLE cluster_tags (
     PRIMARY KEY (cluster, address, label, source, tagpack_uri)
 );
 
-CREATE TABLE plain_cluster_relations (
-    tx_hash blob,
-    src_cluster int,
-    dst_cluster int,
-    value bigint,
-    height int,
-    PRIMARY KEY (height, src_cluster, value)
-);
-
 CREATE TYPE cluster_summary (
     no_addresses int,
     total_received bigint,

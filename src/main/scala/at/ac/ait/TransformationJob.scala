@@ -188,11 +188,6 @@ object TransformationJob {
           clusterOutputs
         )
         .persist()
-    cassandra.store(
-      conf.targetKeyspace(),
-      "plain_cluster_relations",
-      plainClusterRelations.sort(F.srcCluster)
-    )
 
     println("Computing cluster relations")
     val clusterRelations =
