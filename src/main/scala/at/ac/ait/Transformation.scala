@@ -370,7 +370,7 @@ class Transformation(spark: SparkSession) {
 
   def summaryStatistics(
       lastBlockTimestamp: Int,
-      noBlocks: Long,
+      noBlocks: Int,
       noTransactions: Long,
       noAddresses: Long,
       noAddressRelations: Long,

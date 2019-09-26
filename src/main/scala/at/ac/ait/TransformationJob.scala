@@ -44,20 +44,17 @@ object TransformationJob {
 
     val cassandra = new CassandraStorage(spark)
 
-    val blocks = cassandra.load[Block](conf.rawKeyspace(), "block")
+    val summaryStatisticsRaw = cassandra
+      .load[SummaryStatisticsRaw](conf.rawKeyspace(), "summary_statistics")
     val transactions =
       cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
     val exchangeRates =
       cassandra.load[ExchangeRates](conf.rawKeyspace(), "exchange_rates")
     val tags = cassandra.load[Tag](conf.tagKeyspace(), "tag_by_address")
 
-    val noBlocks = blocks.count()
-    val lastBlockTimestamp = blocks
-      .filter(col(F.height) === noBlocks - 1)
-      .select(col(F.timestamp))
-      .first()
-      .getInt(0)
-    val noTransactions = transactions.count()
+    val noBlocks = summaryStatisticsRaw.select(col("noBlocks")).first.getInt(0)
+    val lastBlockTimestamp = summaryStatisticsRaw.select($"timestamp").first.getInt(0)
+    val noTransactions = summaryStatisticsRaw.select(col("noTxs")).first.getLong(0)
 
     val transformation = new Transformation(spark)
 
@@ -188,6 +185,11 @@ object TransformationJob {
           clusterOutputs
         )
         .persist()
+    cassandra.store(
+      conf.targetKeyspace(),
+      "plain_cluster_relations",
+      plainClusterRelations.sort(F.srcCluster)
+    )
 
     println("Computing cluster relations")
     val clusterRelations =

@@ -90,6 +90,14 @@ case class Tag(
     category: String
 )
 
+case class SummaryStatisticsRaw(
+    id: String,
+    timestamp: Int,
+    noBlocks: Int,
+    noTxs: Long
+)
+
+
 // transformed schema tables
 
 case class BlockTransactions(height: Int, txs: Seq[TxSummary])
@@ -236,7 +244,7 @@ case class ClusterRelations(
 
 case class SummaryStatistics(
     timestamp: Int,
-    noBlocks: Long,
+    noBlocks: Int,
     noTransactions: Long,
     noAddresses: Long,
     noAddressRelations: Long,
