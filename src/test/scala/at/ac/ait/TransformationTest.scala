@@ -72,7 +72,7 @@ class TransformationTest
     readJson[ExchangeRates](inputDir + "test_exchange_rates.json")
   val attributionTags = readJson[Tag](inputDir + "test_tags.json")
 
-  val noBlocks = blocks.count()
+  val noBlocks = blocks.count.toInt
   val lastBlockTimestamp = blocks
     .filter(col(F.height) === noBlocks - 1)
     .select(col(F.timestamp))
