@@ -46,17 +46,28 @@ object TransformationJob {
 
     val summaryStatisticsRaw = cassandra
       .load[SummaryStatisticsRaw](conf.rawKeyspace(), "summary_statistics")
+    val exchangeRatesRaw =
+      cassandra.load[ExchangeRatesRaw](conf.rawKeyspace(), "exchange_rates")
+    val blocks =
+      cassandra.load[Block](conf.rawKeyspace(), "block")
     val transactions =
       cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
-    val exchangeRates =
-      cassandra.load[ExchangeRates](conf.rawKeyspace(), "exchange_rates")
     val tags = cassandra.load[Tag](conf.tagKeyspace(), "tag_by_address")
 
     val noBlocks = summaryStatisticsRaw.select(col("noBlocks")).first.getInt(0)
-    val lastBlockTimestamp = summaryStatisticsRaw.select($"timestamp").first.getInt(0)
-    val noTransactions = summaryStatisticsRaw.select(col("noTxs")).first.getLong(0)
+    val lastBlockTimestamp =
+      summaryStatisticsRaw.select($"timestamp").first.getInt(0)
+    val noTransactions =
+      summaryStatisticsRaw.select(col("noTxs")).first.getLong(0)
 
     val transformation = new Transformation(spark)
+
+    println("Computing exchange rates")
+    val exchangeRates =
+      transformation
+        .computeExchangeRates(blocks, exchangeRatesRaw)
+        .persist()
+    cassandra.store(conf.targetKeyspace(), "exchange_rates", exchangeRates)
 
     println("Extracting transaction inputs")
     val regInputs = transformation.computeRegularInputs(transactions).persist()
@@ -129,8 +140,8 @@ object TransformationJob {
         .computeAddressTags(basicAddresses, tags, conf.currency())
         .persist()
     val noAddressTags = addressTags
-      .select($"label")
-      .withColumn("label", lower($"label"))
+      .select(col("label"))
+      .withColumn("label", lower(col("label")))
       .distinct()
       .count()
     cassandra.store(conf.targetKeyspace(), "address_tags", addressTags)
@@ -184,6 +195,12 @@ object TransformationJob {
           clusterInputs,
           clusterOutputs
         )
+        .persist()
+    cassandra.store(
+      conf.targetKeyspace(),
+      "plain_cluster_relations",
+      plainClusterRelations.sort(F.srcCluster)
+    )
 
     println("Computing cluster relations")
     val clusterRelations =

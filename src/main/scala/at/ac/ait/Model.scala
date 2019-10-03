@@ -78,7 +78,7 @@ case class Transaction(
     txIndex: Long
 )
 
-case class ExchangeRates(height: Int, eur: Double, usd: Double)
+case class ExchangeRatesRaw(date: String, eur: Double, usd: Double)
 
 case class Tag(
     address: String,
@@ -97,8 +97,9 @@ case class SummaryStatisticsRaw(
     noTxs: Long
 )
 
-
 // transformed schema tables
+
+case class ExchangeRates(height: Int, eur: Double, usd: Double)
 
 case class BlockTransactions(height: Int, txs: Seq[TxSummary])
 

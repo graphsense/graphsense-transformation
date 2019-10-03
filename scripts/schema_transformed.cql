@@ -15,6 +15,12 @@ CREATE TYPE value (
     usd double
 );
 
+CREATE TABLE exchange_rates (
+    height int PRIMARY KEY,
+    usd float,
+    eur float
+);
+
 CREATE TABLE address_transactions (
     address_prefix text,
     address text,

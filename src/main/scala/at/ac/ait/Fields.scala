@@ -3,6 +3,7 @@ package at.ac.ait
 object Fields {
   val height = "height"
   val timestamp = "timestamp"
+  val date = "date"
   val txHash = "txHash"
   val txIndex = "txIndex"
   val txPrefix = "txPrefix"

@@ -5,7 +5,9 @@ import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   col,
   count,
+  date_format,
   explode,
+  from_unixtime,
   max,
   min,
   posexplode,
@@ -13,6 +15,7 @@ import org.apache.spark.sql.functions.{
   size,
   struct,
   sum,
+  to_date,
   udf
 }
 import org.apache.spark.sql.types.{IntegerType, StringType}
@@ -24,6 +27,37 @@ class Transformation(spark: SparkSession) {
   import spark.implicits._
 
   val t = new Transformator(spark)
+
+  def computeExchangeRates(
+      blocks: Dataset[Block],
+      exchangeRates: Dataset[ExchangeRatesRaw]
+  ): Dataset[ExchangeRates] = {
+    val blocksDate = blocks
+      .withColumn(
+        F.date,
+        date_format(
+          to_date(from_unixtime($"timestamp", "yyyy-MM-dd")),
+          "yyyy-MM-dd"
+        )
+      )
+      .select(F.height, F.date)
+
+    val lastDateExchangeRates =
+      exchangeRates.select(max(F.date)).first.getString(0)
+    val lastDateBlocks = blocksDate.select(max(F.date)).first.getString(0)
+    if (lastDateExchangeRates < lastDateBlocks)
+      println(
+        "WARNING: exchange rates not available for all blocks, filling missing values with 0"
+      )
+
+    blocksDate
+      .join(exchangeRates, Seq(F.date), "left")
+      .na
+      .fill(0)
+      .drop(F.date)
+      .sort(F.height)
+      .as[ExchangeRates]
+  }
 
   def computeRegularInputs(tx: Dataset[Transaction]): Dataset[RegularInput] = {
     tx.withColumn("input", explode(col("inputs")))
