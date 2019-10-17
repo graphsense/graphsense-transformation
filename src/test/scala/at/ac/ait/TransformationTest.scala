@@ -86,6 +86,8 @@ class TransformationTest
   val regInputs = t.computeRegularInputs(transactions).persist()
   val regOutputs = t.computeRegularOutputs(transactions).persist()
 
+  val addressIds = t.computeAddressIds(regOutputs)
+
   val addressTransactions =
     t.computeAddressTransactions(transactions, regInputs, regOutputs).persist()
 
@@ -123,10 +125,10 @@ class TransformationTest
   val noAddressTags = addressTags.count()
 
   val addressCluster =
-    t.computeAddressCluster(regInputs, regOutputs, true).persist()
+    t.computeAddressCluster(regInputs, addressIds, true).persist()
 
   val addressClusterCoinjoin =
-    t.computeAddressCluster(regInputs, regOutputs, false).persist()
+    t.computeAddressCluster(regInputs, addressIds, false).persist()
 
   val basicClusterAddresses =
     t.computeBasicClusterAddresses(basicAddresses, addressClusterCoinjoin)

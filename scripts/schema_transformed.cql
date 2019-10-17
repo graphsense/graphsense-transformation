@@ -21,6 +21,13 @@ CREATE TABLE exchange_rates (
     eur float
 );
 
+CREATE TABLE address_ids (
+    address_prefix text,
+    address text,
+    id int,
+    PRIMARY KEY (address_prefix, address)
+)
+
 CREATE TABLE address_transactions (
     address_prefix text,
     address text,

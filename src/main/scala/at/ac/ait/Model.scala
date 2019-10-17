@@ -23,7 +23,7 @@ case class RegularOutput(
     n: Int
 )
 
-case class NormalizedAddress(id: Int, address: String)
+case class AddressId(addressPrefix: String, address: String, id: Int)
 
 case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
   override def iterator = inputs.iterator

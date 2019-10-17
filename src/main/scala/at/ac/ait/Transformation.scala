@@ -112,7 +112,7 @@ class Transformation(spark: SparkSession) {
 
   def computeAddressIds(
       regularOutputs: Dataset[RegularOutput]
-  ): Dataset[NormalizedAddress] = {
+  ): Dataset[AddressId] = {
     // assign integer IDs to addresses
     // .withColumn("id", monotonically_increasing_id) could be used instead of zipWithIndex,
     // (assigns Long values instead of Int)
@@ -125,7 +125,7 @@ class Transformation(spark: SparkSession) {
       .map(_ getString 0)
       .rdd
       .zipWithIndex()
-      .map { case ((a, id)) => NormalizedAddress(id.toInt + 1, a) }
+      .map { case ((a, id)) => AddressId(a.slice(0,5), a, id.toInt +1)}
       .toDS()
   }
 
@@ -282,10 +282,10 @@ class Transformation(spark: SparkSession) {
 
   def computeAddressCluster(
       regularInputs: Dataset[RegularInput],
-      regularOutputs: Dataset[RegularOutput],
+      addressIds: Dataset[AddressId],
       removeCoinJoin: Boolean
   ): Dataset[AddressCluster] = {
-    t.addressCluster(regularInputs, regularOutputs, removeCoinJoin)
+    t.addressCluster(regularInputs, addressIds, removeCoinJoin)
   }
 
   def computeBasicClusterAddresses(

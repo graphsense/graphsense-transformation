@@ -56,7 +56,7 @@ class Transformator(spark: SparkSession) {
 
   def addressCluster(
       regularInputs: Dataset[RegularInput],
-      regularOutputs: Dataset[RegularOutput],
+      addressIds: Dataset[AddressId],
       removeCoinJoin: Boolean
   ) = {
 
@@ -141,29 +141,13 @@ class Transformator(spark: SparkSession) {
       basicAddressCluster.union(addressClusterRemainder).toDF()
     }
 
-    // assign integer IDs to addresses
-    // .withColumn("id", monotonically_increasing_id) could be used instead of zipWithIndex,
-    // (assigns Long values instead of Int)
-    val orderWindow = Window.partitionBy(F.address).orderBy(F.txIndex, F.n)
-    val normalizedAddresses =
-      regularOutputs
-        .withColumn("rowNumber", row_number().over(orderWindow))
-        .filter(col("rowNumber") === 1)
-        .sort(F.txIndex, F.n)
-        .select(F.address)
-        .map(_ getString 0)
-        .rdd
-        .zipWithIndex()
-        .map { case ((a, id)) => NormalizedAddress(id.toInt + 1, a) }
-        .toDS()
-
     val inputIds = regularInputs
-      .join(normalizedAddresses, F.address)
+      .join(addressIds, Seq(F.addressPrefix, F.address))
       .select(F.txIndex, F.addrId, F.coinjoin)
 
     // perform multiple-input clustering
     val addressCluster = plainAddressCluster(inputIds, removeCoinJoin)
-    val singleAddressCluster = normalizedAddresses
+    val singleAddressCluster = addressIds
       .select(F.addrId)
       .distinct
       .join(addressCluster, Seq(F.addrId), "left_anti")
@@ -171,7 +155,7 @@ class Transformator(spark: SparkSession) {
 
     singleAddressCluster
       .union(addressCluster)
-      .join(normalizedAddresses, F.addrId)
+      .join(addressIds, F.addrId)
       .select(addressPrefixColumn, col(F.address), col(F.cluster))
       .as[AddressCluster]
   }

@@ -77,6 +77,9 @@ object TransformationJob {
     val regOutputs =
       transformation.computeRegularOutputs(transactions).persist()
 
+    println("Compute address IDs")
+    val addressIds = transformation.computeAddressIds(regOutputs)
+
     println("Computing address transactions")
     val addressTransactions =
       transformation
@@ -150,7 +153,7 @@ object TransformationJob {
     spark.sparkContext.setJobDescription("Perform clustering")
     println("Computing address clusters")
     val addressCluster = transformation
-      .computeAddressCluster(regInputs, regOutputs, true)
+      .computeAddressCluster(regInputs, addressIds, true)
       .persist()
     cassandra.store(conf.targetKeyspace(), "address_cluster", addressCluster)
 
