@@ -168,11 +168,11 @@ class TransformationTest
       )
       .persist()
 
-  val cluster = t.computeCluster(basicCluster, clusterRelations).persist()
-  val noCluster = cluster.count()
-
   val clusterTags =
     t.computeClusterTags(addressClusterCoinjoin, addressTags).persist()
+
+  val cluster = t.computeCluster(basicCluster, clusterRelations, clusterTags).persist()
+  val noCluster = cluster.count()
 
   val clusterAddresses =
     t.computeClusterAddresses(addresses, basicClusterAddresses).persist()

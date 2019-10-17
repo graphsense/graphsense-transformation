@@ -53,6 +53,7 @@ CREATE TABLE address_tags (
     tagpack_uri text,
     lastmod int,
     category text,
+    abuse text,
     PRIMARY KEY (address, label, source, tagpack_uri)
 );
 
@@ -98,7 +99,9 @@ CREATE TABLE cluster (
     total_received frozen <value>,
     total_spent frozen <value>,
     in_degree int,
-    out_degree int
+    out_degree int,
+    categories list<text>,
+    abuses list<text>
 );
 
 CREATE TABLE cluster_addresses (
@@ -123,6 +126,7 @@ CREATE TABLE cluster_tags (
     tagpack_uri text,
     lastmod int,
     category text,
+    abuse text,
     PRIMARY KEY (cluster, address, label, source, tagpack_uri)
 );
 

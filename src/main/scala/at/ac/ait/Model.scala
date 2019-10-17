@@ -87,7 +87,8 @@ case class Tag(
     tagpackUri: String,
     currency: String,
     lastmod: Int,
-    category: String
+    category: String,
+    abuse: Option[String]
 )
 
 case class SummaryStatisticsRaw(
@@ -143,7 +144,8 @@ case class AddressTags(
     source: String,
     tagpackUri: String,
     lastmod: Int,
-    category: String
+    category: String,
+    abuse: String
 )
 
 case class AddressCluster(addressPrefix: String, address: String, cluster: Int)
@@ -202,7 +204,9 @@ case class Cluster(
     totalReceived: Currency,
     totalSpent: Currency,
     inDegree: Int,
-    outDegree: Int
+    outDegree: Int,
+    categories: Seq[String],
+    abuses: Seq[String]
 )
 
 case class ClusterTags(
@@ -212,7 +216,8 @@ case class ClusterTags(
     source: String,
     tagpackUri: String,
     lastmod: Int,
-    category: String
+    category: String,
+    abuse: String
 )
 
 case class AddressRelations(

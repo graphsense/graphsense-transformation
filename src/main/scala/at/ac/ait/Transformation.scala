@@ -4,6 +4,7 @@ import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   col,
+  collect_set,
   count,
   date_format,
   explode,
@@ -375,13 +376,20 @@ class Transformation(spark: SparkSession) {
 
   def computeCluster(
       basicCluster: Dataset[BasicCluster],
-      clusterRelations: Dataset[ClusterRelations]
+      clusterRelations: Dataset[ClusterRelations],
+      clusterTags: Dataset[ClusterTags]
   ): Dataset[Cluster] = {
+    val clusterTagsWide = clusterTags
+      .groupBy(col(F.cluster))
+      .agg(
+        collect_set(col(F.category)).as("categories"),
+        collect_set(col(F.abuse)).as("abuses")
+      )
     // compute in/out degrees for cluster graph
     // basicCluster contains only clusters of size > 1 with an integer ID
     // clusterRelations includes also cluster of size 1 (using the address string as ID)
     computeNodeDegrees(
-      basicCluster.withColumn("cluster", $"cluster" cast StringType),
+      basicCluster.withColumn(F.cluster, col(F.cluster) cast StringType),
       clusterRelations.select(col(F.srcCluster), col(F.dstCluster)),
       F.srcCluster,
       F.dstCluster,
@@ -391,7 +399,8 @@ class Transformation(spark: SparkSession) {
         Seq(F.cluster),
         "right"
       )
-      .withColumn(F.cluster, $"cluster" cast IntegerType)
+      .withColumn(F.cluster, col(F.cluster) cast IntegerType)
+      .join(clusterTagsWide, Seq(F.cluster), "left")
       .as[Cluster]
   }
 

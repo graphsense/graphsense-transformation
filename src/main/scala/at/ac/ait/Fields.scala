@@ -36,6 +36,7 @@ object Fields {
   val noTransactions = "noTransactions"
   val estimatedValue = "estimatedValue"
   val category = "category"
+  val abuse = "abuse"
   val srcProperties = "srcProperties"
   val dstProperties = "dstProperties"
 }
