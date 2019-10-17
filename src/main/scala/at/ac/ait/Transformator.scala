@@ -65,7 +65,7 @@ class Transformator(spark: SparkSession) {
         removeCoinJoin: Boolean
     ) = {
 
-      val addrCount = count(F.addrId).over(Window.partitionBy(F.txIndex))
+      val addrCount = count(F.addressId).over(Window.partitionBy(F.txIndex))
 
       // filter transactions with multiple input addresses
       val collectiveInputAddresses = if (removeCoinJoin) {
@@ -74,13 +74,13 @@ class Transformator(spark: SparkSession) {
       } else {
         println("Clustering with coinjoin inputs")
         basicTxInputAddresses
-      }.select(col(F.txIndex), col(F.addrId), addrCount as "count")
+      }.select(col(F.txIndex), col(F.addressId), addrCount as "count")
         .filter(col("count") > 1)
-        .select(col(F.txIndex), col(F.addrId))
+        .select(col(F.txIndex), col(F.addressId))
 
       // compute number of transaction per address
       val transactionCount =
-        collectiveInputAddresses.groupBy(F.addrId).count()
+        collectiveInputAddresses.groupBy(F.addressId).count()
 
       val basicAddressCluster = {
         // input for clustering algorithm
@@ -89,10 +89,10 @@ class Transformator(spark: SparkSession) {
         // (Spark errors were observed for BTC >= 480000 blocks)
         val inputGroups = transactionCount
           .filter(col("count") > 1)
-          .select(F.addrId)
-          .join(collectiveInputAddresses, F.addrId)
+          .select(F.addressId)
+          .join(collectiveInputAddresses, F.addressId)
           .groupBy(col(F.txIndex))
-          .agg(collect_set(F.addrId) as "inputs")
+          .agg(collect_set(F.addressId) as "inputs")
           .select(col("inputs"))
           .as[InputIdSet]
           .rdd
@@ -112,17 +112,17 @@ class Transformator(spark: SparkSession) {
         val rowNumber = row_number().over(transactionWindow)
 
         val addressMax = collectiveInputAddresses
-          .join(transactionCount, F.addrId)
-          .select(col(F.txIndex), col(F.addrId), rowNumber as "rank")
+          .join(transactionCount, F.addressId)
+          .select(col(F.txIndex), col(F.addressId), rowNumber as "rank")
           .filter(col("rank") === 1)
-          .select(col(F.txIndex), col(F.addrId) as reprAddrId)
+          .select(col(F.txIndex), col(F.addressId) as reprAddrId)
 
         transactionCount
           .filter(col("count") === 1)
-          .select(F.addrId)
-          .join(collectiveInputAddresses, F.addrId)
+          .select(F.addressId)
+          .join(collectiveInputAddresses, F.addressId)
           .join(addressMax, F.txIndex)
-          .select(F.addrId, reprAddrId)
+          .select(F.addressId, reprAddrId)
       }
 
       val addressClusterRemainder =
@@ -133,7 +133,7 @@ class Transformator(spark: SparkSession) {
             "left_outer"
           )
           .select(
-            col(F.addrId),
+            col(F.addressId),
             coalesce(col(F.cluster), col(reprAddrId)) as F.cluster
           )
           .as[Result[Int]]
@@ -143,19 +143,19 @@ class Transformator(spark: SparkSession) {
 
     val inputIds = regularInputs
       .join(addressIds, Seq(F.addressPrefix, F.address))
-      .select(F.txIndex, F.addrId, F.coinjoin)
+      .select(F.txIndex, F.addressId, F.coinjoin)
 
     // perform multiple-input clustering
     val addressCluster = plainAddressCluster(inputIds, removeCoinJoin)
     val singleAddressCluster = addressIds
-      .select(F.addrId)
+      .select(F.addressId)
       .distinct
-      .join(addressCluster, Seq(F.addrId), "left_anti")
-      .withColumn(F.cluster, col(F.addrId))
+      .join(addressCluster, Seq(F.addressId), "left_anti")
+      .withColumn(F.cluster, col(F.addressId))
 
     singleAddressCluster
       .union(addressCluster)
-      .join(addressIds, F.addrId)
+      .join(addressIds, F.addressId)
       .select(addressPrefixColumn, col(F.address), col(F.cluster))
       .as[AddressCluster]
   }

@@ -125,7 +125,7 @@ class Transformation(spark: SparkSession) {
       .map(_ getString 0)
       .rdd
       .zipWithIndex()
-      .map { case ((a, id)) => AddressId(a.slice(0,5), a, id.toInt +1)}
+      .map { case ((a, id)) => AddressId(a.slice(0, 5), a, id.toInt + 1) }
       .toDS()
   }
 
