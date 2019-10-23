@@ -201,7 +201,8 @@ class Transformation(spark: SparkSession) {
   def computeAddressTransactions(
       tx: Dataset[Transaction],
       regInputs: Dataset[RegularInput],
-      regOutputs: Dataset[RegularOutput]
+      regOutputs: Dataset[RegularOutput],
+      addressIds: Dataset[AddressId]
   ): Dataset[AddressTransactions] = {
     regInputs
       .withColumn(F.value, -col(F.value))
@@ -212,8 +213,9 @@ class Transformation(spark: SparkSession) {
         tx.select(F.txHash, F.height, F.txIndex, F.timestamp).distinct(),
         F.txHash
       )
-      .withColumn(F.addressPrefix, t.addressPrefixColumn)
-      .sort(F.addressPrefix)
+      .join(addressIds, Seq(F.address))
+      .drop(F.addressPrefix, F.address)
+      .sort(F.addressId)
       .as[AddressTransactions]
   }
 
@@ -229,10 +231,9 @@ class Transformation(spark: SparkSession) {
       addressTransactions,
       inputs,
       outputs,
-      F.address,
+      F.addressId,
       exchangeRates
-    ).withColumn(F.addressPrefix, t.addressPrefixColumn)
-      .as[BasicAddress]
+    ).as[BasicAddress]
   }
 
   def computeAddressRelations(
@@ -255,28 +256,32 @@ class Transformation(spark: SparkSession) {
 
   def computeAddresses(
       basicAddresses: Dataset[BasicAddress],
-      addressRelations: Dataset[AddressRelations]
-  ): Dataset[Address] = {
+      addressRelations: Dataset[AddressRelations],
+      addressIds: Dataset[AddressId]
+  ) = { //: Dataset[Address] = {
     // compute in/out degrees for address graph
     computeNodeDegrees(
       basicAddresses,
-      addressRelations.select(col(F.srcAddress), col(F.dstAddress)),
-      F.srcAddress,
-      F.dstAddress,
-      F.address
-    ).sort(F.addressPrefix)
+      addressRelations.select(col(F.srcAddressId), col(F.dstAddressId)),
+      F.srcAddressId,
+      F.dstAddressId,
+      F.addressId
+    ).join(addressIds, Seq(F.addressId))
+      .sort(F.addressPrefix)
       .as[Address]
   }
 
   def computeAddressTags(
-      addresses: Dataset[BasicAddress],
       tags: Dataset[Tag],
+      addresses: Dataset[BasicAddress],
+      addressIds: Dataset[AddressId],
       currency: String
   ): Dataset[AddressTags] = {
     tags
       .filter(col(F.currency) === currency)
       .drop(col(F.currency))
-      .join(addresses, Seq(F.address), joinType = "left_semi")
+      .join(addressIds.drop(F.addressPrefix), Seq(F.address))
+      .join(addresses, Seq(F.addressId), joinType = "left_semi")
       .as[AddressTags]
   }
 
@@ -293,10 +298,9 @@ class Transformation(spark: SparkSession) {
       addressCluster: Dataset[AddressCluster]
   ): Dataset[BasicClusterAddresses] = {
     addressCluster
-      .join(basicAddresses, List(F.address, F.addressPrefix))
-      .drop("addressPrefix")
+      .join(basicAddresses, Seq(F.addressId))
       .as[BasicClusterAddresses]
-      .sort(F.cluster, F.address)
+      .sort(F.cluster, F.addressId)
   }
 
   def computeClusterTransactions(
@@ -305,8 +309,8 @@ class Transformation(spark: SparkSession) {
       transactions: Dataset[Transaction],
       addressCluster: Dataset[AddressCluster]
   ): Dataset[ClusterTransactions] = {
-    val clusteredInputs = inputs.join(addressCluster, F.address)
-    val clusteredOutputs = outputs.join(addressCluster, F.address)
+    val clusteredInputs = inputs.join(addressCluster, F.addressId)
+    val clusteredOutputs = outputs.join(addressCluster, F.addressId)
     clusteredInputs
       .withColumn(F.value, -col(F.value))
       .union(clusteredOutputs)
@@ -367,8 +371,8 @@ class Transformation(spark: SparkSession) {
   ): Dataset[ClusterAddresses] = {
     basicClusterAddresses
       .join(
-        addresses.select(col(F.address), col("inDegree"), col("outDegree")),
-        Seq(F.address),
+        addresses.select(col(F.addressId), col("inDegree"), col("outDegree")),
+        Seq(F.addressId),
         "left"
       )
       .as[ClusterAddresses]
@@ -408,7 +412,7 @@ class Transformation(spark: SparkSession) {
       addressCluster: Dataset[AddressCluster],
       tags: Dataset[AddressTags]
   ): Dataset[ClusterTags] = {
-    addressCluster.join(tags, F.address).as[ClusterTags]
+    addressCluster.join(tags, F.addressId).as[ClusterTags]
   }
 
   def summaryStatistics(

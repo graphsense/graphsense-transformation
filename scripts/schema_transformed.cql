@@ -21,27 +21,20 @@ CREATE TABLE exchange_rates (
     eur float
 );
 
-CREATE TABLE address_ids (
-    address_prefix text,
-    address text,
-    id int,
-    PRIMARY KEY (address_prefix, address)
-)
-
 CREATE TABLE address_transactions (
-    address_prefix text,
-    address text,
+    address_id int,
     tx_hash blob,
     value bigint,
     height int,
     tx_index int,
     timestamp int,
-    PRIMARY KEY (address_prefix, address, height, tx_hash)
-) WITH CLUSTERING ORDER BY (address ASC, height DESC);
+    PRIMARY KEY (address_id, height, tx_hash)
+);
 
 CREATE TABLE address (
     address_prefix text,
     address text,
+    address_id int,
     no_incoming_txs int,
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
@@ -55,6 +48,7 @@ CREATE TABLE address (
 
 CREATE TABLE address_tags (
     address text,
+    address_id int,
     label text,
     source text,
     tagpack_uri text,
@@ -70,30 +64,27 @@ CREATE TYPE address_summary (
 );
 
 CREATE TABLE address_incoming_relations (
-    dst_address_prefix text,
-    dst_address text,
-    src_address text,
+    dst_address_id int,
+    src_address_id int,
     src_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (dst_address_prefix, dst_address, src_address)
+    PRIMARY KEY (dst_address_id, src_address_id)
 );
 
 CREATE TABLE address_outgoing_relations (
-    src_address_prefix text,
-    src_address text,
-    dst_address text,
+    src_address_id int,
+    dst_address_id int,
     dst_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (src_address_prefix, src_address, dst_address)
+    PRIMARY KEY (src_address_id, dst_address_id)
 );
 
 CREATE TABLE address_cluster (
-    address_prefix text,
-    address text,
+    address_id int,
     cluster int,
-    PRIMARY KEY (address_prefix, address)
+    PRIMARY KEY (address_id)
 );
 
 CREATE TABLE cluster (
@@ -113,7 +104,7 @@ CREATE TABLE cluster (
 
 CREATE TABLE cluster_addresses (
     cluster int,
-    address text,
+    address_id int,
     no_incoming_txs int,
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
@@ -122,12 +113,13 @@ CREATE TABLE cluster_addresses (
     total_spent frozen <value>,
     in_degree int,
     out_degree int,
-    PRIMARY KEY (cluster, address)
+    PRIMARY KEY (cluster, address_id)
 );
 
 CREATE TABLE cluster_tags (
     cluster int,
     address text,
+    address_id int,
     label text,
     source text,
     tagpack_uri text,

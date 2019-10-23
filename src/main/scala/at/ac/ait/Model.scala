@@ -23,7 +23,7 @@ case class RegularOutput(
     n: Int
 )
 
-case class AddressId(addressPrefix: String, address: String, id: Int)
+case class AddressId(addressPrefix: String, address: String, addressId: Int)
 
 case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
   override def iterator = inputs.iterator
@@ -78,7 +78,9 @@ case class Transaction(
     txIndex: Long
 )
 
-case class ExchangeRatesRaw(date: String, eur: Double, usd: Double)
+case class BlockTransactions(height: Int, txs: Seq[TxSummary])
+
+case class ExchangeRatesRaw(date: String, eur: Float, usd: Float)
 
 case class Tag(
     address: String,
@@ -100,13 +102,10 @@ case class SummaryStatisticsRaw(
 
 // transformed schema tables
 
-case class ExchangeRates(height: Int, eur: Double, usd: Double)
-
-case class BlockTransactions(height: Int, txs: Seq[TxSummary])
+case class ExchangeRates(height: Int, eur: Float, usd: Float)
 
 case class AddressTransactions(
-    addressPrefix: String,
-    address: String,
+    addressId: Int,
     txHash: Array[Byte],
     value: Long,
     height: Int,
@@ -115,8 +114,7 @@ case class AddressTransactions(
 )
 
 case class BasicAddress(
-    addressPrefix: String,
-    address: String,
+    addressId: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
@@ -128,6 +126,7 @@ case class BasicAddress(
 case class Address(
     addressPrefix: String,
     address: String,
+    addressId: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
@@ -139,6 +138,7 @@ case class Address(
 )
 
 case class AddressTags(
+    addressId: Int,
     address: String,
     label: String,
     source: String,
@@ -148,11 +148,11 @@ case class AddressTags(
     abuse: String
 )
 
-case class AddressCluster(addressPrefix: String, address: String, cluster: Int)
+case class AddressCluster(addressId: Int, cluster: Int)
 
 case class ClusterAddresses(
     cluster: Int,
-    address: String,
+    addressId: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
@@ -185,7 +185,7 @@ case class BasicCluster(
 
 case class BasicClusterAddresses(
     cluster: Int,
-    address: String,
+    addressId: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
@@ -211,6 +211,7 @@ case class Cluster(
 
 case class ClusterTags(
     cluster: Int,
+    addressId: Int,
     address: String,
     label: String,
     source: String,
@@ -221,10 +222,8 @@ case class ClusterTags(
 )
 
 case class AddressRelations(
-    srcAddressPrefix: String,
-    dstAddressPrefix: String,
-    srcAddress: String,
-    dstAddress: String,
+    srcAddressId: Int,
+    dstAddressId: Int,
     srcProperties: AddressSummary,
     dstProperties: AddressSummary,
     noTransactions: Int,
