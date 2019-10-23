@@ -12,7 +12,7 @@ object TransformationJob {
   class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     val currency = opt[String](
       required = true,
-      descr = "Cryptocurrency ticker symbol (e.g., BTC, BCH, LTC or ZEC)"
+      descr = "Cryptocurrency (e.g. BTC, BCH, LTC, ZEC)"
     )
     val rawKeyspace =
       opt[String]("raw_keyspace", required = true, descr = "Raw keyspace")
@@ -77,7 +77,7 @@ object TransformationJob {
     val regOutputs =
       transformation.computeRegularOutputs(transactions).persist()
 
-    println("Compute address IDs")
+    println("Computing address IDs")
     val addressIds = transformation.computeAddressIds(regOutputs)
 
     println("Computing address transactions")
@@ -255,7 +255,7 @@ object TransformationJob {
       clusterAddresses
     )
 
-    println("Compute summary statistics")
+    println("Computing summary statistics")
     val summaryStatistics =
       transformation.summaryStatistics(
         lastBlockTimestamp,
