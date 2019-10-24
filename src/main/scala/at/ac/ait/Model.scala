@@ -105,6 +105,7 @@ case class SummaryStatisticsRaw(
 case class ExchangeRates(height: Int, eur: Float, usd: Float)
 
 case class AddressTransactions(
+    addressIdGroup: Int,
     addressId: Int,
     txHash: Array[Byte],
     value: Long,
@@ -222,7 +223,9 @@ case class ClusterTags(
 )
 
 case class AddressRelations(
+    srcAddressIdGroup: Int,
     srcAddressId: Int,
+    dstAddressIdGroup: Int,
     dstAddressId: Int,
     srcProperties: AddressSummary,
     dstProperties: AddressSummary,

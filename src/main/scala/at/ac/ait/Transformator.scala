@@ -8,6 +8,7 @@ import org.apache.spark.sql.functions.{
   collect_set,
   count,
   explode,
+  floor,
   round,
   row_number,
   substring,
@@ -24,7 +25,21 @@ class Transformator(spark: SparkSession) {
 
   import spark.implicits._
 
-  val addressPrefixColumn = substring(col(F.address), 0, 5) as F.addressPrefix
+  def addressPrefix[T](
+      addressColumn: String,
+      prefixColumn: String,
+      length: Int = 5
+  )(ds: Dataset[T]): DataFrame = {
+    ds.withColumn(prefixColumn, substring(col(addressColumn), 0, length))
+  }
+
+  def addressIdGroup[T](
+      idColumn: String,
+      idGroupColum: String,
+      size: Int = 5000
+  )(ds: Dataset[T]): DataFrame = {
+    ds.withColumn(idGroupColum, floor(col(idColumn) / size).cast("int"))
+  }
 
   def toCurrencyDataFrame(
       exchangeRates: Dataset[ExchangeRates],
@@ -241,6 +256,8 @@ class Transformator(spark: SparkSession) {
       )
       .join(props.toDF(F.srcAddressId, F.srcProperties), F.srcAddressId)
       .join(props.toDF(F.dstAddressId, F.dstProperties), F.dstAddressId)
+      .transform(addressIdGroup(F.srcAddressId, F.srcAddressIdGroup))
+      .transform(addressIdGroup(F.dstAddressId, F.dstAddressIdGroup))
       .as[AddressRelations]
   }
 

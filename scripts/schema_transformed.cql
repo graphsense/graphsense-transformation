@@ -22,13 +22,14 @@ CREATE TABLE exchange_rates (
 );
 
 CREATE TABLE address_transactions (
+    address_id_group int,
     address_id int,
     tx_hash blob,
     value bigint,
     height int,
     tx_index int,
     timestamp int,
-    PRIMARY KEY (address_id, height, tx_hash)
+    PRIMARY KEY (address_id_group, address_id, height, tx_hash)
 );
 
 CREATE TABLE address (
@@ -64,21 +65,25 @@ CREATE TYPE address_summary (
 );
 
 CREATE TABLE address_incoming_relations (
+    dst_address_id_group int,
     dst_address_id int,
+    src_address_id_group int,
     src_address_id int,
     src_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (dst_address_id, src_address_id)
+    PRIMARY KEY (dst_address_id_group, dst_address_id, src_address_id)
 );
 
 CREATE TABLE address_outgoing_relations (
+    src_address_id_group int,
     src_address_id int,
+    dst_address_id_group int,
     dst_address_id int,
     dst_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (src_address_id, dst_address_id)
+    PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
 );
 
 CREATE TABLE address_cluster (

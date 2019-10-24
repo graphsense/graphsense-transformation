@@ -80,7 +80,7 @@ class Transformation(spark: SparkSession) {
         ),
         Seq(F.txHash)
       )
-      .withColumn(F.addressPrefix, t.addressPrefixColumn)
+      .transform(t.addressPrefix(F.address, F.addressPrefix))
       .as[RegularInput]
   }
 
@@ -106,7 +106,7 @@ class Transformation(spark: SparkSession) {
         col(F.timestamp),
         col(F.coinjoin)
       )
-      .withColumn(F.addressPrefix, t.addressPrefixColumn)
+      .transform(t.addressPrefix(F.address, F.addressPrefix))
       .as[RegularOutput]
   }
 
@@ -215,7 +215,8 @@ class Transformation(spark: SparkSession) {
       )
       .join(addressIds, Seq(F.address))
       .drop(F.addressPrefix, F.address)
-      .sort(F.addressId)
+      .transform(t.addressIdGroup(F.addressId, F.addressIdGroup))
+      .sort(F.addressIdGroup, F.addressId)
       .as[AddressTransactions]
   }
 
