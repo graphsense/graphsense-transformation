@@ -223,12 +223,12 @@ object TransformationJob {
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_incoming_relations",
-      clusterRelations.sort(F.dstCluster, F.srcCluster)
+      clusterRelations.sort(F.dstClusterGroup, F.dstCluster, F.srcCluster)
     )
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_outgoing_relations",
-      clusterRelations.sort(F.srcCluster, F.dstCluster)
+      clusterRelations.sort(F.srcClusterGroup, F.srcCluster, F.dstCluster)
     )
 
     println("Computing cluster tags")

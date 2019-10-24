@@ -215,7 +215,7 @@ class Transformation(spark: SparkSession) {
       )
       .join(addressIds, Seq(F.address))
       .drop(F.addressPrefix, F.address)
-      .transform(t.addressIdGroup(F.addressId, F.addressIdGroup))
+      .transform(t.idGroup(F.addressId, F.addressIdGroup))
       .sort(F.addressIdGroup, F.addressId)
       .as[AddressTransactions]
   }
@@ -376,6 +376,7 @@ class Transformation(spark: SparkSession) {
         Seq(F.addressId),
         "left"
       )
+      .transform(t.idGroup(F.cluster, F.clusterGroup))
       .as[ClusterAddresses]
   }
 
@@ -406,6 +407,8 @@ class Transformation(spark: SparkSession) {
       )
       .withColumn(F.cluster, col(F.cluster) cast IntegerType)
       .join(clusterTagsWide, Seq(F.cluster), "left")
+      .transform(t.idGroup(F.cluster, F.clusterGroup))
+      .sort(F.clusterGroup, F.cluster)
       .as[Cluster]
   }
 
@@ -413,7 +416,11 @@ class Transformation(spark: SparkSession) {
       addressCluster: Dataset[AddressCluster],
       tags: Dataset[AddressTags]
   ): Dataset[ClusterTags] = {
-    addressCluster.join(tags, F.addressId).as[ClusterTags]
+    addressCluster
+      .join(tags, F.addressId)
+      .transform(t.idGroup(F.cluster, F.clusterGroup))
+      .sort(F.clusterGroup, F.cluster)
+      .as[ClusterTags]
   }
 
   def summaryStatistics(

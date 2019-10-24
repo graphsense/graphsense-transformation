@@ -149,9 +149,10 @@ case class AddressTags(
     abuse: String
 )
 
-case class AddressCluster(addressId: Int, cluster: Int)
+case class AddressCluster(addressIdGroup: Int, addressId: Int, cluster: Int)
 
 case class ClusterAddresses(
+    clusterGroup: Int,
     cluster: Int,
     addressId: Int,
     noIncomingTxs: Int,
@@ -196,6 +197,7 @@ case class BasicClusterAddresses(
 )
 
 case class Cluster(
+    clusterGroup: Int,
     cluster: Int,
     noAddresses: Int,
     noIncomingTxs: Int,
@@ -211,6 +213,7 @@ case class Cluster(
 )
 
 case class ClusterTags(
+    clusterGroup: Int,
     cluster: Int,
     addressId: Int,
     address: String,
@@ -242,7 +245,9 @@ case class PlainClusterRelations(
 )
 
 case class ClusterRelations(
+    srcClusterGroup: Int,
     srcCluster: Int,
+    dstClusterGroup: Int,
     dstCluster: Int,
     srcProperties: ClusterSummary,
     dstProperties: ClusterSummary,

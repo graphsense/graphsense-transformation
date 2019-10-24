@@ -33,7 +33,7 @@ class Transformator(spark: SparkSession) {
     ds.withColumn(prefixColumn, substring(col(addressColumn), 0, length))
   }
 
-  def addressIdGroup[T](
+  def idGroup[T](
       idColumn: String,
       idGroupColum: String,
       size: Int = 5000
@@ -176,6 +176,7 @@ class Transformator(spark: SparkSession) {
       .union(addressCluster)
       .join(addressIds, F.addressId)
       .select(F.addressId, F.cluster)
+      .transform(idGroup(F.addressId, F.addressIdGroup))
       .as[AddressCluster]
   }
 
@@ -256,8 +257,8 @@ class Transformator(spark: SparkSession) {
       )
       .join(props.toDF(F.srcAddressId, F.srcProperties), F.srcAddressId)
       .join(props.toDF(F.dstAddressId, F.dstProperties), F.dstAddressId)
-      .transform(addressIdGroup(F.srcAddressId, F.srcAddressIdGroup))
-      .transform(addressIdGroup(F.dstAddressId, F.dstAddressIdGroup))
+      .transform(idGroup(F.srcAddressId, F.srcAddressIdGroup))
+      .transform(idGroup(F.dstAddressId, F.dstAddressIdGroup))
       .as[AddressRelations]
   }
 
@@ -312,6 +313,8 @@ class Transformator(spark: SparkSession) {
       )
       .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
       .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
+      .transform(idGroup(F.srcCluster, F.srcClusterGroup))
+      .transform(idGroup(F.dstCluster, F.dstClusterGroup))
       .as[ClusterRelations]
   }
 }

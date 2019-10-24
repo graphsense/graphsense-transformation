@@ -101,7 +101,7 @@ class TransformationTest
       )
       .sort(F.addressId, F.height)
       .persist()
-
+addressTransactions.show
   val (inputs, outputs) = t.splitTransactions(addressTransactions)
   inputs.persist()
   outputs.persist()
@@ -146,12 +146,12 @@ class TransformationTest
 
   val addressCluster =
     t.computeAddressCluster(regInputs, addressIds, true)
-      .sort(F.addressId)
+      .sort(F.addressIdGroup, F.addressId)
       .persist()
 
   val addressClusterCoinjoin =
     t.computeAddressCluster(regInputs, addressIds, false)
-      .sort(F.addressId)
+      .sort(F.addressIdGroup, F.addressId)
       .persist()
 
   val basicClusterAddresses =
