@@ -101,7 +101,7 @@ class TransformationTest
       )
       .sort(F.addressId, F.height)
       .persist()
-addressTransactions.show
+
   val (inputs, outputs) = t.splitTransactions(addressTransactions)
   inputs.persist()
   outputs.persist()
@@ -235,7 +235,6 @@ addressTransactions.show
   test("addressTransactions") {
     val addressTransactionsRef =
       readJson[AddressTransactions](refDir + "address_txs.json")
-    //addressTransactions.coalesce(1).write.mode("overwrite").json("file:///tmp/at.json") // TODO
     assertDataFrameEquality(addressTransactions, addressTransactionsRef)
   }
   test("inputs") {
@@ -258,7 +257,6 @@ addressTransactions.show
       .coalesce(1)
       .write
       .mode("overwrite")
-      .json("file:///tmp/ar.json") // TODO
     assertDataFrameEquality(addressRelations, addressRelationsRef)
   }
   test("addresses") {
@@ -318,7 +316,6 @@ addressTransactions.show
       .coalesce(1)
       .write
       .mode("overwrite")
-      .json("file:///tmp/cr.json") // TODO
     assertDataFrameEquality(clusterRelations, clusterRelationsRef)
   }
   test("clusters") {
@@ -327,7 +324,6 @@ addressTransactions.show
       .coalesce(1)
       .write
       .mode("overwrite")
-      .json("file:///tmp/c.json") // TODO
     assertDataFrameEquality(cluster, clusterRef)
   }
   test("clusterAdresses") {
