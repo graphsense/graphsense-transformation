@@ -91,6 +91,7 @@ class TransformationTest
   val regOutputs = t.computeRegularOutputs(transactions).persist()
 
   val addressIds = t.computeAddressIds(regOutputs)
+  val addressByIdGroup = t.computeAddressByIdGroups(addressIds)
 
   val addressTransactions =
     t.computeAddressTransactions(
@@ -223,6 +224,16 @@ class TransformationTest
     )
 
   note("test address graph")
+
+  test("addressIds") {
+    val addressIdsRef = readJson[AddressId](refDir + "address_ids.json")
+    assertDataFrameEquality(addressIds, addressIdsRef)
+  }
+  test("addressByIdGroup") {
+    val addressByIdGroupRef =
+      readJson[AddressByIdGroup](refDir + "address_by_id_group.json")
+    assertDataFrameEquality(addressByIdGroup, addressByIdGroupRef)
+  }
 
   test("regularInputs") {
     val regInputsRef = readJson[RegularInput](refDir + "regular_inputs.json")

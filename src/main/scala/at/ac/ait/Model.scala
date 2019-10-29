@@ -1,7 +1,6 @@
 package at.ac.ait
 
 case class RegularInput(
-    addressPrefix: String,
     address: String,
     txHash: Array[Byte],
     value: Long,
@@ -12,7 +11,6 @@ case class RegularInput(
 )
 
 case class RegularOutput(
-    addressPrefix: String,
     address: String,
     txHash: Array[Byte],
     value: Long,
@@ -23,7 +21,22 @@ case class RegularOutput(
     n: Int
 )
 
-case class AddressId(addressPrefix: String, address: String, addressId: Int)
+case class AddressId(
+    address: String,
+    addressId: Int
+)
+
+case class AddressIdByAddress(
+    addressPrefix: String,
+    address: String,
+    addressId: Int
+)
+
+case class AddressByIdGroup(
+    addressIdGroup: Int,
+    addressId: Int,
+    address: String
+)
 
 case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
   override def iterator = inputs.iterator

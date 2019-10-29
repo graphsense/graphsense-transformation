@@ -47,6 +47,13 @@ CREATE TABLE address (
     PRIMARY KEY (address_prefix, address)
 );
 
+CREATE TABLE address_by_id_group (
+    address_id_group int,
+    address_id int,
+    address text,
+    PRIMARY KEY (address_id_group, address_id)
+);
+
 CREATE TABLE address_tags (
     address text,
     address_id int,

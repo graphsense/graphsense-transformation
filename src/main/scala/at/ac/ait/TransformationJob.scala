@@ -78,7 +78,15 @@ object TransformationJob {
       transformation.computeRegularOutputs(transactions).persist()
 
     println("Computing address IDs")
-    val addressIds = transformation.computeAddressIds(regOutputs)
+    val addressIds =
+      transformation.computeAddressIds(regOutputs)
+
+    val addressByIdGroup = transformation.computeAddressByIdGroups(addressIds)
+    cassandra.store(
+      conf.targetKeyspace(),
+      "address_by_id_group",
+      addressByIdGroup
+    )
 
     println("Computing address transactions")
     val addressTransactions =

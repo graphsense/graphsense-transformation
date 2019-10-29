@@ -157,7 +157,7 @@ class Transformator(spark: SparkSession) {
     }
 
     val inputIds = regularInputs
-      .join(addressIds, Seq(F.addressPrefix, F.address))
+      .join(addressIds, Seq(F.address))
       .select(F.txIndex, F.addressId, F.coinjoin)
 
     // perform multiple-input clustering

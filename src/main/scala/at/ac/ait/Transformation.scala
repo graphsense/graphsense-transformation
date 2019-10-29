@@ -80,7 +80,6 @@ class Transformation(spark: SparkSession) {
         ),
         Seq(F.txHash)
       )
-      .transform(t.addressPrefix(F.address, F.addressPrefix))
       .as[RegularInput]
   }
 
@@ -106,7 +105,6 @@ class Transformation(spark: SparkSession) {
         col(F.timestamp),
         col(F.coinjoin)
       )
-      .transform(t.addressPrefix(F.address, F.addressPrefix))
       .as[RegularOutput]
   }
 
@@ -125,8 +123,19 @@ class Transformation(spark: SparkSession) {
       .map(_ getString 0)
       .rdd
       .zipWithIndex()
-      .map { case ((a, id)) => AddressId(a.slice(0, 5), a, id.toInt + 1) }
+      .map {
+        case ((a, id)) => AddressId(a, id.toInt + 1)
+      }
       .toDS()
+  }
+
+  def computeAddressByIdGroups(
+      addressIds: Dataset[AddressId]
+  ): Dataset[AddressByIdGroup] = {
+    addressIds
+      .select(F.addressId, F.address)
+      .transform(t.idGroup(F.addressId, F.addressIdGroup))
+      .as[AddressByIdGroup]
   }
 
   def splitTransactions[A](txTable: Dataset[A])(implicit evidence: Encoder[A]) =
@@ -268,6 +277,7 @@ class Transformation(spark: SparkSession) {
       F.dstAddressId,
       F.addressId
     ).join(addressIds, Seq(F.addressId))
+      .transform(t.addressPrefix(F.address, F.addressPrefix))
       .sort(F.addressPrefix)
       .as[Address]
   }
