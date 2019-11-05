@@ -23,11 +23,11 @@ import org.apache.spark.sql.types.{IntegerType, StringType}
 
 import at.ac.ait.{Fields => F}
 
-class Transformation(spark: SparkSession) {
+class Transformation(spark: SparkSession, bucketSize: Int) {
 
   import spark.implicits._
 
-  val t = new Transformator(spark)
+  val t = new Transformator(spark, bucketSize)
 
   def computeExchangeRates(
       blocks: Dataset[Block],
@@ -37,7 +37,7 @@ class Transformation(spark: SparkSession) {
       .withColumn(
         F.date,
         date_format(
-          to_date(from_unixtime($"timestamp", "yyyy-MM-dd")),
+          to_date(from_unixtime(col(F.timestamp), "yyyy-MM-dd")),
           "yyyy-MM-dd"
         )
       )
@@ -123,9 +123,7 @@ class Transformation(spark: SparkSession) {
       .map(_ getString 0)
       .rdd
       .zipWithIndex()
-      .map {
-        case ((a, id)) => AddressId(a, id.toInt + 1)
-      }
+      .map { case ((a, id)) => AddressId(a, id.toInt) }
       .toDS()
   }
 
@@ -440,7 +438,8 @@ class Transformation(spark: SparkSession) {
       noAddresses: Long,
       noAddressRelations: Long,
       noCluster: Long,
-      noTags: Long
+      noTags: Long,
+      bucketSize: Int
   ) = {
     Seq(
       SummaryStatistics(
@@ -450,7 +449,8 @@ class Transformation(spark: SparkSession) {
         noAddresses,
         noAddressRelations,
         noCluster,
-        noTags
+        noTags,
+        bucketSize
       )
     ).toDS()
   }

@@ -275,5 +275,6 @@ case class SummaryStatistics(
     noAddresses: Long,
     noAddressRelations: Long,
     noClusters: Long,
-    noTags: Long
+    noTags: Long,
+    bucketSize: Int
 )

@@ -181,5 +181,6 @@ CREATE TABLE summary_statistics (
     no_addresses bigint,
     no_address_relations bigint,
     no_clusters bigint,
-    no_tags bigint
+    no_tags bigint,
+    bucket_size int
 );

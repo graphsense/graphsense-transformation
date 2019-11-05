@@ -23,12 +23,19 @@ object TransformationJob {
       required = true,
       descr = "Transformed keyspace"
     )
+    val bucketSize = opt[Int](
+      "bucket_size",
+      required = false,
+      default = Some(25000),
+      descr = "Bucket size for Cassandra partitions"
+    )
     verify()
   }
 
   def main(args: Array[String]) {
 
     val conf = new Conf(args)
+    //val bucketSize = conf.getOrElse(bucketSize, 25000)
 
     val spark = SparkSession.builder
       .appName("GraphSense Transformation [%s]".format(conf.targetKeyspace()))
@@ -39,6 +46,7 @@ object TransformationJob {
     println("Raw keyspace:    " + conf.rawKeyspace())
     println("Tag keyspace:    " + conf.tagKeyspace())
     println("Target keyspace: " + conf.targetKeyspace())
+    println("Bucket size:     " + conf.bucketSize())
 
     import spark.implicits._
 
@@ -57,11 +65,11 @@ object TransformationJob {
 
     val noBlocks = summaryStatisticsRaw.select(col("noBlocks")).first.getInt(0)
     val lastBlockTimestamp =
-      summaryStatisticsRaw.select($"timestamp").first.getInt(0)
+      summaryStatisticsRaw.select(col("timestamp")).first.getInt(0)
     val noTransactions =
       summaryStatisticsRaw.select(col("noTxs")).first.getLong(0)
 
-    val transformation = new Transformation(spark)
+    val transformation = new Transformation(spark, conf.bucketSize())
 
     println("Computing exchange rates")
     val exchangeRates =
@@ -272,7 +280,8 @@ object TransformationJob {
         noAddresses,
         noAddressRelations,
         noCluster,
-        noAddressTags
+        noAddressTags,
+        conf.bucketSize()
       )
     summaryStatistics.show()
     cassandra.store(

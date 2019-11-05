@@ -21,7 +21,7 @@ import scala.annotation.tailrec
 import at.ac.ait.{Fields => F}
 import at.ac.ait.clustering._
 
-class Transformator(spark: SparkSession) {
+class Transformator(spark: SparkSession, bucketSize: Int) {
 
   import spark.implicits._
 
@@ -36,7 +36,7 @@ class Transformator(spark: SparkSession) {
   def idGroup[T](
       idColumn: String,
       idGroupColum: String,
-      size: Int = 5000
+      size: Int = bucketSize
   )(ds: Dataset[T]): DataFrame = {
     ds.withColumn(idGroupColum, floor(col(idColumn) / size).cast("int"))
   }

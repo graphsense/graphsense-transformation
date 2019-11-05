@@ -65,6 +65,8 @@ class TransformationTest
   val inputDir = "src/test/resources/"
   val refDir = "src/test/resources/reference/"
 
+  val bucketSize: Int = 2
+
   // input data
   val blocks = readJson[Block](inputDir + "/test_blocks.json")
   val transactions = readJson[Transaction](inputDir + "test_txs.json")
@@ -81,7 +83,7 @@ class TransformationTest
   val noTransactions = transactions.count()
 
   // transformation pipeline
-  val t = new Transformation(spark)
+  val t = new Transformation(spark, bucketSize)
 
   val exchangeRates =
     t.computeExchangeRates(blocks, exchangeRatesRaw)
@@ -100,7 +102,7 @@ class TransformationTest
         regOutputs,
         addressIds
       )
-      .sort(F.addressId, F.height)
+      .sort(F.addressId, F.height, F.value)
       .persist()
 
   val (inputs, outputs) = t.splitTransactions(addressTransactions)
@@ -167,6 +169,7 @@ class TransformationTest
         transactions,
         addressClusterCoinjoin
       )
+      .sort(F.cluster, F.height, F.value)
       .persist()
 
   val (clusterInputs, clusterOutputs) = t.splitTransactions(clusterTransactions)
@@ -182,6 +185,7 @@ class TransformationTest
         clusterOutputs,
         exchangeRates
       )
+      .sort(F.cluster)
       .persist()
 
   val plainClusterRelations =
@@ -220,7 +224,8 @@ class TransformationTest
       noAddresses,
       noAddressRelations,
       noCluster,
-      noAddressTags
+      noAddressTags,
+      bucketSize
     )
 
   note("test address graph")
