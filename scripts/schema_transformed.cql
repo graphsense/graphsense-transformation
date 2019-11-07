@@ -22,19 +22,20 @@ CREATE TABLE exchange_rates (
 );
 
 CREATE TABLE address_transactions (
-    address_prefix text,
-    address text,
+    address_id_group int,
+    address_id int,
     tx_hash blob,
     value bigint,
     height int,
     tx_index int,
     timestamp int,
-    PRIMARY KEY (address_prefix, address, height, tx_hash)
-) WITH CLUSTERING ORDER BY (address ASC, height DESC);
+    PRIMARY KEY (address_id_group, address_id, height, tx_hash)
+);
 
 CREATE TABLE address (
     address_prefix text,
     address text,
+    address_id int,
     no_incoming_txs int,
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
@@ -46,8 +47,16 @@ CREATE TABLE address (
     PRIMARY KEY (address_prefix, address)
 );
 
+CREATE TABLE address_by_id_group (
+    address_id_group int,
+    address_id int,
+    address text,
+    PRIMARY KEY (address_id_group, address_id)
+);
+
 CREATE TABLE address_tags (
     address text,
+    address_id int,
     label text,
     source text,
     tagpack_uri text,
@@ -63,34 +72,37 @@ CREATE TYPE address_summary (
 );
 
 CREATE TABLE address_incoming_relations (
-    dst_address_prefix text,
-    dst_address text,
-    src_address text,
+    dst_address_id_group int,
+    dst_address_id int,
+    src_address_id_group int,
+    src_address_id int,
     src_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (dst_address_prefix, dst_address, src_address)
+    PRIMARY KEY (dst_address_id_group, dst_address_id, src_address_id)
 );
 
 CREATE TABLE address_outgoing_relations (
-    src_address_prefix text,
-    src_address text,
-    dst_address text,
+    src_address_id_group int,
+    src_address_id int,
+    dst_address_id_group int,
+    dst_address_id int,
     dst_properties FROZEN <address_summary>,
     no_transactions int,
     estimated_value frozen <value>,
-    PRIMARY KEY (src_address_prefix, src_address, dst_address)
+    PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
 );
 
 CREATE TABLE address_cluster (
-    address_prefix text,
-    address text,
+    address_id_group int,
+    address_id int,
     cluster int,
-    PRIMARY KEY (address_prefix, address)
+    PRIMARY KEY (address_id_group, address_id)
 );
 
 CREATE TABLE cluster (
-    cluster int PRIMARY KEY,
+    cluster_group int,
+    cluster int,
     no_addresses int,
     no_incoming_txs int,
     no_outgoing_txs int,
@@ -101,12 +113,14 @@ CREATE TABLE cluster (
     in_degree int,
     out_degree int,
     categories list<text>,
-    abuses list<text>
+    abuses list<text>,
+    PRIMARY KEY (cluster_group, cluster)
 );
 
 CREATE TABLE cluster_addresses (
+    cluster_group int,
     cluster int,
-    address text,
+    address_id int,
     no_incoming_txs int,
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
@@ -115,19 +129,21 @@ CREATE TABLE cluster_addresses (
     total_spent frozen <value>,
     in_degree int,
     out_degree int,
-    PRIMARY KEY (cluster, address)
+    PRIMARY KEY (cluster_group, cluster, address_id)
 );
 
 CREATE TABLE cluster_tags (
+    cluster_group int,
     cluster int,
     address text,
+    address_id int,
     label text,
     source text,
     tagpack_uri text,
     lastmod int,
     category text,
     abuse text,
-    PRIMARY KEY (cluster, address, label, source, tagpack_uri)
+    PRIMARY KEY (cluster_group, cluster, address, label, source, tagpack_uri)
 );
 
 CREATE TYPE cluster_summary (
@@ -137,21 +153,25 @@ CREATE TYPE cluster_summary (
 );
 
 CREATE TABLE cluster_incoming_relations (
+    dst_cluster_group int,
     dst_cluster int,
+    src_cluster_group int,
     src_cluster int,
     src_properties FROZEN <cluster_summary>,
     no_transactions int,
     value frozen <value>,
-    PRIMARY KEY (dst_cluster, src_cluster)
+    PRIMARY KEY (dst_cluster_group, dst_cluster, src_cluster)
 );
 
 CREATE TABLE cluster_outgoing_relations (
+    src_cluster_group int,
     src_cluster int,
+    dst_cluster_group int,
     dst_cluster int,
     dst_properties FROZEN <cluster_summary>,
     no_transactions int,
     value frozen <value>,
-    PRIMARY KEY (src_cluster, dst_cluster)
+    PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
 );
 
 CREATE TABLE summary_statistics (
@@ -161,5 +181,6 @@ CREATE TABLE summary_statistics (
     no_addresses bigint,
     no_address_relations bigint,
     no_clusters bigint,
-    no_tags bigint
+    no_tags bigint,
+    bucket_size int
 );
