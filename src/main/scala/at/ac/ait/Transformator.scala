@@ -21,7 +21,7 @@ import scala.annotation.tailrec
 import at.ac.ait.{Fields => F}
 import at.ac.ait.clustering._
 
-class Transformator(spark: SparkSession, bucketSize: Int) {
+class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
   import spark.implicits._
 
@@ -67,6 +67,34 @@ class Transformator(spark: SparkSession, bucketSize: Int) {
     processColumns(tableWithHeight.join(exchangeRates, F.height), columns)
       .drop(F.eur, F.usd)
   }
+
+  def toAddressSummary(
+      receivedSatoshi: Long,
+      receivedEUR: Double,
+      receivedUSD: Double,
+      sentSatoshi: Long,
+      sentEUR: Double,
+      sentUSD: Double
+  ) =
+    AddressSummary(
+      Currency(receivedSatoshi, receivedEUR, receivedUSD),
+      Currency(sentSatoshi, sentEUR, sentUSD)
+    )
+
+  def toClusterSummary(
+      noAddresses: Int,
+      receivedSatoshi: Long,
+      receivedEUR: Double,
+      receivedUSD: Double,
+      sentSatoshi: Long,
+      sentEUR: Double,
+      sentUSD: Double
+  ) =
+    ClusterSummary(
+      noAddresses,
+      Currency(receivedSatoshi, receivedEUR, receivedUSD),
+      Currency(sentSatoshi, sentEUR, sentUSD)
+    )
 
   def addressCluster(
       regularInputs: Dataset[RegularInput],
@@ -239,10 +267,16 @@ class Transformator(spark: SparkSession, bucketSize: Int) {
     }
 
     val props =
-      addresses.select(
+        addresses.select(
         col(F.addressId),
-        udf(AddressSummary)
-          .apply(col("totalReceived.satoshi"), col("totalSpent.satoshi"))
+        udf(toAddressSummary _).apply(
+          $"totalReceived.satoshi",
+          $"totalReceived.eur",
+          $"totalReceived.usd",
+          $"totalSpent.satoshi",
+          $"totalSpent.eur",
+          $"totalSpent.usd"
+        )
       )
 
     fullAddressRelations
@@ -294,10 +328,14 @@ class Transformator(spark: SparkSession, bucketSize: Int) {
     val props = cluster
       .select(
         col(F.cluster),
-        udf(ClusterSummary).apply(
+        udf(toClusterSummary _).apply(
           col(F.noAddresses),
           col("totalReceived.satoshi"),
-          col("totalSpent.satoshi")
+          col("totalReceived.eur"),
+          col("totalReceived.usd"),
+          col("totalSpent.satoshi"),
+          col("totalSpent.eur"),
+          col("totalSpent.usd")
         )
       )
 

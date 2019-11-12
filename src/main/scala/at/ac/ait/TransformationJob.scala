@@ -35,7 +35,6 @@ object TransformationJob {
   def main(args: Array[String]) {
 
     val conf = new Conf(args)
-    //val bucketSize = conf.getOrElse(bucketSize, 25000)
 
     val spark = SparkSession.builder
       .appName("GraphSense Transformation [%s]".format(conf.targetKeyspace()))

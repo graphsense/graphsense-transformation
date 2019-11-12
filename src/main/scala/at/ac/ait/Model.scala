@@ -60,12 +60,12 @@ case class TxIdTime(height: Int, txHash: Array[Byte], timestamp: Int)
 
 case class Currency(satoshi: Long, eur: Double, usd: Double)
 
-case class AddressSummary(totalReceived: Long, totalSpent: Long)
+case class AddressSummary(totalReceived: Currency, totalSpent: Currency)
 
 case class ClusterSummary(
     noAddresses: Int,
-    totalReceived: Long,
-    totalSpent: Long
+    totalReceived: Currency,
+    totalSpent: Currency
 )
 
 // raw schema tables

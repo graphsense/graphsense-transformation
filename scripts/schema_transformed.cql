@@ -67,14 +67,13 @@ CREATE TABLE address_tags (
 );
 
 CREATE TYPE address_summary (
-    total_received bigint,
-    total_spent bigint
+    total_received FROZEN <value>,
+    total_spent FROZEN <value>
 );
 
 CREATE TABLE address_incoming_relations (
     dst_address_id_group int,
     dst_address_id int,
-    src_address_id_group int,
     src_address_id int,
     src_properties FROZEN <address_summary>,
     no_transactions int,
@@ -85,7 +84,6 @@ CREATE TABLE address_incoming_relations (
 CREATE TABLE address_outgoing_relations (
     src_address_id_group int,
     src_address_id int,
-    dst_address_id_group int,
     dst_address_id int,
     dst_properties FROZEN <address_summary>,
     no_transactions int,
@@ -148,8 +146,8 @@ CREATE TABLE cluster_tags (
 
 CREATE TYPE cluster_summary (
     no_addresses int,
-    total_received bigint,
-    total_spent bigint
+    total_received FROZEN <value>,
+    total_spent FROZEN <value>
 );
 
 CREATE TABLE cluster_incoming_relations (
