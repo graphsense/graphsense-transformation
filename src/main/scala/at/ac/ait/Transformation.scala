@@ -167,7 +167,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     )
     val zeroValueIfNull = udf[Currency, Row] { b =>
       if (b != null)
-        Currency(b.getAs[Long](0), b.getAs[Double](1), b.getAs[Double](2))
+        Currency(b.getAs[Long](0), b.getAs[Float](1), b.getAs[Float](2))
       else Currency(0, 0, 0)
     }
     all

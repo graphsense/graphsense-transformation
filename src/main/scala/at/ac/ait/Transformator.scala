@@ -46,10 +46,10 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       tableWithHeight: Dataset[_],
       columns: List[String]
   ) = {
-    val toCurrency = udf[Currency, Long, Double, Double] {
+    val toCurrency = udf[Currency, Long, Float, Float] {
       (satoshi, eurPrice, usdPrice) =>
-        val convert: (Long, Double) => Double =
-          (satoshi, price) => (satoshi * price / 1000000 + 0.5).toLong / 100.0
+        val convert: (Long, Float) => Float =
+          (satoshi, price) => ((satoshi * price / 1000000 + 0.5).toLong / 100.0).toFloat
         Currency(
           satoshi,
           convert(satoshi, eurPrice),
@@ -70,11 +70,11 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
   def toAddressSummary(
       receivedSatoshi: Long,
-      receivedEUR: Double,
-      receivedUSD: Double,
+      receivedEUR: Float,
+      receivedUSD: Float,
       sentSatoshi: Long,
-      sentEUR: Double,
-      sentUSD: Double
+      sentEUR: Float,
+      sentUSD: Float
   ) =
     AddressSummary(
       Currency(receivedSatoshi, receivedEUR, receivedUSD),
@@ -84,11 +84,11 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   def toClusterSummary(
       noAddresses: Int,
       receivedSatoshi: Long,
-      receivedEUR: Double,
-      receivedUSD: Double,
+      receivedEUR: Float,
+      receivedUSD: Float,
       sentSatoshi: Long,
-      sentEUR: Double,
-      sentUSD: Double
+      sentEUR: Float,
+      sentUSD: Float
   ) =
     ClusterSummary(
       noAddresses,

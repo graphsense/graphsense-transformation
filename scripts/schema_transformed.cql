@@ -11,8 +11,8 @@ CREATE TYPE tx_id_time (
 
 CREATE TYPE value (
     satoshi bigint,
-    eur double,
-    usd double
+    eur float,
+    usd float
 );
 
 CREATE TABLE exchange_rates (
