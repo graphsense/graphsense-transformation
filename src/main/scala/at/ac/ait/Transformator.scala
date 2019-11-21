@@ -1,6 +1,5 @@
 package at.ac.ait
-
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   coalesce,
@@ -49,7 +48,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     val toCurrency = udf[Currency, Long, Float, Float] {
       (satoshi, eurPrice, usdPrice) =>
         val convert: (Long, Float) => Float =
-          (satoshi, price) => ((satoshi * price / 1000000 + 0.5).toLong / 100.0).toFloat
+          (satoshi, price) =>
+            ((satoshi * price / 1000000 + 0.5).toLong / 100.0).toFloat
         Currency(
           satoshi,
           convert(satoshi, eurPrice),
@@ -68,32 +68,37 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .drop(F.eur, F.usd)
   }
 
-  def toAddressSummary(
-      receivedSatoshi: Long,
-      receivedEUR: Float,
-      receivedUSD: Float,
-      sentSatoshi: Long,
-      sentEUR: Float,
-      sentUSD: Float
-  ) =
+  def toAddressSummary(received: Row, sent: Row) =
     AddressSummary(
-      Currency(receivedSatoshi, receivedEUR, receivedUSD),
-      Currency(sentSatoshi, sentEUR, sentUSD)
+      Currency(
+        received.getAs[Long]("satoshi"),
+        received.getAs[Float]("eur"),
+        received.getAs[Float]("usd")
+      ),
+      Currency(
+        sent.getAs[Long]("satoshi"),
+        sent.getAs[Float]("eur"),
+        sent.getAs[Float]("usd")
+      )
     )
 
   def toClusterSummary(
       noAddresses: Int,
-      receivedSatoshi: Long,
-      receivedEUR: Float,
-      receivedUSD: Float,
-      sentSatoshi: Long,
-      sentEUR: Float,
-      sentUSD: Float
+      received: Row,
+      sent: Row
   ) =
     ClusterSummary(
       noAddresses,
-      Currency(receivedSatoshi, receivedEUR, receivedUSD),
-      Currency(sentSatoshi, sentEUR, sentUSD)
+      Currency(
+        received.getAs[Long]("satoshi"),
+        received.getAs[Float]("eur"),
+        received.getAs[Float]("usd")
+      ),
+      Currency(
+        sent.getAs[Long]("satoshi"),
+        sent.getAs[Float]("eur"),
+        sent.getAs[Float]("usd")
+      )
     )
 
   def addressCluster(
@@ -267,16 +272,9 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     }
 
     val props =
-        addresses.select(
+      addresses.select(
         col(F.addressId),
-        udf(toAddressSummary _).apply(
-          $"totalReceived.satoshi",
-          $"totalReceived.eur",
-          $"totalReceived.usd",
-          $"totalSpent.satoshi",
-          $"totalSpent.eur",
-          $"totalSpent.usd"
-        )
+        udf(toAddressSummary _).apply($"totalReceived", $"totalSpent")
       )
 
     fullAddressRelations
@@ -330,12 +328,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         col(F.cluster),
         udf(toClusterSummary _).apply(
           col(F.noAddresses),
-          col("totalReceived.satoshi"),
-          col("totalReceived.eur"),
-          col("totalReceived.usd"),
-          col("totalSpent.satoshi"),
-          col("totalSpent.eur"),
-          col("totalSpent.usd")
+          col("totalReceived"),
+          col("totalSpent")
         )
       )
 
