@@ -46,14 +46,14 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       columns: List[String]
   ) = {
     val toCurrency = udf[Currency, Long, Float, Float] {
-      (satoshi, eurPrice, usdPrice) =>
+      (value, eurPrice, usdPrice) =>
         val convert: (Long, Float) => Float =
-          (satoshi, price) =>
-            ((satoshi * price / 1000000 + 0.5).toLong / 100.0).toFloat
+          (value, price) =>
+            ((value * price / 1000000 + 0.5).toLong / 100.0).toFloat
         Currency(
-          satoshi,
-          convert(satoshi, eurPrice),
-          convert(satoshi, usdPrice)
+          value,
+          convert(value, eurPrice),
+          convert(value, usdPrice)
         )
     }
     @tailrec
@@ -71,12 +71,12 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   def toAddressSummary(received: Row, sent: Row) =
     AddressSummary(
       Currency(
-        received.getAs[Long]("satoshi"),
+        received.getAs[Long]("value"),
         received.getAs[Float]("eur"),
         received.getAs[Float]("usd")
       ),
       Currency(
-        sent.getAs[Long]("satoshi"),
+        sent.getAs[Long]("value"),
         sent.getAs[Float]("eur"),
         sent.getAs[Float]("usd")
       )
@@ -90,12 +90,12 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     ClusterSummary(
       noAddresses,
       Currency(
-        received.getAs[Long]("satoshi"),
+        received.getAs[Long]("value"),
         received.getAs[Float]("eur"),
         received.getAs[Float]("usd")
       ),
       Currency(
-        sent.getAs[Long]("satoshi"),
+        sent.getAs[Long]("value"),
         sent.getAs[Float]("eur"),
         sent.getAs[Float]("usd")
       )
@@ -282,7 +282,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .agg(
         count(F.txHash) cast IntegerType as F.noTransactions,
         udf(Currency).apply(
-          sum("estimatedValue.satoshi"),
+          sum("estimatedValue.value"),
           sum("estimatedValue.eur"),
           sum("estimatedValue.usd")
         ) as F.estimatedValue
@@ -338,7 +338,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .agg(
         count(F.txHash) cast IntegerType as F.noTransactions,
         udf(Currency).apply(
-          sum("value.satoshi"),
+          sum("value.value"),
           sum("value.eur"),
           sum("value.usd")
         ) as F.value

@@ -156,7 +156,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         .agg(
           count(F.txHash) cast IntegerType,
           udf(Currency)
-            .apply(sum("value.satoshi"), sum("value.eur"), sum("value.usd"))
+            .apply(sum("value.value"), sum("value.eur"), sum("value.usd"))
         )
     val inStats =
       statsPart(out).toDF(idColumn, F.noIncomingTxs, F.totalReceived)

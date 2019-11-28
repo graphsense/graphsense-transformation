@@ -58,7 +58,7 @@ case class TxSummary(
 
 case class TxIdTime(height: Int, txHash: Array[Byte], timestamp: Int)
 
-case class Currency(satoshi: Long, eur: Float, usd: Float)
+case class Currency(value: Long, eur: Float, usd: Float)
 
 case class AddressSummary(totalReceived: Currency, totalSpent: Currency)
 

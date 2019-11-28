@@ -10,7 +10,7 @@ CREATE TYPE tx_id_time (
 );
 
 CREATE TYPE value (
-    satoshi bigint,
+    value bigint,
     eur float,
     usd float
 );
