@@ -220,9 +220,7 @@ case class Cluster(
     totalReceived: Currency,
     totalSpent: Currency,
     inDegree: Int,
-    outDegree: Int,
-    categories: Seq[String],
-    abuses: Seq[String]
+    outDegree: Int
 )
 
 case class ClusterTags(

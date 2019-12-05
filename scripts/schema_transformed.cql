@@ -110,8 +110,6 @@ CREATE TABLE cluster (
     total_spent frozen <value>,
     in_degree int,
     out_degree int,
-    categories list<text>,
-    abuses list<text>,
     PRIMARY KEY (cluster_group, cluster)
 );
 

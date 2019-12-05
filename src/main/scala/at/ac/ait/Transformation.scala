@@ -4,7 +4,6 @@ import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   col,
-  collect_set,
   count,
   date_format,
   explode,
@@ -393,12 +392,6 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       clusterRelations: Dataset[ClusterRelations],
       clusterTags: Dataset[ClusterTags]
   ): Dataset[Cluster] = {
-    val clusterTagsWide = clusterTags
-      .groupBy(col(F.cluster))
-      .agg(
-        collect_set(col(F.category)).as("categories"),
-        collect_set(col(F.abuse)).as("abuses")
-      )
     // compute in/out degrees for cluster graph
     // basicCluster contains only clusters of size > 1 with an integer ID
     // clusterRelations includes also cluster of size 1 (using the address string as ID)
@@ -414,7 +407,6 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         "right"
       )
       .withColumn(F.cluster, col(F.cluster) cast IntegerType)
-      .join(clusterTagsWide, Seq(F.cluster), "left")
       .transform(t.idGroup(F.cluster, F.clusterGroup))
       .sort(F.clusterGroup, F.cluster)
       .as[Cluster]
