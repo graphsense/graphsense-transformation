@@ -153,7 +153,6 @@ CREATE TYPE cluster_summary (
 CREATE TABLE cluster_incoming_relations (
     dst_cluster_group int,
     dst_cluster int,
-    src_cluster_group int,
     src_cluster int,
     src_properties FROZEN <cluster_summary>,
     no_transactions int,
@@ -164,7 +163,6 @@ CREATE TABLE cluster_incoming_relations (
 CREATE TABLE cluster_outgoing_relations (
     src_cluster_group int,
     src_cluster int,
-    dst_cluster_group int,
     dst_cluster int,
     dst_properties FROZEN <cluster_summary>,
     no_transactions int,
