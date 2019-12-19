@@ -3,7 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.4.2] - 2019-12-19
+### Changed
+- Exchange rates (by height) are stored in transformed keyspace
+- Added new columns (`category`, `abuse`) to `cluster_tags` and `cluster` table
+- Upgraded dependencies (scallop, scalatest, spark-fast-tests)
+### Fixed
+- Adjusted Cassandra schema, use integers for cluster IDs in cluster relations
 
 ## [0.4.1] - 2019-06-28
 ### Changed

@@ -10,17 +10,16 @@ import scala.reflect.ClassTag
 
 import at.ac.ait.Util._
 
-
 class CassandraStorage(spark: SparkSession) {
 
-   import com.datastax.spark.connector._
-   import spark.implicits._
-   import com.datastax.spark.connector._
+  import spark.implicits._
+  import com.datastax.spark.connector._
 
   def load[T <: Product: ClassTag: RowReaderFactory: ValidRDDType: Encoder](
       keyspace: String,
       tableName: String,
-      columns: ColumnRef*) = {
+      columns: ColumnRef*
+  ) = {
     spark.sparkContext.setJobDescription(s"Loading table ${tableName}")
     val table = spark.sparkContext.cassandraTable[T](keyspace, tableName)
     if (columns.isEmpty)
@@ -29,15 +28,16 @@ class CassandraStorage(spark: SparkSession) {
       table.select(columns: _*).toDS().as[T]
   }
 
-  def store[T <: Product: RowWriterFactory] (
+  def store[T <: Product: RowWriterFactory](
       keyspace: String,
       tableName: String,
-      df: Dataset[T]) = {
+      df: Dataset[T]
+  ) = {
 
     spark.sparkContext.setJobDescription(s"Writing table ${tableName}")
     val dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     val timestamp = LocalDateTime.now().format(dtf)
     println(s"[$timestamp] Writing table ${tableName}")
-    time{df.rdd.saveToCassandra(keyspace, tableName)}
+    time { df.rdd.saveToCassandra(keyspace, tableName) }
   }
 }

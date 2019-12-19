@@ -40,16 +40,22 @@ CREATE TYPE tx_summary (
 );
 
 CREATE TABLE block_transactions (
-     height int PRIMARY KEY,
-     txs list<FROZEN<tx_summary>>
+    height int PRIMARY KEY,
+    txs list<FROZEN<tx_summary>>
 );
 
 CREATE TABLE exchange_rates (
-    height int PRIMARY KEY,
-    eur    double,
-    usd    double
+    date text PRIMARY KEY,
+    eur float,
+    usd float
 );
 
+CREATE TABLE summary_statistics (
+    id text PRIMARY KEY,
+    no_blocks int,
+    no_txs bigint,
+    timestamp int
+);
 
 DROP KEYSPACE IF EXISTS tagpacks;
 CREATE KEYSPACE tagpacks WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
@@ -57,12 +63,13 @@ CREATE KEYSPACE tagpacks WITH replication = {'class': 'SimpleStrategy', 'replica
 USE tagpacks;
 
 CREATE TABLE tag_by_address (
-    address         text,
-    label           text,
-    source          text,
-    tagpack_uri     text,
-    currency        text,
-    lastmod         int,
-    category        text,
+    address text,
+    label text,
+    source text,
+    tagpack_uri text,
+    currency text,
+    lastmod int,
+    category text,
+    abuse text,
     PRIMARY KEY (address, label, source, tagpack_uri)
 );

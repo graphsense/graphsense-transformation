@@ -1,6 +1,5 @@
 package at.ac.ait
-
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   coalesce,
@@ -8,7 +7,7 @@ import org.apache.spark.sql.functions.{
   collect_set,
   count,
   explode,
-  lit,
+  floor,
   round,
   row_number,
   substring,
@@ -21,25 +20,40 @@ import scala.annotation.tailrec
 import at.ac.ait.{Fields => F}
 import at.ac.ait.clustering._
 
-class Transformator(spark: SparkSession) {
+class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
   import spark.implicits._
 
-  val addressPrefixColumn = substring(col(F.address), 0, 5) as F.addressPrefix
+  def addressPrefix[T](
+      addressColumn: String,
+      prefixColumn: String,
+      length: Int = 5
+  )(ds: Dataset[T]): DataFrame = {
+    ds.withColumn(prefixColumn, substring(col(addressColumn), 0, length))
+  }
+
+  def idGroup[T](
+      idColumn: String,
+      idGroupColum: String,
+      size: Int = bucketSize
+  )(ds: Dataset[T]): DataFrame = {
+    ds.withColumn(idGroupColum, floor(col(idColumn) / size).cast("int"))
+  }
 
   def toCurrencyDataFrame(
       exchangeRates: Dataset[ExchangeRates],
       tableWithHeight: Dataset[_],
       columns: List[String]
   ) = {
-    val toCurrency = udf[Currency, Long, Double, Double] {
-      (satoshi, eurPrice, usdPrice) =>
-        val convert: (Long, Double) => Double =
-          (satoshi, price) => (satoshi * price / 1000000 + 0.5).toLong / 100.0
+    val toCurrency = udf[Currency, Long, Float, Float] {
+      (value, eurPrice, usdPrice) =>
+        val convert: (Long, Float) => Float =
+          (value, price) =>
+            ((value * price / 1000000 + 0.5).toLong / 100.0).toFloat
         Currency(
-          satoshi,
-          convert(satoshi, eurPrice),
-          convert(satoshi, usdPrice)
+          value,
+          convert(value, eurPrice),
+          convert(value, usdPrice)
         )
     }
     @tailrec
@@ -54,9 +68,42 @@ class Transformator(spark: SparkSession) {
       .drop(F.eur, F.usd)
   }
 
+  def toAddressSummary(received: Row, sent: Row) =
+    AddressSummary(
+      Currency(
+        received.getAs[Long]("value"),
+        received.getAs[Float]("eur"),
+        received.getAs[Float]("usd")
+      ),
+      Currency(
+        sent.getAs[Long]("value"),
+        sent.getAs[Float]("eur"),
+        sent.getAs[Float]("usd")
+      )
+    )
+
+  def toClusterSummary(
+      noAddresses: Int,
+      received: Row,
+      sent: Row
+  ) =
+    ClusterSummary(
+      noAddresses,
+      Currency(
+        received.getAs[Long]("value"),
+        received.getAs[Float]("eur"),
+        received.getAs[Float]("usd")
+      ),
+      Currency(
+        sent.getAs[Long]("value"),
+        sent.getAs[Float]("eur"),
+        sent.getAs[Float]("usd")
+      )
+    )
+
   def addressCluster(
       regularInputs: Dataset[RegularInput],
-      regularOutputs: Dataset[RegularOutput],
+      addressIds: Dataset[AddressId],
       removeCoinJoin: Boolean
   ) = {
 
@@ -65,7 +112,7 @@ class Transformator(spark: SparkSession) {
         removeCoinJoin: Boolean
     ) = {
 
-      val addrCount = count(F.addrId).over(Window.partitionBy(F.txIndex))
+      val addressCount = count(F.addressId).over(Window.partitionBy(F.txIndex))
 
       // filter transactions with multiple input addresses
       val collectiveInputAddresses = if (removeCoinJoin) {
@@ -74,13 +121,13 @@ class Transformator(spark: SparkSession) {
       } else {
         println("Clustering with coinjoin inputs")
         basicTxInputAddresses
-      }.select(col(F.txIndex), col(F.addrId), addrCount as "count")
+      }.select(col(F.txIndex), col(F.addressId), addressCount as "count")
         .filter(col("count") > 1)
-        .select(col(F.txIndex), col(F.addrId))
+        .select(col(F.txIndex), col(F.addressId))
 
       // compute number of transaction per address
       val transactionCount =
-        collectiveInputAddresses.groupBy(F.addrId).count()
+        collectiveInputAddresses.groupBy(F.addressId).count()
 
       val basicAddressCluster = {
         // input for clustering algorithm
@@ -89,10 +136,10 @@ class Transformator(spark: SparkSession) {
         // (Spark errors were observed for BTC >= 480000 blocks)
         val inputGroups = transactionCount
           .filter(col("count") > 1)
-          .select(F.addrId)
-          .join(collectiveInputAddresses, F.addrId)
+          .select(F.addressId)
+          .join(collectiveInputAddresses, F.addressId)
           .groupBy(col(F.txIndex))
-          .agg(collect_set(F.addrId) as "inputs")
+          .agg(collect_set(F.addressId) as "inputs")
           .select(col("inputs"))
           .as[InputIdSet]
           .rdd
@@ -112,28 +159,29 @@ class Transformator(spark: SparkSession) {
         val rowNumber = row_number().over(transactionWindow)
 
         val addressMax = collectiveInputAddresses
-          .join(transactionCount, F.addrId)
-          .select(col(F.txIndex), col(F.addrId), rowNumber as "rank")
+          .join(transactionCount, F.addressId)
+          .select(col(F.txIndex), col(F.addressId), rowNumber as "rank")
           .filter(col("rank") === 1)
-          .select(col(F.txIndex), col(F.addrId) as reprAddrId)
+          .select(col(F.txIndex), col(F.addressId) as reprAddrId)
 
         transactionCount
           .filter(col("count") === 1)
-          .select(F.addrId)
-          .join(collectiveInputAddresses, F.addrId)
+          .select(F.addressId)
+          .join(collectiveInputAddresses, F.addressId)
           .join(addressMax, F.txIndex)
-          .select(F.addrId, reprAddrId)
+          .select(F.addressId, reprAddrId)
       }
 
       val addressClusterRemainder =
         initialRepresentative
+          .withColumnRenamed(F.addressId, "id")
           .join(
             basicAddressCluster.toDF(reprAddrId, F.cluster),
             List(reprAddrId),
             "left_outer"
           )
           .select(
-            col(F.addrId),
+            col("id"),
             coalesce(col(F.cluster), col(reprAddrId)) as F.cluster
           )
           .as[Result[Int]]
@@ -141,38 +189,27 @@ class Transformator(spark: SparkSession) {
       basicAddressCluster.union(addressClusterRemainder).toDF()
     }
 
-    // assign integer IDs to addresses
-    // .withColumn("id", monotonically_increasing_id) could be used instead of zipWithIndex,
-    // (assigns Long values instead of Int)
-    val orderWindow = Window.partitionBy(F.address).orderBy(F.txIndex, F.n)
-    val normalizedAddresses =
-      regularOutputs
-        .withColumn("rowNumber", row_number().over(orderWindow))
-        .filter(col("rowNumber") === 1)
-        .sort(F.txIndex, F.n)
-        .select(F.address)
-        .map(_ getString 0)
-        .rdd
-        .zipWithIndex()
-        .map { case ((a, id)) => NormalizedAddress(id.toInt + 1, a) }
-        .toDS()
-
     val inputIds = regularInputs
-      .join(normalizedAddresses, F.address)
-      .select(F.txIndex, F.addrId, F.coinjoin)
+      .join(addressIds, Seq(F.address))
+      .select(F.txIndex, F.addressId, F.coinjoin)
 
     // perform multiple-input clustering
     val addressCluster = plainAddressCluster(inputIds, removeCoinJoin)
-    val singleAddressCluster = normalizedAddresses
-      .select(F.addrId)
+    val singleAddressCluster = addressIds
+      .select(F.addressId)
       .distinct
-      .join(addressCluster, Seq(F.addrId), "left_anti")
-      .withColumn(F.cluster, col(F.addrId))
+      .join(
+        addressCluster.withColumnRenamed("id", F.addressId),
+        Seq(F.addressId),
+        "left_anti"
+      )
+      .withColumn(F.cluster, col(F.addressId))
 
     singleAddressCluster
       .union(addressCluster)
-      .join(normalizedAddresses, F.addrId)
-      .select(addressPrefixColumn, col(F.address), col(F.cluster))
+      .join(addressIds, F.addressId)
+      .select(F.addressId, F.cluster)
+      .transform(idGroup(F.addressId, F.addressIdGroup))
       .as[AddressCluster]
   }
 
@@ -183,7 +220,7 @@ class Transformator(spark: SparkSession) {
       transactions: Dataset[Transaction],
       addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates]
-  ) = {
+  ): Dataset[AddressRelations] = {
     val fullAddressRelations = {
 
       val regularInputSum =
@@ -210,13 +247,13 @@ class Transformator(spark: SparkSession) {
         inputs
           .select(
             col(F.txHash),
-            col(F.address) as F.srcAddress,
+            col(F.addressId) as F.srcAddressId,
             col(F.value) as "inValue"
           )
           .join(
             outputs.select(
               col(F.txHash),
-              col(F.address) as F.dstAddress,
+              col(F.addressId) as F.dstAddressId,
               col(F.value) as "outValue"
             ),
             F.txHash
@@ -236,25 +273,24 @@ class Transformator(spark: SparkSession) {
 
     val props =
       addresses.select(
-        col(F.address),
-        udf(AddressSummary)
-          .apply(col("totalReceived.satoshi"), col("totalSpent.satoshi"))
+        col(F.addressId),
+        udf(toAddressSummary _).apply($"totalReceived", $"totalSpent")
       )
 
     fullAddressRelations
-      .groupBy(F.srcAddress, F.dstAddress)
+      .groupBy(F.srcAddressId, F.dstAddressId)
       .agg(
         count(F.txHash) cast IntegerType as F.noTransactions,
         udf(Currency).apply(
-          sum("estimatedValue.satoshi"),
+          sum("estimatedValue.value"),
           sum("estimatedValue.eur"),
           sum("estimatedValue.usd")
         ) as F.estimatedValue
       )
-      .join(props.toDF(F.srcAddress, F.srcProperties), F.srcAddress)
-      .join(props.toDF(F.dstAddress, F.dstProperties), F.dstAddress)
-      .withColumn(F.srcAddressPrefix, substring(col(F.srcAddress), 0, 5))
-      .withColumn(F.dstAddressPrefix, substring(col(F.dstAddress), 0, 5))
+      .join(props.toDF(F.srcAddressId, F.srcProperties), F.srcAddressId)
+      .join(props.toDF(F.dstAddressId, F.dstProperties), F.dstAddressId)
+      .transform(idGroup(F.srcAddressId, F.srcAddressIdGroup))
+      .transform(idGroup(F.dstAddressId, F.dstAddressIdGroup))
       .as[AddressRelations]
   }
 
@@ -286,40 +322,31 @@ class Transformator(spark: SparkSession) {
     val fullClusterRelations =
       toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
         .drop(F.height)
-    val props = {
-      val addressProps =
-        addresses.select(
-          col(F.address) as F.cluster,
-          udf(ClusterSummary).apply(
-            lit(1),
-            col("totalReceived.satoshi"),
-            col("totalSpent.satoshi")
-          )
+
+    val props = cluster
+      .select(
+        col(F.cluster),
+        udf(toClusterSummary _).apply(
+          col(F.noAddresses),
+          col("totalReceived"),
+          col("totalSpent")
         )
-      cluster
-        .select(
-          col(F.cluster),
-          udf(ClusterSummary).apply(
-            col(F.noAddresses),
-            col("totalReceived.satoshi"),
-            col("totalSpent.satoshi")
-          )
-        )
-        .union(addressProps)
-    }
+      )
+
     fullClusterRelations
       .groupBy(F.srcCluster, F.dstCluster)
       .agg(
         count(F.txHash) cast IntegerType as F.noTransactions,
         udf(Currency).apply(
-          sum("value.satoshi"),
+          sum("value.value"),
           sum("value.eur"),
           sum("value.usd")
         ) as F.value
       )
       .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
       .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
-      .drop(F.addressPrefix)
+      .transform(idGroup(F.srcCluster, F.srcClusterGroup))
+      .transform(idGroup(F.dstCluster, F.dstClusterGroup))
       .as[ClusterRelations]
   }
 }
