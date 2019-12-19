@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - Exchange rates (by height) are stored in transformed keyspace
 - Added new columns (`category`, `abuse`) to `cluster_tags` and `cluster` table
+- Upgraded dependencies (scalatest, spark-fast-tests)
 ### Fixed
 - Adjusted Cassandra schema, use integers for cluster IDs in cluster relations
 

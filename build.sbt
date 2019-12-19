@@ -25,8 +25,8 @@ lazy val root = (project in file(".")).
       "-Ywarn-value-discard"),
     resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven",
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % "3.0.8" % Test,
-      "MrPowers" % "spark-fast-tests" % "0.17.1-s_2.11" % Test,
+      "org.scalatest" %% "scalatest" % "3.1.0" % Test,
+      "MrPowers" % "spark-fast-tests" % "0.17.2-s_2.11" % Test,
       "org.rogach" %% "scallop" % "3.3.1" % Provided,
       "org.apache.spark" %% "spark-sql" % "2.4.3" % Provided,
       "com.datastax.spark" %% "spark-cassandra-connector" % "2.4.0" % Provided,
