@@ -1,6 +1,6 @@
 ThisBuild / scalaVersion := "2.11.12"
 ThisBuild / organization := "at.ac.ait"
-ThisBuild / version      := "0.4.2-SNAPSHOT"
+ThisBuild / version      := "0.4.2"
 
 
 lazy val root = (project in file(".")).
@@ -30,5 +30,5 @@ lazy val root = (project in file(".")).
       "org.rogach" %% "scallop" % "3.3.2" % Provided,
       "org.apache.spark" %% "spark-sql" % "2.4.3" % Provided,
       "com.datastax.spark" %% "spark-cassandra-connector" % "2.4.0" % Provided,
-      "at.ac.ait" %% "graphsense-clustering" % "0.4.1" % Provided)
+      "at.ac.ait" %% "graphsense-clustering" % "0.4.2" % Provided)
   )
