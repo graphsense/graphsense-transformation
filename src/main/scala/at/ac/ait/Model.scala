@@ -102,7 +102,7 @@ case class Tag(
     tagpackUri: String,
     currency: String,
     lastmod: Int,
-    category: String,
+    category: Option[String],
     abuse: Option[String]
 )
 
