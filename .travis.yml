@@ -17,7 +17,7 @@ jdk:
   - openjdk8
 
 scala:
-- 2.11.2
+- 2.12.10
 
 sudo: false
 
@@ -27,12 +27,11 @@ addons:
         - axel
 
 install:
-  # Download spark 2.4.0
-  - "[ -f spark ] || mkdir spark && cd spark && axel https://archive.apache.org/dist/spark/spark-2.4.0/spark-2.4.0-bin-hadoop2.7.tgz && cd .."
-  - "tar -xf ./spark/spark-2.4.0-bin-hadoop2.7.tgz"
-  - "export SPARK_HOME=`pwd`/spark-2.4.0-bin-hadoop2.7"
+  # Download spark 2.4.5
+  - "[ -f spark ] || mkdir spark && cd spark && axel https://archive.apache.org/dist/spark/spark-2.4.5/spark-2.4.5-bin-without-hadoop-scala-2.12.tgz && cd .."
+  - "tar -xf ./spark/spark-2.4.5-bin-without-hadoop-scala-2.12.tgz"
+  - "export SPARK_HOME=`pwd`/spark-2.4.5-bin-without-hadoop-scala-2.12"
   - echo "spark.yarn.jars=$SPARK_HOME/jars/*.jar" > $SPARK_HOME/conf/spark-defaults.conf
-  - "git clone https://github.com/graphsense/graphsense-clustering.git && cd graphsense-clustering && sbt publishLocal && cd .."
 
 script:
    - sbt ++$TRAVIS_SCALA_VERSION test
