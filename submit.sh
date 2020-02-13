@@ -96,7 +96,6 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   --conf spark.executor.memory="$MEMORY" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
   --conf spark.sql.session.timeZone=UTC \
-  --jars ~/.ivy2/local/at.ac.ait/graphsense-clustering_2.12/0.4.3-SNAPSHOT/jars/graphsense-clustering_2.12.jar \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:3.3.2 \
   target/scala-2.12/graphsense-transformation_2.12-0.4.3-SNAPSHOT.jar \
   --currency "$CURRENCY" \

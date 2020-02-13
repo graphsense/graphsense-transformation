@@ -6,9 +6,10 @@ import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.catalyst.ScalaReflection.universe.TypeTag
 import org.apache.spark.sql.functions.{col, lower}
 import org.apache.spark.sql.types.{DataType, StructType}
-import org.scalatest._
+import org.scalatest.funsuite._
 
 import at.ac.ait.{Fields => F}
+import at.ac.ait.clustering._
 
 trait SparkSessionTestWrapper {
 
@@ -22,7 +23,7 @@ trait SparkSessionTestWrapper {
 }
 
 class TransformationTest
-    extends FunSuite
+    extends AnyFunSuite
     with SparkSessionTestWrapper
     with DataFrameComparer {
 
@@ -195,7 +196,6 @@ class TransformationTest
     t.computeClusterRelations(
         plainClusterRelations,
         basicCluster,
-        basicAddresses,
         exchangeRates
       )
       .persist()
@@ -206,7 +206,7 @@ class TransformationTest
       .persist()
 
   val cluster =
-    t.computeCluster(basicCluster, clusterRelations, clusterTags)
+    t.computeCluster(basicCluster, clusterRelations)
       .sort(F.cluster)
       .persist()
   val noCluster = cluster.count()
