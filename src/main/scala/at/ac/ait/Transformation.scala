@@ -367,10 +367,9 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   def computeClusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelations],
       cluster: Dataset[BasicCluster],
-      addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates]
   ): Dataset[ClusterRelations] = {
-    t.clusterRelations(plainClusterRelations, cluster, addresses, exchangeRates)
+    t.clusterRelations(plainClusterRelations, cluster, exchangeRates)
   }
 
   def computeClusterAddresses(
@@ -389,8 +388,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   def computeCluster(
       basicCluster: Dataset[BasicCluster],
-      clusterRelations: Dataset[ClusterRelations],
-      clusterTags: Dataset[ClusterTags]
+      clusterRelations: Dataset[ClusterRelations]
   ): Dataset[Cluster] = {
     // compute in/out degrees for cluster graph
     // basicCluster contains only clusters of size > 1 with an integer ID

@@ -231,7 +231,6 @@ object TransformationJob {
         .computeClusterRelations(
           plainClusterRelations,
           basicCluster,
-          basicAddresses,
           exchangeRates
         )
         .persist()
@@ -254,7 +253,7 @@ object TransformationJob {
     println("Computing cluster")
     val cluster =
       transformation
-        .computeCluster(basicCluster, clusterRelations, clusterTags)
+        .computeCluster(basicCluster, clusterRelations)
         .persist()
     val noCluster = cluster.count()
     cassandra.store(conf.targetKeyspace(), "cluster", cluster)

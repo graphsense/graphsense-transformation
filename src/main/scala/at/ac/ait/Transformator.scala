@@ -316,7 +316,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   def clusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelations],
       cluster: Dataset[BasicCluster],
-      addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates]
   ) = {
     val fullClusterRelations =
