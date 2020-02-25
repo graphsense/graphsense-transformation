@@ -95,7 +95,7 @@ case class BlockTransactions(height: Int, txs: Seq[TxSummary])
 
 case class ExchangeRatesRaw(date: String, eur: Float, usd: Float)
 
-case class Tag(
+case class TagRaw(
     address: String,
     label: String,
     source: String,
@@ -264,6 +264,20 @@ case class ClusterRelations(
     dstProperties: ClusterSummary,
     noTransactions: Int,
     value: Currency
+)
+
+case class Tag(
+    labelNormPrefix: String,
+    labelNorm: String,
+    label: String,
+    address: String,
+    source: String,
+    tagpackUri: String,
+    currency: String,
+    lastmod: Int,
+    category: Option[String],
+    abuse: Option[String],
+    activeAddress: Boolean
 )
 
 case class SummaryStatistics(

@@ -8,12 +8,16 @@ import org.apache.spark.sql.functions.{
   date_format,
   explode,
   from_unixtime,
+  lit,
+  lower,
   max,
   min,
   posexplode,
+  regexp_replace,
   row_number,
   size,
   struct,
+  substring,
   sum,
   to_date,
   udf
@@ -280,7 +284,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   }
 
   def computeAddressTags(
-      tags: Dataset[Tag],
+      tags: Dataset[TagRaw],
       addresses: Dataset[BasicAddress],
       addressIds: Dataset[AddressId],
       currency: String
@@ -419,6 +423,34 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .transform(t.idGroup(F.cluster, F.clusterGroup))
       .sort(F.clusterGroup, F.cluster)
       .as[ClusterTags]
+  }
+
+  def computeTagsByLabel(
+      tags: Dataset[TagRaw],
+      addressTags: Dataset[AddressTags],
+      prefixLength: Int = 3
+  ): Dataset[Tag] = {
+    // check if addresses where used in transactions
+    tags
+      .join(
+        addressTags
+          .select(col(F.address))
+          .withColumn(F.activeAddress, lit(true)),
+        Seq(F.address),
+        "left"
+      )
+      .na
+      .fill(false, Seq(F.activeAddress))
+      // normalize labels
+      .withColumn(
+        F.labelNorm,
+        lower(regexp_replace(col(F.label), "[\\W_]+", ""))
+      )
+      .withColumn(
+        F.labelNormPrefix,
+        substring(col(F.labelNorm), 0, prefixLength)
+      )
+      .as[Tag]
   }
 
   def summaryStatistics(

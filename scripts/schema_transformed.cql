@@ -168,6 +168,21 @@ CREATE TABLE cluster_outgoing_relations (
     PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
 );
 
+CREATE TABLE tag_by_label (
+    label_norm_prefix text,
+    label_norm text,
+    label text,
+    address text,
+    source text,
+    tagpack_uri text,
+    currency text,
+    lastmod int,
+    category text,
+    abuse text,
+    active_address boolean,
+    PRIMARY KEY (label_norm_prefix, label_norm, label, address, currency, source, tagpack_uri)
+);
+
 CREATE TABLE summary_statistics (
     timestamp int,
     no_blocks bigint PRIMARY KEY,

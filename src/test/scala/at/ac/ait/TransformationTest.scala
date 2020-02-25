@@ -9,7 +9,6 @@ import org.apache.spark.sql.types.{DataType, StructType}
 import org.scalatest.funsuite._
 
 import at.ac.ait.{Fields => F}
-import at.ac.ait.clustering._
 
 trait SparkSessionTestWrapper {
 
@@ -73,7 +72,7 @@ class TransformationTest
   val transactions = readJson[Transaction](inputDir + "test_txs.json")
   val exchangeRatesRaw =
     readJson[ExchangeRatesRaw](inputDir + "test_exchange_rates.json")
-  val attributionTags = readJson[Tag](inputDir + "test_tags.json")
+  val attributionTags = readJson[TagRaw](inputDir + "test_tags.json")
 
   val noBlocks = blocks.count.toInt
   val lastBlockTimestamp = blocks
@@ -216,6 +215,9 @@ class TransformationTest
       .sort(F.cluster, F.addressId)
       .persist()
 
+  val tagsByLabel =
+    t.computeTagsByLabel(attributionTags, addressTags).persist()
+
   val summaryStatistics =
     t.summaryStatistics(
       lastBlockTimestamp,
@@ -350,6 +352,11 @@ class TransformationTest
   test("clusterTags") {
     val clusterTagsRef = readJson[ClusterTags](refDir + "cluster_tags.json")
     assertDataFrameEquality(clusterTags, clusterTagsRef)
+  }
+
+  test("tags") {
+    val tagsRef = readJson[Tag](refDir + "tags_by_label.json")
+    assertDataFrameEquality(tagsByLabel, tagsRef)
   }
 
   note("summary statistics for address and cluster graph")

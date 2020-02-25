@@ -59,8 +59,8 @@ object TransformationJob {
       cassandra.load[Block](conf.rawKeyspace(), "block")
     val transactions =
       cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
-    val tags = cassandra
-      .load[Tag](conf.tagKeyspace(), "tag_by_address")
+    val tagsRaw = cassandra
+      .load[TagRaw](conf.tagKeyspace(), "tag_by_address")
 
     val noBlocks = summaryStatisticsRaw.select(col("noBlocks")).first.getInt(0)
     val lastBlockTimestamp =
@@ -165,7 +165,12 @@ object TransformationJob {
     println("Computing address tags")
     val addressTags =
       transformation
-        .computeAddressTags(tags, basicAddresses, addressIds, conf.currency())
+        .computeAddressTags(
+          tagsRaw,
+          basicAddresses,
+          addressIds,
+          conf.currency()
+        )
         .persist()
     val noAddressTags = addressTags
       .select(col("label"))
@@ -268,6 +273,9 @@ object TransformationJob {
       "cluster_addresses",
       clusterAddresses
     )
+
+    val tags = transformation.computeTagsByLabel(tagsRaw, addressTags)
+    cassandra.store(conf.targetKeyspace(), "tag_by_label", tags)
 
     println("Computing summary statistics")
     val summaryStatistics =
