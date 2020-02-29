@@ -243,6 +243,8 @@ case class AddressRelations(
     dstAddressId: Int,
     srcProperties: AddressSummary,
     dstProperties: AddressSummary,
+    srcLabels: Seq[String],
+    dstLabels: Seq[String],
     noTransactions: Int,
     estimatedValue: Currency
 )
@@ -262,6 +264,8 @@ case class ClusterRelations(
     dstCluster: Int,
     srcProperties: ClusterSummary,
     dstProperties: ClusterSummary,
+    srcLabels: Seq[String],
+    dstLabels: Seq[String],
     noTransactions: Int,
     value: Currency
 )

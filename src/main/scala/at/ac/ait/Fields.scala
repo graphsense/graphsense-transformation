@@ -49,4 +49,6 @@ object Fields {
   val labelNormPrefix = "labelNormPrefix"
   val category = "category"
   val abuse = "abuse"
+  val srcLabels = "srcLabels"
+  val dstLabels = "dstLabels"
 }
