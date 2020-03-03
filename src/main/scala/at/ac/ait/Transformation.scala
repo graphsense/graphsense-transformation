@@ -436,10 +436,12 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   def computeTagsByLabel(
       tags: Dataset[TagRaw],
       addressTags: Dataset[AddressTags],
+      currency: String,
       prefixLength: Int = 3
   ): Dataset[Tag] = {
     // check if addresses where used in transactions
     tags
+      .filter(col(F.currency) === currency)
       .join(
         addressTags
           .select(col(F.address))

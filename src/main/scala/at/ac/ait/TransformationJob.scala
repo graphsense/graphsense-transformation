@@ -276,7 +276,7 @@ object TransformationJob {
       clusterAddresses
     )
 
-    val tags = transformation.computeTagsByLabel(tagsRaw, addressTags)
+    val tags = transformation.computeTagsByLabel(tagsRaw, addressTags, conf.currency())
     cassandra.store(conf.targetKeyspace(), "tag_by_label", tags)
 
     println("Computing summary statistics")

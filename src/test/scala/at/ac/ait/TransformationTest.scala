@@ -218,7 +218,7 @@ class TransformationTest
       .persist()
 
   val tagsByLabel =
-    t.computeTagsByLabel(attributionTags, addressTags).persist()
+    t.computeTagsByLabel(attributionTags, addressTags, "BTC").persist()
 
   val summaryStatistics =
     t.summaryStatistics(
