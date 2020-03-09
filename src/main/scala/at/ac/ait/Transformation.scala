@@ -247,23 +247,33 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     ).as[BasicAddress]
   }
 
-  def computeAddressRelations(
+  def computePlainAddressRelations(
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
       regularInputs: Dataset[RegularInput],
-      transactions: Dataset[Transaction],
-      addresses: Dataset[BasicAddress],
-      exchangeRates: Dataset[ExchangeRates],
-      addressTags: Dataset[AddressTags]
-  ): Dataset[AddressRelations] = {
-    t.addressRelations(
+      transactions: Dataset[Transaction]
+  ): Dataset[PlainAddressRelations] = {
+    t.plainAddressRelations(
       inputs,
       outputs,
       regularInputs,
-      transactions,
+      transactions
+    )
+  }
+
+  def computeAddressRelations(
+      plainAddressRelations: Dataset[PlainAddressRelations],
+      addresses: Dataset[BasicAddress],
+      exchangeRates: Dataset[ExchangeRates],
+      addressTags: Dataset[AddressTags],
+      txLimit: Int = 100
+  ): Dataset[AddressRelations] = {
+    t.addressRelations(
+      plainAddressRelations,
       addresses,
       exchangeRates,
-      addressTags
+      addressTags,
+      txLimit
     )
   }
 

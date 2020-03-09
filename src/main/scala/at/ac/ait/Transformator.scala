@@ -214,64 +214,63 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .as[AddressCluster]
   }
 
-  def addressRelations(
+  def plainAddressRelations(
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
       regularInputs: Dataset[RegularInput],
-      transactions: Dataset[Transaction],
+      transactions: Dataset[Transaction]
+  ): Dataset[PlainAddressRelations] = {
+
+    val regularInputSum =
+      regularInputs.groupBy(F.txHash).agg(sum(F.value) as "regularSum")
+    val addressInputSum =
+      inputs.groupBy(F.height, F.txHash).agg(sum(F.value) as "addressSum")
+    val totalInput = transactions
+      .withColumn("input", explode(col("inputs")))
+      .select(F.txHash, "input.value")
+      .groupBy(F.txHash)
+      .agg(sum(F.value) as F.totalInput)
+    val reducedInputSum =
+      addressInputSum
+        .join(regularInputSum, F.txHash)
+        .join(totalInput, F.txHash)
+        .select(
+          col(F.height),
+          col(F.txHash),
+          // regularSum == addressSum, unless input address is used as output in same tx
+          col(F.totalInput) - col("regularSum") + col("addressSum") as F.totalInput
+        )
+
+    inputs
+      .select(
+        col(F.txHash),
+        col(F.addressId) as F.srcAddressId,
+        col(F.value) as "inValue"
+      )
+      .join(
+        outputs.select(
+          col(F.txHash),
+          col(F.addressId) as F.dstAddressId,
+          col(F.value) as "outValue"
+        ),
+        F.txHash
+      )
+      .join(reducedInputSum, F.txHash)
+      .withColumn(
+        F.estimatedValue,
+        round(col("inValue") / col(F.totalInput) * col("outValue")) cast LongType
+      )
+      .drop(F.totalInput, "inValue", "outValue")
+      .as[PlainAddressRelations]
+  }
+
+  def addressRelations(
+      plainAddressRelations: Dataset[PlainAddressRelations],
       addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates],
-      addressTags: Dataset[AddressTags]
+      addressTags: Dataset[AddressTags],
+      txLimit: Int
   ): Dataset[AddressRelations] = {
-    val fullAddressRelations = {
-
-      val regularInputSum =
-        regularInputs.groupBy(F.txHash).agg(sum(F.value) as "regularSum")
-      val addressInputSum =
-        inputs.groupBy(F.height, F.txHash).agg(sum(F.value) as "addressSum")
-      val totalInput = transactions
-        .withColumn("input", explode(col("inputs")))
-        .select(F.txHash, "input.value")
-        .groupBy(F.txHash)
-        .agg(sum(F.value) as F.totalInput)
-      val reducedInputSum =
-        addressInputSum
-          .join(regularInputSum, F.txHash)
-          .join(totalInput, F.txHash)
-          .select(
-            col(F.height),
-            col(F.txHash),
-            // regularSum == addressSum, unless input address is used as output in same tx
-            col(F.totalInput) - col("regularSum") + col("addressSum") as F.totalInput
-          )
-
-      val plainAddressRelations =
-        inputs
-          .select(
-            col(F.txHash),
-            col(F.addressId) as F.srcAddressId,
-            col(F.value) as "inValue"
-          )
-          .join(
-            outputs.select(
-              col(F.txHash),
-              col(F.addressId) as F.dstAddressId,
-              col(F.value) as "outValue"
-            ),
-            F.txHash
-          )
-          .join(reducedInputSum, F.txHash)
-          .withColumn(
-            F.estimatedValue,
-            round(col("inValue") / col(F.totalInput) * col("outValue")) cast LongType
-          )
-          .drop(F.totalInput, "inValue", "outValue")
-      toCurrencyDataFrame(
-        exchangeRates,
-        plainAddressRelations,
-        List(F.estimatedValue)
-      ).drop(F.height)
-    }
 
     val props =
       addresses.select(
@@ -283,7 +282,11 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .groupBy(F.addressId)
       .agg(collect_set(col(F.label)).as(F.label))
 
-    fullAddressRelations
+    val fullAddressRelations = toCurrencyDataFrame(
+      exchangeRates,
+      plainAddressRelations,
+      List(F.estimatedValue)
+    ).drop(F.height)
       .groupBy(F.srcAddressId, F.dstAddressId)
       .agg(
         count(F.txHash) cast IntegerType as F.noTransactions,
@@ -313,6 +316,23 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         Seq(F.dstAddressId),
         "left"
       )
+
+    val txList = plainAddressRelations
+    // compute list column of transactions (only if #tx <= txLimit)
+      .select(F.srcAddressId, F.dstAddressId, F.txHash)
+      .join(
+        fullAddressRelations
+          .select(F.srcAddressId, F.dstAddressId, F.noTransactions),
+        Seq(F.srcAddressId, F.dstAddressId),
+        "full"
+      )
+      .groupBy(F.srcAddressId, F.dstAddressId)
+      .agg(
+        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txHash))) as F.txList
+      )
+
+    fullAddressRelations
+      .join(txList, Seq(F.srcAddressId, F.dstAddressId), "left")
       .as[AddressRelations]
   }
 

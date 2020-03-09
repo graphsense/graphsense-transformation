@@ -79,6 +79,7 @@ CREATE TABLE address_incoming_relations (
     src_labels list<text>,
     no_transactions int,
     estimated_value frozen <value>,
+    tx_list list<blob>,
     PRIMARY KEY (dst_address_id_group, dst_address_id, src_address_id)
 );
 
@@ -90,6 +91,7 @@ CREATE TABLE address_outgoing_relations (
     dst_labels list<text>,
     no_transactions int,
     estimated_value frozen <value>,
+    tx_list list<blob>,
     PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
 );
 
@@ -156,8 +158,8 @@ CREATE TABLE cluster_incoming_relations (
     src_cluster int,
     src_properties FROZEN <cluster_summary>,
     src_labels list<text>,
-    value frozen <value>,
     no_transactions int,
+    value frozen <value>,
     tx_list list<blob>,
     PRIMARY KEY (dst_cluster_group, dst_cluster, src_cluster)
 );
@@ -168,8 +170,8 @@ CREATE TABLE cluster_outgoing_relations (
     dst_cluster int,
     dst_properties FROZEN <cluster_summary>,
     dst_labels list<text>,
-    value frozen <value>,
     no_transactions int,
+    value frozen <value>,
     tx_list list<blob>,
     PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
 );
