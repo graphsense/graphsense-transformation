@@ -31,7 +31,9 @@ class TransformationTest
     val schema = ScalaReflection.schemaFor[A].dataType.asInstanceOf[StructType]
     val newSchema = DataType
       .fromJson(
-        schema.json.replace("\"type\":\"binary\"", "\"type\":\"string\"")
+        schema.json
+          .replace("\"type\":\"binary\"", "\"type\":\"string\"")
+          .replace("\"elementType\":\"binary\"", "\"elementType\":\"string\"")
       )
       .asInstanceOf[StructType]
     spark.read.schema(newSchema).json(file).as[A]
@@ -206,6 +208,16 @@ class TransformationTest
       )
       .persist()
 
+  val clusterRelationsLimit1 =
+    t.computeClusterRelations(
+        plainClusterRelations,
+        basicCluster,
+        exchangeRates,
+        clusterTags,
+        1
+      )
+      .persist()
+
   val cluster =
     t.computeCluster(basicCluster, clusterRelations)
       .sort(F.cluster)
@@ -336,18 +348,16 @@ class TransformationTest
   test("clusterRelations") {
     val clusterRelationsRef =
       readJson[ClusterRelations](refDir + "cluster_relations.json")
-    clusterRelations
-      .coalesce(1)
-      .write
-      .mode("overwrite")
     assertDataFrameEquality(clusterRelations, clusterRelationsRef)
+  }
+  test("clusterRelations with txLimit=1") {
+    val clusterRelationsLimit1Ref =
+      readJson[ClusterRelations](refDir + "cluster_relations_limit1.json")
+    assertDataFrameEquality(clusterRelationsLimit1, clusterRelationsLimit1Ref)
   }
   test("clusters") {
     val clusterRef = readJson[Cluster](refDir + "cluster.json")
     cluster
-      .coalesce(1)
-      .write
-      .mode("overwrite")
     assertDataFrameEquality(cluster, clusterRef)
   }
   test("clusterAdresses") {
