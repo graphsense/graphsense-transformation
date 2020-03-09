@@ -145,14 +145,21 @@ object TransformationJob {
       .distinct()
       .count()
 
+    println("Computing plain address relations")
+    val plainAddressRelations =
+      transformation
+        .computePlainAddressRelations(
+          inputs,
+          outputs,
+          regInputs,
+          transactions
+        )
+
     println("Computing address relations")
     val addressRelations =
       transformation
         .computeAddressRelations(
-          inputs,
-          outputs,
-          regInputs,
-          transactions,
+          plainAddressRelations,
           basicAddresses,
           exchangeRates,
           addressTags
@@ -234,7 +241,6 @@ object TransformationJob {
           clusterInputs,
           clusterOutputs
         )
-        .persist()
 
     println("Computing cluster relations")
     val clusterRelations =

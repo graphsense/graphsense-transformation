@@ -31,7 +31,9 @@ class TransformationTest
     val schema = ScalaReflection.schemaFor[A].dataType.asInstanceOf[StructType]
     val newSchema = DataType
       .fromJson(
-        schema.json.replace("\"type\":\"binary\"", "\"type\":\"string\"")
+        schema.json
+          .replace("\"type\":\"binary\"", "\"type\":\"string\"")
+          .replace("\"elementType\":\"binary\"", "\"elementType\":\"string\"")
       )
       .asInstanceOf[StructType]
     spark.read.schema(newSchema).json(file).as[A]
@@ -130,12 +132,23 @@ class TransformationTest
     .distinct()
     .count()
 
+  val plainAddressRelations =
+    t.computePlainAddressRelations(inputs, outputs, regInputs, transactions)
+
+  val addressRelationsLimit1 =
+    t.computeAddressRelations(
+        plainAddressRelations,
+        basicAddresses,
+        exchangeRates,
+        addressTags,
+        1
+      )
+      .sort(F.dstAddressId, F.srcAddressId)
+      .persist()
+
   val addressRelations =
     t.computeAddressRelations(
-        inputs,
-        outputs,
-        regInputs,
-        transactions,
+        plainAddressRelations,
         basicAddresses,
         exchangeRates,
         addressTags
@@ -196,6 +209,16 @@ class TransformationTest
 
   val plainClusterRelations =
     t.computePlainClusterRelations(clusterInputs, clusterOutputs).persist()
+
+  val clusterRelationsLimit1 =
+    t.computeClusterRelations(
+        plainClusterRelations,
+        basicCluster,
+        exchangeRates,
+        clusterTags,
+        1
+      )
+      .persist()
 
   val clusterRelations =
     t.computeClusterRelations(
@@ -277,11 +300,12 @@ class TransformationTest
   test("addressRelations") {
     val addressRelationsRef =
       readJson[AddressRelations](refDir + "address_relations.json")
-    addressRelations
-      .coalesce(1)
-      .write
-      .mode("overwrite")
     assertDataFrameEquality(addressRelations, addressRelationsRef)
+  }
+  test("addressRelations with txLimit=1") {
+    val addressRelationsLimit1Ref =
+      readJson[AddressRelations](refDir + "address_relations_limit1.json")
+    assertDataFrameEquality(addressRelationsLimit1, addressRelationsLimit1Ref)
   }
   test("addresses") {
     val addressesRef = readJson[Address](refDir + "addresses.json")
@@ -336,18 +360,15 @@ class TransformationTest
   test("clusterRelations") {
     val clusterRelationsRef =
       readJson[ClusterRelations](refDir + "cluster_relations.json")
-    clusterRelations
-      .coalesce(1)
-      .write
-      .mode("overwrite")
     assertDataFrameEquality(clusterRelations, clusterRelationsRef)
+  }
+  test("clusterRelations with txLimit=1") {
+    val clusterRelationsLimit1Ref =
+      readJson[ClusterRelations](refDir + "cluster_relations_limit1.json")
+    assertDataFrameEquality(clusterRelationsLimit1, clusterRelationsLimit1Ref)
   }
   test("clusters") {
     val clusterRef = readJson[Cluster](refDir + "cluster.json")
-    cluster
-      .coalesce(1)
-      .write
-      .mode("overwrite")
     assertDataFrameEquality(cluster, clusterRef)
   }
   test("clusterAdresses") {

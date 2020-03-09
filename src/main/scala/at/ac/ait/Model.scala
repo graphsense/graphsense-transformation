@@ -236,6 +236,14 @@ case class ClusterTags(
     abuse: String
 )
 
+case class PlainAddressRelations(
+    txHash: Array[Byte],
+    srcAddressId: Int,
+    dstAddressId: Int,
+    height: Int,
+    estimatedValue: Long
+)
+
 case class AddressRelations(
     srcAddressIdGroup: Int,
     srcAddressId: Int,
@@ -246,7 +254,8 @@ case class AddressRelations(
     srcLabels: Seq[String],
     dstLabels: Seq[String],
     noTransactions: Int,
-    estimatedValue: Currency
+    estimatedValue: Currency,
+    txList: Seq[Array[Byte]]
 )
 
 case class PlainClusterRelations(
@@ -267,7 +276,8 @@ case class ClusterRelations(
     srcLabels: Seq[String],
     dstLabels: Seq[String],
     noTransactions: Int,
-    value: Currency
+    value: Currency,
+    txList: Seq[Array[Byte]]
 )
 
 case class Tag(

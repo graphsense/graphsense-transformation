@@ -12,7 +12,8 @@ import org.apache.spark.sql.functions.{
   row_number,
   substring,
   sum,
-  udf
+  udf,
+  when
 }
 import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
@@ -213,64 +214,63 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .as[AddressCluster]
   }
 
-  def addressRelations(
+  def plainAddressRelations(
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
       regularInputs: Dataset[RegularInput],
-      transactions: Dataset[Transaction],
+      transactions: Dataset[Transaction]
+  ): Dataset[PlainAddressRelations] = {
+
+    val regularInputSum =
+      regularInputs.groupBy(F.txHash).agg(sum(F.value) as "regularSum")
+    val addressInputSum =
+      inputs.groupBy(F.height, F.txHash).agg(sum(F.value) as "addressSum")
+    val totalInput = transactions
+      .withColumn("input", explode(col("inputs")))
+      .select(F.txHash, "input.value")
+      .groupBy(F.txHash)
+      .agg(sum(F.value) as F.totalInput)
+    val reducedInputSum =
+      addressInputSum
+        .join(regularInputSum, F.txHash)
+        .join(totalInput, F.txHash)
+        .select(
+          col(F.height),
+          col(F.txHash),
+          // regularSum == addressSum, unless input address is used as output in same tx
+          col(F.totalInput) - col("regularSum") + col("addressSum") as F.totalInput
+        )
+
+    inputs
+      .select(
+        col(F.txHash),
+        col(F.addressId) as F.srcAddressId,
+        col(F.value) as "inValue"
+      )
+      .join(
+        outputs.select(
+          col(F.txHash),
+          col(F.addressId) as F.dstAddressId,
+          col(F.value) as "outValue"
+        ),
+        F.txHash
+      )
+      .join(reducedInputSum, F.txHash)
+      .withColumn(
+        F.estimatedValue,
+        round(col("inValue") / col(F.totalInput) * col("outValue")) cast LongType
+      )
+      .drop(F.totalInput, "inValue", "outValue")
+      .as[PlainAddressRelations]
+  }
+
+  def addressRelations(
+      plainAddressRelations: Dataset[PlainAddressRelations],
       addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates],
-      addressTags: Dataset[AddressTags]
+      addressTags: Dataset[AddressTags],
+      txLimit: Int
   ): Dataset[AddressRelations] = {
-    val fullAddressRelations = {
-
-      val regularInputSum =
-        regularInputs.groupBy(F.txHash).agg(sum(F.value) as "regularSum")
-      val addressInputSum =
-        inputs.groupBy(F.height, F.txHash).agg(sum(F.value) as "addressSum")
-      val totalInput = transactions
-        .withColumn("input", explode(col("inputs")))
-        .select(F.txHash, "input.value")
-        .groupBy(F.txHash)
-        .agg(sum(F.value) as F.totalInput)
-      val reducedInputSum =
-        addressInputSum
-          .join(regularInputSum, F.txHash)
-          .join(totalInput, F.txHash)
-          .select(
-            col(F.height),
-            col(F.txHash),
-            // regularSum == addressSum, unless input address is used as output in same tx
-            col(F.totalInput) - col("regularSum") + col("addressSum") as F.totalInput
-          )
-
-      val plainAddressRelations =
-        inputs
-          .select(
-            col(F.txHash),
-            col(F.addressId) as F.srcAddressId,
-            col(F.value) as "inValue"
-          )
-          .join(
-            outputs.select(
-              col(F.txHash),
-              col(F.addressId) as F.dstAddressId,
-              col(F.value) as "outValue"
-            ),
-            F.txHash
-          )
-          .join(reducedInputSum, F.txHash)
-          .withColumn(
-            F.estimatedValue,
-            round(col("inValue") / col(F.totalInput) * col("outValue")) cast LongType
-          )
-          .drop(F.totalInput, "inValue", "outValue")
-      toCurrencyDataFrame(
-        exchangeRates,
-        plainAddressRelations,
-        List(F.estimatedValue)
-      ).drop(F.height)
-    }
 
     val props =
       addresses.select(
@@ -282,7 +282,11 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .groupBy(F.addressId)
       .agg(collect_set(col(F.label)).as(F.label))
 
-    fullAddressRelations
+    val fullAddressRelations = toCurrencyDataFrame(
+      exchangeRates,
+      plainAddressRelations,
+      List(F.estimatedValue)
+    ).drop(F.height)
       .groupBy(F.srcAddressId, F.dstAddressId)
       .agg(
         count(F.txHash) cast IntegerType as F.noTransactions,
@@ -312,6 +316,23 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         Seq(F.dstAddressId),
         "left"
       )
+
+    val txList = plainAddressRelations
+    // compute list column of transactions (only if #tx <= txLimit)
+      .select(F.srcAddressId, F.dstAddressId, F.txHash)
+      .join(
+        fullAddressRelations
+          .select(F.srcAddressId, F.dstAddressId, F.noTransactions),
+        Seq(F.srcAddressId, F.dstAddressId),
+        "full"
+      )
+      .groupBy(F.srcAddressId, F.dstAddressId)
+      .agg(
+        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txHash))) as F.txList
+      )
+
+    fullAddressRelations
+      .join(txList, Seq(F.srcAddressId, F.dstAddressId), "left")
       .as[AddressRelations]
   }
 
@@ -338,11 +359,9 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       plainClusterRelations: Dataset[PlainClusterRelations],
       cluster: Dataset[BasicCluster],
       exchangeRates: Dataset[ExchangeRates],
-      clusterTags: Dataset[ClusterTags]
+      clusterTags: Dataset[ClusterTags],
+      txLimit: Int
   ) = {
-    val fullClusterRelations =
-      toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
-        .drop(F.height)
 
     val props = cluster
       .select(
@@ -358,36 +377,55 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .groupBy(F.cluster)
       .agg(collect_set(col(F.label)).as(F.label))
 
-    fullClusterRelations
+    val fullClusterRelations =
+      toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
+        .drop(F.height)
+        .groupBy(F.srcCluster, F.dstCluster)
+        .agg(
+          count(F.txHash) cast IntegerType as F.noTransactions,
+          udf(Currency).apply(
+            sum("value.value"),
+            sum("value.eur"),
+            sum("value.usd")
+          ) as F.value
+        )
+        .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
+        .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
+        .transform(idGroup(F.srcCluster, F.srcClusterGroup))
+        .transform(idGroup(F.dstCluster, F.dstClusterGroup))
+        .join(
+          clusterLabels.select(
+            col(F.cluster).as(F.srcCluster),
+            col(F.label).as(F.srcLabels)
+          ),
+          Seq(F.srcCluster),
+          "left"
+        )
+        .join(
+          clusterLabels.select(
+            col(F.cluster).as(F.dstCluster),
+            col(F.label).as(F.dstLabels)
+          ),
+          Seq(F.dstCluster),
+          "left"
+        )
+
+    val txList = plainClusterRelations
+    // compute list column of transactions (only if #tx <= txLimit)
+      .select(F.srcCluster, F.dstCluster, F.txHash)
+      .join(
+        fullClusterRelations
+          .select(F.srcCluster, F.dstCluster, F.noTransactions),
+        Seq(F.srcCluster, F.dstCluster),
+        "full"
+      )
       .groupBy(F.srcCluster, F.dstCluster)
       .agg(
-        count(F.txHash) cast IntegerType as F.noTransactions,
-        udf(Currency).apply(
-          sum("value.value"),
-          sum("value.eur"),
-          sum("value.usd")
-        ) as F.value
+        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txHash))) as F.txList
       )
-      .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
-      .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
-      .transform(idGroup(F.srcCluster, F.srcClusterGroup))
-      .transform(idGroup(F.dstCluster, F.dstClusterGroup))
-      .join(
-        clusterLabels.select(
-          col(F.cluster).as(F.srcCluster),
-          col(F.label).as(F.srcLabels)
-        ),
-        Seq(F.srcCluster),
-        "left"
-      )
-      .join(
-        clusterLabels.select(
-          col(F.cluster).as(F.dstCluster),
-          col(F.label).as(F.dstLabels)
-        ),
-        Seq(F.dstCluster),
-        "left"
-      )
+
+    fullClusterRelations
+      .join(txList, Seq(F.srcCluster, F.dstCluster), "left")
       .as[ClusterRelations]
   }
 }
