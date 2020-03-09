@@ -374,13 +374,15 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       plainClusterRelations: Dataset[PlainClusterRelations],
       cluster: Dataset[BasicCluster],
       exchangeRates: Dataset[ExchangeRates],
-      clusterTags: Dataset[ClusterTags]
+      clusterTags: Dataset[ClusterTags],
+      txLimit: Int = 100
   ): Dataset[ClusterRelations] = {
     t.clusterRelations(
       plainClusterRelations,
       cluster,
       exchangeRates,
-      clusterTags
+      clusterTags,
+      txLimit
     )
   }
 

@@ -7,6 +7,7 @@ object Fields {
   val txHash = "txHash"
   val txIndex = "txIndex"
   val txPrefix = "txPrefix"
+  val txList = "txList"
   val value = "value"
   val addresses = "addresses"
   val address = "address"

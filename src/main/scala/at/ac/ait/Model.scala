@@ -267,7 +267,8 @@ case class ClusterRelations(
     srcLabels: Seq[String],
     dstLabels: Seq[String],
     noTransactions: Int,
-    value: Currency
+    value: Currency,
+    txList: Seq[Array[Byte]]
 )
 
 case class Tag(

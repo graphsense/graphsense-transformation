@@ -156,8 +156,9 @@ CREATE TABLE cluster_incoming_relations (
     src_cluster int,
     src_properties FROZEN <cluster_summary>,
     src_labels list<text>,
-    no_transactions int,
     value frozen <value>,
+    no_transactions int,
+    tx_list list<blob>,
     PRIMARY KEY (dst_cluster_group, dst_cluster, src_cluster)
 );
 
@@ -167,8 +168,9 @@ CREATE TABLE cluster_outgoing_relations (
     dst_cluster int,
     dst_properties FROZEN <cluster_summary>,
     dst_labels list<text>,
-    no_transactions int,
     value frozen <value>,
+    no_transactions int,
+    tx_list list<blob>,
     PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
 );
 

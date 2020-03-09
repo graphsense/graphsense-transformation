@@ -12,7 +12,8 @@ import org.apache.spark.sql.functions.{
   row_number,
   substring,
   sum,
-  udf
+  udf,
+  when
 }
 import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
@@ -338,11 +339,9 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       plainClusterRelations: Dataset[PlainClusterRelations],
       cluster: Dataset[BasicCluster],
       exchangeRates: Dataset[ExchangeRates],
-      clusterTags: Dataset[ClusterTags]
+      clusterTags: Dataset[ClusterTags],
+      txLimit: Int
   ) = {
-    val fullClusterRelations =
-      toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
-        .drop(F.height)
 
     val props = cluster
       .select(
@@ -358,36 +357,55 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .groupBy(F.cluster)
       .agg(collect_set(col(F.label)).as(F.label))
 
-    fullClusterRelations
+    val fullClusterRelations =
+      toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
+        .drop(F.height)
+        .groupBy(F.srcCluster, F.dstCluster)
+        .agg(
+          count(F.txHash) cast IntegerType as F.noTransactions,
+          udf(Currency).apply(
+            sum("value.value"),
+            sum("value.eur"),
+            sum("value.usd")
+          ) as F.value
+        )
+        .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
+        .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
+        .transform(idGroup(F.srcCluster, F.srcClusterGroup))
+        .transform(idGroup(F.dstCluster, F.dstClusterGroup))
+        .join(
+          clusterLabels.select(
+            col(F.cluster).as(F.srcCluster),
+            col(F.label).as(F.srcLabels)
+          ),
+          Seq(F.srcCluster),
+          "left"
+        )
+        .join(
+          clusterLabels.select(
+            col(F.cluster).as(F.dstCluster),
+            col(F.label).as(F.dstLabels)
+          ),
+          Seq(F.dstCluster),
+          "left"
+        )
+
+    val txList = plainClusterRelations
+    // compute list column of transactions (only if #tx <= txLimit)
+      .select(F.srcCluster, F.dstCluster, F.txHash)
+      .join(
+        fullClusterRelations
+          .select(F.srcCluster, F.dstCluster, F.noTransactions),
+        Seq(F.srcCluster, F.dstCluster),
+        "full"
+      )
       .groupBy(F.srcCluster, F.dstCluster)
       .agg(
-        count(F.txHash) cast IntegerType as F.noTransactions,
-        udf(Currency).apply(
-          sum("value.value"),
-          sum("value.eur"),
-          sum("value.usd")
-        ) as F.value
+        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txHash))) as F.txList
       )
-      .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
-      .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
-      .transform(idGroup(F.srcCluster, F.srcClusterGroup))
-      .transform(idGroup(F.dstCluster, F.dstClusterGroup))
-      .join(
-        clusterLabels.select(
-          col(F.cluster).as(F.srcCluster),
-          col(F.label).as(F.srcLabels)
-        ),
-        Seq(F.srcCluster),
-        "left"
-      )
-      .join(
-        clusterLabels.select(
-          col(F.cluster).as(F.dstCluster),
-          col(F.label).as(F.dstLabels)
-        ),
-        Seq(F.dstCluster),
-        "left"
-      )
+
+    fullClusterRelations
+      .join(txList, Seq(F.srcCluster, F.dstCluster), "left")
       .as[ClusterRelations]
   }
 }
