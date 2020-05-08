@@ -29,7 +29,7 @@ CREATE TABLE address_transactions (
     height int,
     tx_index int,
     timestamp int,
-    PRIMARY KEY (address_id_group, address_id, height, tx_hash)
+    PRIMARY KEY (address_id_group, address_id, tx_hash)
 );
 
 CREATE TABLE address (
