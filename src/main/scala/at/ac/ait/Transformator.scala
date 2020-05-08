@@ -6,6 +6,7 @@ import org.apache.spark.sql.functions.{
   col,
   collect_set,
   count,
+  dense_rank,
   explode,
   floor,
   round,
@@ -13,7 +14,6 @@ import org.apache.spark.sql.functions.{
   substring,
   sum,
   udf,
-  when
 }
 import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
@@ -282,7 +282,21 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .groupBy(F.addressId)
       .agg(collect_set(col(F.label)).as(F.label))
 
-    val fullAddressRelations = toCurrencyDataFrame(
+    // list of `txLimit` most recent transactions
+    val txList = plainAddressRelations
+      .withColumn(
+        "rank",
+        dense_rank().over(
+          Window
+            .partitionBy(col(F.srcAddressId), col(F.dstAddressId))
+            .orderBy($"height".desc)
+        )
+      )
+      .filter($"rank" <= txLimit)
+      .groupBy(F.srcAddressId, F.dstAddressId)
+      .agg(collect_set(col(F.txHash)) as F.txList)
+
+    toCurrencyDataFrame(
       exchangeRates,
       plainAddressRelations,
       List(F.estimatedValue)
@@ -316,22 +330,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         Seq(F.dstAddressId),
         "left"
       )
-
-    val txList = plainAddressRelations
-    // compute list column of transactions (only if #tx <= txLimit)
-      .select(F.srcAddressId, F.dstAddressId, F.txHash)
-      .join(
-        fullAddressRelations
-          .select(F.srcAddressId, F.dstAddressId, F.noTransactions),
-        Seq(F.srcAddressId, F.dstAddressId),
-        "full"
-      )
-      .groupBy(F.srcAddressId, F.dstAddressId)
-      .agg(
-        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txHash))) as F.txList
-      )
-
-    fullAddressRelations
       .join(txList, Seq(F.srcAddressId, F.dstAddressId), "left")
       .as[AddressRelations]
   }
@@ -377,54 +375,51 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .groupBy(F.cluster)
       .agg(collect_set(col(F.label)).as(F.label))
 
-    val fullClusterRelations =
-      toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
-        .drop(F.height)
-        .groupBy(F.srcCluster, F.dstCluster)
-        .agg(
-          count(F.txHash) cast IntegerType as F.noTransactions,
-          udf(Currency).apply(
-            sum("value.value"),
-            sum("value.eur"),
-            sum("value.usd")
-          ) as F.value
-        )
-        .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
-        .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
-        .transform(idGroup(F.srcCluster, F.srcClusterGroup))
-        .transform(idGroup(F.dstCluster, F.dstClusterGroup))
-        .join(
-          clusterLabels.select(
-            col(F.cluster).as(F.srcCluster),
-            col(F.label).as(F.srcLabels)
-          ),
-          Seq(F.srcCluster),
-          "left"
-        )
-        .join(
-          clusterLabels.select(
-            col(F.cluster).as(F.dstCluster),
-            col(F.label).as(F.dstLabels)
-          ),
-          Seq(F.dstCluster),
-          "left"
-        )
-
+    // list of `txLimit` most recent transactions
     val txList = plainClusterRelations
-    // compute list column of transactions (only if #tx <= txLimit)
-      .select(F.srcCluster, F.dstCluster, F.txHash)
-      .join(
-        fullClusterRelations
-          .select(F.srcCluster, F.dstCluster, F.noTransactions),
-        Seq(F.srcCluster, F.dstCluster),
-        "full"
+      .withColumn(
+        "rank",
+        dense_rank().over(
+          Window
+            .partitionBy(col(F.srcCluster), col(F.dstCluster))
+            .orderBy($"height".desc)
+        )
       )
+      .filter($"rank" <= txLimit)
+      .groupBy(F.srcCluster, F.dstCluster)
+      .agg(collect_set(col(F.txHash)) as F.txList)
+
+    toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
+      .drop(F.height)
       .groupBy(F.srcCluster, F.dstCluster)
       .agg(
-        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txHash))) as F.txList
+        count(F.txHash) cast IntegerType as F.noTransactions,
+        udf(Currency).apply(
+          sum("value.value"),
+          sum("value.eur"),
+          sum("value.usd")
+        ) as F.value
       )
-
-    fullClusterRelations
+      .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
+      .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
+      .transform(idGroup(F.srcCluster, F.srcClusterGroup))
+      .transform(idGroup(F.dstCluster, F.dstClusterGroup))
+      .join(
+        clusterLabels.select(
+          col(F.cluster).as(F.srcCluster),
+          col(F.label).as(F.srcLabels)
+        ),
+        Seq(F.srcCluster),
+        "left"
+      )
+      .join(
+        clusterLabels.select(
+          col(F.cluster).as(F.dstCluster),
+          col(F.label).as(F.dstLabels)
+        ),
+        Seq(F.dstCluster),
+        "left"
+      )
       .join(txList, Seq(F.srcCluster, F.dstCluster), "left")
       .as[ClusterRelations]
   }

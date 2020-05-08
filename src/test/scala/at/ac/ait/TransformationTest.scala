@@ -143,7 +143,7 @@ class TransformationTest
         addressTags,
         1
       )
-      .sort(F.dstAddressId, F.srcAddressId)
+      .sort(F.srcAddressId, F.dstAddressId)
       .persist()
 
   val addressRelations =
@@ -153,7 +153,7 @@ class TransformationTest
         exchangeRates,
         addressTags
       )
-      .sort(F.dstAddressId, F.srcAddressId)
+      .sort(F.srcAddressId, F.dstAddressId)
       .persist()
   val noAddressRelations = addressRelations.count()
 
@@ -218,6 +218,7 @@ class TransformationTest
         clusterTags,
         1
       )
+      .sort(F.srcCluster, F.dstCluster)
       .persist()
 
   val clusterRelations =
@@ -227,6 +228,7 @@ class TransformationTest
         exchangeRates,
         clusterTags
       )
+      .sort(F.srcCluster, F.dstCluster)
       .persist()
 
   val cluster =

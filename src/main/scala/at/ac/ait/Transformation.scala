@@ -266,7 +266,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates],
       addressTags: Dataset[AddressTags],
-      txLimit: Int = 100
+      txLimit: Int = 10
   ): Dataset[AddressRelations] = {
     t.addressRelations(
       plainAddressRelations,
