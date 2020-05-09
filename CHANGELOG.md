@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 ### Changed
+- Update data model, field name changed in raw Cassandra schema
+  (graphsense/graphsense-blocksci@c418dab)
+- Change primary key of `address_transactions` table
+- Add list of transactions (max 100) to address/cluster relations
+- Add tag labels to address/cluster relations table
+  (graphsense/graphsense-transformation#15)
+- Store table `tag_by_label` in transformed keyspace
+  (graphsense/graphsense-dashboard#98)
+- Reintegrate clustering library
+- Upgrade Scala (2.12)/Spark (2.4.5) + dependencies
 - Allow NULL values in tag categories
 
 ## [0.4.2] - 2019-12-19
