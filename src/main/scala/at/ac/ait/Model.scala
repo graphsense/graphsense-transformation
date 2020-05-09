@@ -44,7 +44,7 @@ case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
 
 // raw schema data types
 
-case class TxInputOutput(address: Seq[String], value: Long, txType: Byte)
+case class TxInputOutput(address: Seq[String], value: Long, addressType: Byte)
 
 // transformed schema data types
 
