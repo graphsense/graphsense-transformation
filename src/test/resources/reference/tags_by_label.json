@@ -1,0 +1,2 @@
+{"labelNormPrefix": "min", "labelNorm": "miningservice", "label": "Mining Service", "address": "1HxbaBMF2jXBVnagoHvaA6rLxmaYL8gb8T", "source": "test.com", "category": "Mining Service", "tagpackUri": "https://example.org/miner", "lastmod": 1524470607, "currency": "BTC", "activeAddress": true}
+{"labelNormPrefix": "joh", "labelNorm": "johndoe", "label": "John Doe", "address": "15kcXCiXU5RjkgxZuxdFhpHpixmxGvPHpa", "source": "johndoe.com", "category": "Unclear", "tagpackUri": "https://example.com/tags", "lastmod": 1532249114, "currency": "BTC", "activeAddress": false}

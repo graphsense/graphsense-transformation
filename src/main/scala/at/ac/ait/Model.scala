@@ -44,7 +44,7 @@ case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
 
 // raw schema data types
 
-case class TxInputOutput(address: Seq[String], value: Long, txType: Byte)
+case class TxInputOutput(address: Seq[String], value: Long, addressType: Byte)
 
 // transformed schema data types
 
@@ -95,14 +95,14 @@ case class BlockTransactions(height: Int, txs: Seq[TxSummary])
 
 case class ExchangeRatesRaw(date: String, eur: Float, usd: Float)
 
-case class Tag(
+case class TagRaw(
     address: String,
     label: String,
     source: String,
     tagpackUri: String,
     currency: String,
     lastmod: Int,
-    category: String,
+    category: Option[String],
     abuse: Option[String]
 )
 
@@ -236,6 +236,14 @@ case class ClusterTags(
     abuse: String
 )
 
+case class PlainAddressRelations(
+    txHash: Array[Byte],
+    srcAddressId: Int,
+    dstAddressId: Int,
+    height: Int,
+    estimatedValue: Long
+)
+
 case class AddressRelations(
     srcAddressIdGroup: Int,
     srcAddressId: Int,
@@ -243,8 +251,11 @@ case class AddressRelations(
     dstAddressId: Int,
     srcProperties: AddressSummary,
     dstProperties: AddressSummary,
+    srcLabels: Seq[String],
+    dstLabels: Seq[String],
     noTransactions: Int,
-    estimatedValue: Currency
+    estimatedValue: Currency,
+    txList: Seq[Array[Byte]]
 )
 
 case class PlainClusterRelations(
@@ -262,8 +273,25 @@ case class ClusterRelations(
     dstCluster: Int,
     srcProperties: ClusterSummary,
     dstProperties: ClusterSummary,
+    srcLabels: Seq[String],
+    dstLabels: Seq[String],
     noTransactions: Int,
-    value: Currency
+    value: Currency,
+    txList: Seq[Array[Byte]]
+)
+
+case class Tag(
+    labelNormPrefix: String,
+    labelNorm: String,
+    label: String,
+    address: String,
+    source: String,
+    tagpackUri: String,
+    currency: String,
+    lastmod: Int,
+    category: Option[String],
+    abuse: Option[String],
+    activeAddress: Boolean
 )
 
 case class SummaryStatistics(

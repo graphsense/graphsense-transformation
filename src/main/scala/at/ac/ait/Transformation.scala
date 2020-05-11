@@ -8,12 +8,16 @@ import org.apache.spark.sql.functions.{
   date_format,
   explode,
   from_unixtime,
+  lit,
+  lower,
   max,
   min,
   posexplode,
+  regexp_replace,
   row_number,
   size,
   struct,
+  substring,
   sum,
   to_date,
   udf
@@ -243,21 +247,33 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     ).as[BasicAddress]
   }
 
-  def computeAddressRelations(
+  def computePlainAddressRelations(
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
       regularInputs: Dataset[RegularInput],
-      transactions: Dataset[Transaction],
-      addresses: Dataset[BasicAddress],
-      exchangeRates: Dataset[ExchangeRates]
-  ): Dataset[AddressRelations] = {
-    t.addressRelations(
+      transactions: Dataset[Transaction]
+  ): Dataset[PlainAddressRelations] = {
+    t.plainAddressRelations(
       inputs,
       outputs,
       regularInputs,
-      transactions,
+      transactions
+    )
+  }
+
+  def computeAddressRelations(
+      plainAddressRelations: Dataset[PlainAddressRelations],
+      addresses: Dataset[BasicAddress],
+      exchangeRates: Dataset[ExchangeRates],
+      addressTags: Dataset[AddressTags],
+      txLimit: Int = 100
+  ): Dataset[AddressRelations] = {
+    t.addressRelations(
+      plainAddressRelations,
       addresses,
-      exchangeRates
+      exchangeRates,
+      addressTags,
+      txLimit
     )
   }
 
@@ -280,7 +296,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   }
 
   def computeAddressTags(
-      tags: Dataset[Tag],
+      tags: Dataset[TagRaw],
       addresses: Dataset[BasicAddress],
       addressIds: Dataset[AddressId],
       currency: String
@@ -367,10 +383,17 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   def computeClusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelations],
       cluster: Dataset[BasicCluster],
-      addresses: Dataset[BasicAddress],
-      exchangeRates: Dataset[ExchangeRates]
+      exchangeRates: Dataset[ExchangeRates],
+      clusterTags: Dataset[ClusterTags],
+      txLimit: Int = 100
   ): Dataset[ClusterRelations] = {
-    t.clusterRelations(plainClusterRelations, cluster, addresses, exchangeRates)
+    t.clusterRelations(
+      plainClusterRelations,
+      cluster,
+      exchangeRates,
+      clusterTags,
+      txLimit
+    )
   }
 
   def computeClusterAddresses(
@@ -389,8 +412,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   def computeCluster(
       basicCluster: Dataset[BasicCluster],
-      clusterRelations: Dataset[ClusterRelations],
-      clusterTags: Dataset[ClusterTags]
+      clusterRelations: Dataset[ClusterRelations]
   ): Dataset[Cluster] = {
     // compute in/out degrees for cluster graph
     // basicCluster contains only clusters of size > 1 with an integer ID
@@ -421,6 +443,36 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .transform(t.idGroup(F.cluster, F.clusterGroup))
       .sort(F.clusterGroup, F.cluster)
       .as[ClusterTags]
+  }
+
+  def computeTagsByLabel(
+      tags: Dataset[TagRaw],
+      addressTags: Dataset[AddressTags],
+      currency: String,
+      prefixLength: Int = 3
+  ): Dataset[Tag] = {
+    // check if addresses where used in transactions
+    tags
+      .filter(col(F.currency) === currency)
+      .join(
+        addressTags
+          .select(col(F.address))
+          .withColumn(F.activeAddress, lit(true)),
+        Seq(F.address),
+        "left"
+      )
+      .na
+      .fill(false, Seq(F.activeAddress))
+      // normalize labels
+      .withColumn(
+        F.labelNorm,
+        lower(regexp_replace(col(F.label), "[\\W_]+", ""))
+      )
+      .withColumn(
+        F.labelNormPrefix,
+        substring(col(F.labelNorm), 0, prefixLength)
+      )
+      .as[Tag]
   }
 
   def summaryStatistics(

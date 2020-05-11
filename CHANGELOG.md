@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.4.3] - 2020-05-11
+### Changed
+- Updated data model, field name changed in raw Cassandra schema
+  (graphsense/graphsense-blocksci@c418dab)
+- Changed primary key of `address_transactions` table
+- Added list of transactions (max 100) to address/cluster relations
+- Added tag labels to address/cluster relations table
+  (graphsense/graphsense-transformation#15)
+- Store table `tag_by_label` in transformed keyspace
+  (graphsense/graphsense-dashboard#98)
+- Reintegrated clustering library
+- Upgraded Scala (2.12)/Spark (2.4.5) + dependencies
+- Allow NULL values in tag categories
+
 ## [0.4.2] - 2019-12-19
 ### Changed
 - Exchange rates (by height) are stored in transformed keyspace
