@@ -1,6 +1,6 @@
 ThisBuild / scalaVersion := "2.12.10"
 ThisBuild / organization := "at.ac.ait"
-ThisBuild / version      := "0.4.3"
+ThisBuild / version      := "0.4.4-SNAPSHOT"
 
 
 lazy val root = (project in file(".")).
