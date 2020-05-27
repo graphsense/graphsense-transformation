@@ -28,6 +28,7 @@ lazy val root = (project in file(".")).
       "org.scalatest" %% "scalatest" % "3.1.1" % Test,
       "MrPowers" % "spark-fast-tests" % "0.20.0-s_2.12" % Test,
       "org.rogach" %% "scallop" % "3.4.0" % Provided,
+      "com.tresata" %% "spark-sorted" % "1.7.0" % Provided,
       "org.apache.spark" %% "spark-sql" % "2.4.5" % Provided,
       "com.datastax.spark" %% "spark-cassandra-connector" % "2.4.2" % Provided)
   )

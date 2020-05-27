@@ -4,6 +4,7 @@ import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   col,
+  collect_set,
   count,
   date_format,
   explode,
@@ -25,6 +26,7 @@ import org.apache.spark.sql.functions.{
 import org.apache.spark.sql.types.{IntegerType, StringType}
 
 import at.ac.ait.{Fields => F}
+import at.ac.ait.clustergrowth._
 
 class Transformation(spark: SparkSession, bucketSize: Int) {
 
@@ -443,6 +445,19 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .transform(t.idGroup(F.cluster, F.clusterGroup))
       .sort(F.clusterGroup, F.cluster)
       .as[ClusterTags]
+  }
+
+  def computeClusterGrowth(
+      inputs: Dataset[AddressTransactions],
+      addressCluster: Dataset[AddressCluster]
+  ) = {
+    val clusteredInputs = inputs.join(addressCluster, F.addressId)
+    val clusterAddressesByHeight = clusteredInputs
+      .groupBy(F.cluster, F.height)
+      .agg(collect_set(col(F.addressId)).as(F.addressId))
+      .as[ClusterAddressesByHeight]
+    val clusterGrowth = new ClusterGrowth(spark)
+    clusterGrowth.getClusterGrowth(clusterAddressesByHeight)
   }
 
   def computeTagsByLabel(
