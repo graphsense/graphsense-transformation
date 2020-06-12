@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.4.4] - 2020-06-12
+### Changed
+- Updated dependencies
+### Fixed
+- Fixed tests
+
 ## [0.4.3] - 2020-05-11
 ### Changed
 - Updated data model, field name changed in raw Cassandra schema
