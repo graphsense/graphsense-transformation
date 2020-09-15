@@ -4,13 +4,13 @@ function insert_data () {
     echo "Insert test data from file $1 into Cassandra table $2..."
     while IFS= read -r line
     do
-        cqlsh localhost -e "INSERT INTO $2 JSON '$line';"
+        cqlsh cassandra --cqlversion="3.4.4" -e "INSERT INTO $2 JSON '$line';"
         echo "Inserted test data record"
     done <"$1"
 }
 
 echo "Creating raw keyspace in Cassandra"
-cqlsh localhost -f ./scripts/schema_raw.cql
+cqlsh cassandra --cqlversion="3.4.4" -f ./scripts/schema_raw.cql
 
 echo "Ingesting test blocks..."
 
