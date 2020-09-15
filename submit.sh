@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # default values
-MEMORY="4g"
+MEMORY="24g"
 SPARK_MASTER="local[*]"
-CASSANDRA_HOST="localhost"
+#CASSANDRA_HOST="localhost" # This is provided through docker-compose.yml
 
 CURRENCY="BTC"
 RAW_KEYSPACE="btc_raw"
 TAG_KEYSPACE="tagpacks"
 TGT_KEYSPACE="btc_transformed"
-BUCKET_SIZE=10000
+BUCKET_SIZE=25000
 
 
 if [ -z "$SPARK_HOME" ] ; then
@@ -94,9 +94,14 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   --class "at.ac.ait.TransformationJob" \
   --master "$SPARK_MASTER" \
   --conf spark.executor.memory="$MEMORY" \
+  --conf spark.driver.memory="24g" \
+  --conf spark.local.dir="/spark_store" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
   --conf spark.sql.session.timeZone=UTC \
-  --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:3.4.0 \
+  --conf spark.memory.offHeap.enabled="true" \
+  --conf spark.memory.offHeap.size="10G" \
+  --conf spark.unsafe.sorter.spill.read.ahead.enabled="false" \
+  --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:3.4.0,com.codahale.metrics:metrics-core:3.0.2 \
   target/scala-2.12/graphsense-transformation_2.12-0.4.4-SNAPSHOT.jar \
   --currency "$CURRENCY" \
   --raw_keyspace "$RAW_KEYSPACE" \
