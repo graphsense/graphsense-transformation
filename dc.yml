@@ -10,7 +10,6 @@ services:
     volumes:
      - "./scripts:/root/scripts"
      - "$SPARK_DATASTORE:/spark_store/"
-    env_file: .env
     networks:
      - graphsense-global-net
 networks:
