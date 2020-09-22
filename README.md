@@ -15,6 +15,40 @@ Access to computed de-normalized views is subsequently provided by the
 
 This component is implemented in Scala using [Apache Spark][apache-spark].
 
+## Quick docker setup
+
+### Prerequisites
+Make sure the latest versions of Docker and docker-compose are installed. https://docs.docker.com/compose/install/
+
+This service assumes that:
+ - There is a cassandra instance running;
+ - Both parser and exporter from `graphsense-blocksci` have completed fetching data into that cassandra instance.
+ 
+**It is possible to set up all required services using a single docker-compose evironment. For that, check out the `graphsense-compose` project.** Alternatively, you can set up each required service manually, in which case, keep on reading.
+
+### Configure
+Create a new configuration by copying the `env.example` file to `.env`.
+Modify the configuration match your environment, or keep everything intact.
+ - `CASSANDRA_HOST` must point to an existing cassandra instance.
+
+Apply the configuation by adding this line to `docker-compose.yml`:
+```yaml
+services:
+    transform:
+        ...
+        env_file: .env
+        ...
+```
+
+### Build 
+`docker-compose build`
+
+### Run
+`docker-compose up -d`
+
+Use `docker-compose logs -f --tail=100` to find out about the progress.
+
+
 ## Local Development Environment Setup
 
 ### Prerequisites
