@@ -6,12 +6,11 @@ services:
       dockerfile: Dockerfile
     container_name: transform
     ports:
-     - "4040:4040"
+     - "$SPARK_FRONTEND_PORT:4040"
     volumes:
      - "./scripts:/root/scripts"
-     - "/mnt/bs3/graphsense_spark/:/spark_store/"
-    environment:
-     - CASSANDRA_HOST=cassandra
+     - "$SPARK_DATASTORE:/spark_store/"
+    env_file: .env
     networks:
      - graphsense-global-net
 networks:

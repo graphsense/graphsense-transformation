@@ -6,9 +6,10 @@ SPARK_MASTER="local[*]"
 #CASSANDRA_HOST="localhost" # This is provided through docker-compose.yml
 
 CURRENCY="BTC"
-RAW_KEYSPACE="btc_raw"
-TAG_KEYSPACE="tagpacks"
-TGT_KEYSPACE="btc_transformed"
+# All of these are provided through .env files
+#RAW_KEYSPACE="btc_raw"
+#TAG_KEYSPACE="tagpacks"
+#TGT_KEYSPACE="btc_transformed"
 BUCKET_SIZE=25000
 
 
