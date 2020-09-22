@@ -24,7 +24,7 @@ This service assumes that:
  - There is a cassandra instance running;
  - Both parser and exporter from `graphsense-blocksci` have completed fetching data into that cassandra instance.
  
-**It is possible to set up all required services using a single docker-compose evironment. For that, check out the `graphsense-compose` project.** Alternatively, you can set up each required service manually, in which case, keep on reading.
+**It is possible to set up all required services using a single docker-compose evironment. For that, check out the `graphsense-setup` project.** Alternatively, you can set up each required service manually, in which case, keep on reading.
 
 ### Configure
 Create a new configuration by copying the `env.example` file to `.env`.
