@@ -10,3 +10,4 @@ target/
 /.cache-tests
 /.classpath
 /.project
+.env
