@@ -10,7 +10,7 @@ CURRENCY="BTC"
 #RAW_KEYSPACE="btc_raw"
 #TAG_KEYSPACE="tagpacks"
 #TGT_KEYSPACE="btc_transformed"
-BUCKET_SIZE=25000
+#BUCKET_SIZE=25000
 
 
 if [ -z "$SPARK_HOME" ] ; then
@@ -19,7 +19,7 @@ if [ -z "$SPARK_HOME" ] ; then
 fi
 
 EXEC=$(basename "$0")
-USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--currency CURRENCY] [--src_keyspace RAW_KEYSPACE] [--tag_keyspace TAG_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE] [--bucket_size BUCKET_SIZE]"
+USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--currency CURRENCY] [--src_keyspace RAW_KEYSPACE] [--tag_keyspace TAG_KEYSPACE] [--tgt_keyspace TARGET_KEYSPACE] [--bucket_size BUCKET_SIZE]"
 
 # parse command line options
 args=$(getopt -o hc:m:s: --long raw_keyspace:,tag_keyspace:,tgt_keyspace:,bucket_size:,currency: -- "$@")
