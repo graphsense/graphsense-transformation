@@ -8,5 +8,3 @@ cd /root
 #sbt test
 sbt package
 ./submit.sh
-
-tail -f /dev/null

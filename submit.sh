@@ -87,7 +87,7 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
          "- currency:        $CURRENCY\n" \
          "- raw keyspace:    $RAW_KEYSPACE\n" \
          "- tag keyspace:    $TAG_KEYSPACE\n" \
-         "- target keyspace: $TGT_KEYSPACE\n" \
+         "- target keyspace: $TARGET_KEYSPACE\n" \
          "- bucket size:     $BUCKET_SIZE\n"
 
 
@@ -107,7 +107,7 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   --currency "$CURRENCY" \
   --raw_keyspace "$RAW_KEYSPACE" \
   --tag_keyspace "$TAG_KEYSPACE" \
-  --target_keyspace "$TGT_KEYSPACE" \
+  --target_keyspace "$TARGET_KEYSPACE" \
   --bucket_size "$BUCKET_SIZE"
 
 exit $?
