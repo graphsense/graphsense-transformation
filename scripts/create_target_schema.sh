@@ -1,4 +1,4 @@
 #!/bin/bash
 
 echo "Creating target keyspace in Cassandra"
-cqlsh cassandra --cqlversion="3.4.4" -f ./scripts/schema_transformed.cql
+m4 -Dgraphsense=$TARGET_KEYSPACE ./scripts/schema_transformed.cql | cqlsh $CASSANDRA_HOST --cqlversion="3.4.4"
