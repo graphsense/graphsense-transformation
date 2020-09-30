@@ -3,7 +3,7 @@ package at.ac.ait
 import at.ac.ait.storage.CassandraStorage
 import org.apache.spark.api.java.function.FilterFunction
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, min}
 import org.rogach.scallop.ScallopConf
 
 object AppendJob {
@@ -67,13 +67,17 @@ object AppendJob {
     val noTransactions =
       summaryStatisticsRaw.select(col("noTxs")).first.getLong(0)
 
-    val processedBlockCount =
+    val lastProcessedBlock =
       cassandra.load[SummaryStatistics](conf.targetKeyspace(), "summary_statistics")
-        .first().noBlocks
+        .first().noBlocks - 1
 
-    val unprocessedBlocks = blocks.filter((b) => {b.height > processedBlockCount})
+    val unprocessedBlocks = blocks.filter((b) => {b.height > lastProcessedBlock})
+    val unprocessedTransactions = transactions.filter((tx) => {tx.height > lastProcessedBlock})
     println()
-    println(s"Found ${unprocessedBlocks.count()} new blocks to process.")
+    println("Computing unprocessed diff")
+    println(s"New blocks:          ${unprocessedBlocks.count()}")
+    println(s"New transactions:    ${unprocessedTransactions.count()}")
+    println()
 
     val transformation = new Transformation(spark, conf.bucketSize())
 
@@ -85,5 +89,41 @@ object AppendJob {
 
     assert(exchangeRates.count() == unprocessedBlocks.count())
     cassandra.store(conf.targetKeyspace(), "exchange_rates", exchangeRates)
+
+    // TODO: for inputs and outputs we may actually need more, not just new ones.
+    println("Extracting transaction inputs")
+    val regInputs = transformation.computeRegularInputs(transactions).persist()
+
+    // TODO: There is probably a way to compute ids for new addresses only. Try it later.
+    // To verify, compute addressIds for both complete list of outputs and only new ones and execute:
+    // assert(addressIdsAll.filter(id => id.address equals firstAddressId.address).first().addressId equals firstAddressId.addressId)
+    println("Extracting transaction outputs")
+    val regOutputs = transformation.computeRegularOutputs(transactions).persist()
+
+    println("Computing address IDs")
+    val addressIds = transformation.computeAddressIds(regOutputs)
+
+    val addressByIdGroup = transformation.computeAddressByIdGroups(addressIds)
+    cassandra.store(
+      conf.targetKeyspace(),
+      "address_by_id_group",
+      addressByIdGroup
+    )
+
+    val addressTransactions =
+      transformation
+        .computeAddressTransactions(
+          unprocessedTransactions,
+          regInputs,
+          regOutputs,
+          addressIds
+        )
+        .persist()
+    cassandra.store(
+      conf.targetKeyspace(),
+      "address_transactions",
+      addressTransactions
+    )
+
   }
 }
