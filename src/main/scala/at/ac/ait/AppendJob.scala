@@ -297,43 +297,45 @@ object AppendJob {
     val (cassandra, conf, spark) = setupCassandra(args)
     import spark.implicits._
 
-    val addresses = cassandra.load[AddressByIdGroup](conf.targetKeyspace(), "address_by_id_group")
-    println(s"row count: ${addresses.count()}")
-    val dedupl = addresses.dropDuplicates(Fields.addressId)
-    println(s"row count after deduplicating: ${dedupl.count()}")
+    val verifyTables = List(
+//      "address_by_id_group",
+//      "address_transactions",
+//      "address_incoming_relations",
+      "address_outgoing_relations",
+      "address"
+    )
 
-    val transactions1 = cassandra.load[AddressTransactions](conf.targetKeyspace(), "address_transactions")
-    val transactions2 = cassandra.load[AddressTransactions]("btc_transformed", "address_transactions")
 
-    val diff = transactions2.sort(Fields.addressId).except(transactions1.sort(Fields.addressId))
-    println("address transactions difference: ")
-    assert(diff.count() == 0, message = {
-      diff.show()
-    })
+    def verifyTable[T <: Product: ClassTag: RowReaderFactory: ValidRDDType: Encoder](table: String, sortBy: String) {
+      println(s"Calculating difference: $table")
+      val byAppendJob = cassandra.load[T](conf.targetKeyspace(), table)
+        .sort(sortBy)
 
-    val relationsIn = List(conf.targetKeyspace(), "btc_transformed").map(keyspace => {
-      cassandra.load[AddressIncomingRelations](keyspace, "address_incoming_relations")
-        .sort(Fields.dstAddressId)
-    })
+      val byTransformJob = cassandra.load[T]("btc_transformed", table)
+        .sort(sortBy)
 
-    val relationsOut = Seq(conf.targetKeyspace(), "btc_transformed").map(keyspace => {
-      cassandra.load[AddressOutgoingRelations](keyspace, "address_outgoing_relations")
-        .sort(Fields.srcAddressId)
-    })
+      byAppendJob.union(byTransformJob).except(byAppendJob.intersect(byTransformJob)).as[T].show()
+    }
 
-    println("Address incoming relations difference: ")
-    val diffIn = difference(relationsIn.head, relationsIn.last)
-    diffIn.show(100)
-    assert(diffIn.count() == 0)
+    if (verifyTables contains "address_transactions") {
+      verifyTable[AddressTransactions]("address_transactions", Fields.addressId)
+    }
 
-    println("Address outgoing relations difference: ")
-    val diffOut = difference(relationsOut.head, relationsOut.last)
-    diffOut.show(100)
-    assert(diffOut.count() == 0)
-  }
+    if (verifyTables contains "address_by_id_group") {
+      verifyTable[AddressByIdGroup]("address_by_id_group", Fields.addressId)
+    }
 
-  def difference[T<: Product: ClassTag: RowReaderFactory: ValidRDDType: Encoder](df1:Dataset[T], df2: Dataset[T]): Dataset[T] = {
-    df1.union(df2).except(df1.intersect(df2)).as[T]
+    if (verifyTables contains "address_incoming_relations") {
+      verifyTable[AddressIncomingRelations]("address_incoming_relations", Fields.dstAddressId)
+    }
+
+    if (verifyTables contains "address_outgoing_relations") {
+      verifyTable[AddressOutgoingRelations]("address_outgoing_relations", Fields.srcAddressId)
+    }
+
+    if (verifyTables contains "address") {
+      verifyTable[Address]("address", Fields.addressId)
+    }
   }
 
   def setupCassandra(args: Array[String]): (CassandraStorage, Conf, SparkSession) = {
