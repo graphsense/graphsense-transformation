@@ -62,6 +62,15 @@ case class Currency(value: Long, eur: Float, usd: Float)
 
 case class AddressSummary(totalReceived: Currency, totalSpent: Currency)
 
+case class AddressProperties(
+    addressIdGroup: Int,
+    addressId: Int,
+    address: String,
+    addressPrefix: String,
+    totalReceived: Currency,
+    totalSpent: Currency
+)
+
 case class ClusterSummary(
     noAddresses: Int,
     totalReceived: Currency,
@@ -255,6 +264,27 @@ case class AddressRelations(
     dstLabels: Seq[String],
     noTransactions: Int,
     estimatedValue: Currency,
+    txList: Seq[Array[Byte]]
+)
+
+case class AddressIncomingRelations(
+    dstAddressIdGroup: Int,
+    dstAddressId: Int,
+    srcAddressId: Int,
+    estimatedValue: Currency,
+    noTransactions: Int,
+    srcLabels: Seq[String],
+    srcProperties: AddressSummary
+)
+
+case class AddressOutgoingRelations(
+    srcAddressIdGroup: Int,
+    dstAddressId: Int,
+    srcAddressId: Int,
+    estimatedValue: Currency,
+    noTransactions: Int,
+    dstLabels: Seq[String],
+    dstProperties: AddressSummary,
     txList: Seq[Array[Byte]]
 )
 

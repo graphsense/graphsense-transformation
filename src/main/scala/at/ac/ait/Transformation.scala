@@ -147,7 +147,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   def computeStatistics[A](
       transactions: Dataset[Transaction],
-      all: Dataset[A],
+      all: Dataset[A], // AddressTransactions
       in: Dataset[A],
       out: Dataset[A],
       idColumn: String,
@@ -179,11 +179,12 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .join(txTimes.toDF("firstTxNumber", F.firstTx), "firstTxNumber")
       .join(txTimes.toDF("lastTxNumber", F.lastTx), "lastTxNumber")
       .drop("firstTxNumber", "lastTxNumber")
-      .join(inStats, idColumn)
+      .join(inStats, List(idColumn), joinType = "left_outer")
       .join(outStats, List(idColumn), "left_outer")
       .na
       .fill(0)
       .withColumn(F.totalSpent, zeroValueIfNull(col(F.totalSpent)))
+      .withColumn(F.totalReceived, zeroValueIfNull(col(F.totalReceived)))
   }
 
   def computeNodeDegrees(
