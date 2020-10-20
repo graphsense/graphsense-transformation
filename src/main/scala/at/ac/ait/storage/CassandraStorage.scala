@@ -2,7 +2,7 @@ package at.ac.ait.storage
 
 import com.datastax.spark.connector.rdd.ValidRDDType
 import com.datastax.spark.connector.rdd.reader.RowReaderFactory
-import com.datastax.spark.connector.writer.{RowWriterFactory}
+import com.datastax.spark.connector.writer.{RowWriterFactory, WriteConf}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
@@ -31,13 +31,15 @@ class CassandraStorage(spark: SparkSession) {
   def store[T <: Product: RowWriterFactory](
       keyspace: String,
       tableName: String,
-      df: Dataset[T]
+      df: Dataset[T],
+      ifNotExists: Boolean = false,
   ) = {
 
     spark.sparkContext.setJobDescription(s"Writing table ${tableName}")
     val dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     val timestamp = LocalDateTime.now().format(dtf)
     println(s"[$timestamp] Writing table ${tableName}")
-    time { df.rdd.saveToCassandra(keyspace, tableName) }
+    val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ifNotExists = ifNotExists)
+    time { df.rdd.saveToCassandra(keyspace, tableName, writeConf = conf) }
   }
 }
