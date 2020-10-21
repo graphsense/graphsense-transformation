@@ -3,6 +3,7 @@ package at.ac.ait
 import at.ac.ait.storage.CassandraStorage
 import com.datastax.spark.connector.rdd.ValidRDDType
 import com.datastax.spark.connector.rdd.reader.RowReaderFactory
+import com.datastax.spark.connector.writer.RowWriterFactory
 import com.datastax.spark.connector.{CassandraRow, ColumnName, SomeColumns, toRDDFunctions, toSparkContextFunctions}
 import org.apache.spark.api.java.function.FilterFunction
 import org.apache.spark.rdd.RDD
@@ -41,6 +42,10 @@ object AppendJob {
   def compute(args: Array[String]): Unit = {
     val (cassandra, conf, spark) = setupCassandra(args)
     import spark.implicits._
+
+    val disableAddressTransactions = true
+    val disableAddressIds = true
+    val disableAddressRelationsMerging = true
 
     val exchangeRatesRaw =
       cassandra.load[ExchangeRatesRaw](conf.rawKeyspace(), "exchange_rates")
@@ -86,11 +91,13 @@ object AppendJob {
     val addressIds = transformation.computeAddressIds(regOutputs)
 
     val addressByIdGroup = transformation.computeAddressByIdGroups(addressIds)
-    cassandra.store(
-      conf.targetKeyspace(),
-      "address_by_id_group",
-      addressByIdGroup
-    )
+    if (!disableAddressIds) {
+      cassandra.store(
+        conf.targetKeyspace(),
+        "address_by_id_group",
+        addressByIdGroup
+      )
+    }
 
     val addressTransactionsDiff =
       transformation
@@ -102,16 +109,14 @@ object AppendJob {
         )
         .persist()
 
-    println("Address transaction diff for address 9701: ")
-    addressTransactionsDiff.filter(r => r.addressId == 9701).show()
-
-
-    cassandra.store(
-      conf.targetKeyspace(),
-      "address_transactions",
-      addressTransactionsDiff,
-      ifNotExists = true
-    )
+    if (!disableAddressTransactions) {
+      cassandra.store(
+        conf.targetKeyspace(),
+        "address_transactions",
+        addressTransactionsDiff,
+        ifNotExists = true
+      )
+    }
 
     val (inputsDiff, outputsDiff) =
       transformation.splitTransactions(addressTransactionsDiff)
@@ -133,9 +138,6 @@ object AppendJob {
           exchangeRates
         )
         .persist()
-
-    println("Basic addresses diff for address 9701: ")
-    basicAddressesDiff.filter(r => r.addressId == 9701).show()
 
     val addressTagsDiff: Dataset[AddressTags] =
       if (tagsRaw.count() > 0) {
@@ -176,9 +178,6 @@ object AppendJob {
           transactionsDiff
         )
 
-    println("Plain relations for address 9701: ")
-    plainAddressRelationsDiff.filter(r => r.srcAddressId == 9701).show()
-
     println("Computing address relations")
     val addressRelationsDiff: Dataset[AddressRelations] =
       transformation
@@ -189,11 +188,6 @@ object AppendJob {
           addressTagsDiff
         )
         .persist()
-
-    println("Relations for address 9701: ")
-    addressRelationsDiff.filter(r => r.srcAddressId == 9701).show()
-
-    val mergeArrays = udf((a: Seq[String], b: Seq[String]) => (a ++ b).distinct)
 
     def sumCurrency: ((Currency, Currency) => Currency) = {
       (c1, c2) =>
@@ -210,87 +204,128 @@ object AppendJob {
 
     val bucketSize = conf.bucketSize.getOrElse(0)
 
-    val addressPropsDiff = basicAddressesDiff
-      .withColumn(Fields.addressIdGroup, floor(col(Fields.addressId) / lit(bucketSize)).cast("int"))
-      .select(Fields.addressIdGroup, Fields.addressId, Fields.totalReceived, Fields.totalSpent)
-      .withColumnRenamed(Fields.addressId, "address_id2")
-      .join(addressIds, $"address_id2".equalTo(col(Fields.addressId)))
-      .withColumn(Fields.addressPrefix, substring(col(Fields.address), 0, 5))
-      .as[AddressProperties]
+    if (!disableAddressRelationsMerging) {
+      /**
+       * Total received and spent by address, only for addresses affected by new transactions and only taking into account the new transactions.
+       */
+      val addressPropsDiff = basicAddressesDiff
+        .withColumn(Fields.addressIdGroup, floor(col(Fields.addressId) / lit(bucketSize)).cast("int"))
+        .select(Fields.addressIdGroup, Fields.addressId, Fields.totalReceived, Fields.totalSpent)
+        .withColumnRenamed(Fields.addressId, "address_id2")
+        .join(addressIds, $"address_id2".equalTo(col(Fields.addressId)))
+        .withColumn(Fields.addressPrefix, substring(col(Fields.address), 0, 5))
+        .as[AddressProperties]
 
-    /**
-     * Total received and total spent by address, only for addresses affected by new transactions.
-     */
-    val addressProps = addressPropsDiff
-      .as[AddressProperties]
+      /**
+       * Total received and total spent by address, only for addresses affected by new transactions.
+       */
+      val addressProps = addressPropsDiff
+        .as[AddressProperties]
+        .rdd
+        .joinWithCassandraTable[Address](conf.targetKeyspace(), "address")
+        .on(SomeColumns("address_prefix", "address"))
+        .map({
+          case (diff, existing) =>
+            val totalReceived = sumCurrency.apply(diff.totalReceived, existing.totalReceived)
+            val totalSpent = sumCurrency.apply(diff.totalSpent, existing.totalSpent)
+            diff.asInstanceOf[AddressProperties].copy(totalReceived = totalReceived, totalSpent = totalSpent)
+        }).toDS()
+
+
+      val newAndUpdatedIn = addressRelationsDiff.as[AddressIncomingRelations]
+        .rdd.leftJoinWithCassandraTable[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
+        .on(SomeColumns("src_address_id", "dst_address_id", "dst_address_id_group"))
+        .map(r => {
+          val existingOpt = r._2
+          val diff = r._1
+          if (existingOpt.isDefined) {
+            val existing = existingOpt.get
+            val noTransactions = existing.noTransactions + diff.noTransactions
+            val estimatedValue = sumCurrency.apply(existing.estimatedValue, diff.estimatedValue)
+            val srcProperties = sumProperties.apply(existing.srcProperties, diff.srcProperties)
+            val srcLabels = (Option(existing.srcLabels).getOrElse(Seq()) ++ Option(diff.srcLabels).getOrElse(Seq())).distinct
+            existing.copy(noTransactions = noTransactions, estimatedValue = estimatedValue, srcLabels = srcLabels)
+          } else {
+            diff
+          }
+        })
+
+      val newAndUpdatedOut = addressRelationsDiff.as[AddressOutgoingRelations]
+        .rdd.leftJoinWithCassandraTable[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations")
+        .on(SomeColumns("src_address_id", "dst_address_id", "src_address_id_group"))
+        .map(r => {
+          val existingOpt = r._2
+          val diff = r._1
+          if (existingOpt.isDefined) {
+            val existing = existingOpt.get
+            val noTransactions = existing.noTransactions + diff.noTransactions
+            val estimatedValue = sumCurrency.apply(existing.estimatedValue, diff.estimatedValue)
+            val dstProperties = sumProperties.apply(existing.dstProperties, diff.dstProperties)
+            val dstLabels = (Option(existing.dstLabels).getOrElse(Seq()) ++ Option(diff.dstLabels).getOrElse(Seq())).distinct
+            val txList = ((Option(existing.txList).getOrElse(Seq())) ++ Option(diff.txList).getOrElse(Seq())).distinct
+            existing.copy(noTransactions = noTransactions, estimatedValue = estimatedValue, dstLabels = dstLabels, txList = txList)
+          } else {
+            diff
+          }
+        })
+      newAndUpdatedIn.saveToCassandra(conf.targetKeyspace(), "address_incoming_relations")
+      newAndUpdatedOut.saveToCassandra(conf.targetKeyspace(), "address_outgoing_relations")
+
+
+      val props: ((Currency, Currency) => AddressSummary) = { case(totalReceived, totalSpent) => AddressSummary(totalReceived, totalSpent) }
+      val propsUdf = udf(props)
+
+      val mergedIn = cassandra.load[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
+        .join(addressProps, joinExprs = col(Fields.srcAddressId).equalTo(col(Fields.addressId)))
+        .withColumn(Fields.srcProperties, propsUdf(col(Fields.totalReceived), col(Fields.totalSpent)))
+        .as[AddressIncomingRelations]
+      cassandra.store[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations", mergedIn)
+
+      val mergedOut = cassandra.load[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations")
+        .join(addressProps, joinExprs = col(Fields.dstAddressId).equalTo(col(Fields.addressId)))
+        .withColumn(Fields.dstProperties, propsUdf(col(Fields.totalReceived), col(Fields.totalSpent)))
+        .as[AddressOutgoingRelations]
+      cassandra.store[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations", mergedOut)
+    }
+
+
+
+    println("Computing addresses")
+    val addressesDiff =
+      transformation.computeAddresses(
+        basicAddressesDiff,
+        addressRelationsDiff,
+        addressIds
+      )
+
+
+    val noChangedAddresses = addressesDiff.count()
+    val mergedAddresses = addressesDiff
       .rdd
-      .joinWithCassandraTable[Address](conf.targetKeyspace(), "address")
+      .leftJoinWithCassandraTable[Address](conf.targetKeyspace(), "address")
       .on(SomeColumns("address_prefix", "address"))
       .map({
-        case (diff, existing) =>
-          val totalReceived = sumCurrency.apply(diff.totalReceived, existing.totalReceived)
-          val totalSpent = sumCurrency.apply(diff.totalSpent, existing.totalSpent)
-          diff.asInstanceOf[AddressProperties].copy(totalReceived = totalReceived, totalSpent = totalSpent)
-      }).toDS()
-
-    println("addressProps for addresses 744: ")
-    addressProps.filter(r => r.addressId == 744).show()
-
-
-    val newAndUpdatedIn = addressRelationsDiff.as[AddressIncomingRelations]
-      .rdd.leftJoinWithCassandraTable[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
-      .on(SomeColumns("src_address_id", "dst_address_id", "dst_address_id_group"))
-      .map(r => {
-        val existingOpt = r._2
-        val diff = r._1
-        if (existingOpt.isDefined) {
-          val existing = existingOpt.get
-          val noTransactions = existing.noTransactions + diff.noTransactions
-          val estimatedValue = sumCurrency.apply(existing.estimatedValue, diff.estimatedValue)
-          val srcProperties = sumProperties.apply(existing.srcProperties, diff.srcProperties)
-          val srcLabels = (Option(existing.srcLabels).getOrElse(Seq()) ++ Option(diff.srcLabels).getOrElse(Seq())).distinct
-          existing.copy(noTransactions = noTransactions, estimatedValue = estimatedValue, srcLabels = srcLabels)
-        } else {
-          diff
-        }
-    })
-
-    val newAndUpdatedOut = addressRelationsDiff.as[AddressOutgoingRelations]
-      .rdd.leftJoinWithCassandraTable[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations")
-      .on(SomeColumns("src_address_id", "dst_address_id", "src_address_id_group"))
-      .map(r => {
-        val existingOpt = r._2
-        val diff = r._1
-        if (existingOpt.isDefined) {
-          val existing = existingOpt.get
-          val noTransactions = existing.noTransactions + diff.noTransactions
-          val estimatedValue = sumCurrency.apply(existing.estimatedValue, diff.estimatedValue)
-          val dstProperties = sumProperties.apply(existing.dstProperties, diff.dstProperties)
-          val dstLabels = (Option(existing.dstLabels).getOrElse(Seq()) ++ Option(diff.dstLabels).getOrElse(Seq())).distinct
-          val txList = ((Option(existing.txList).getOrElse(Seq())) ++ Option(diff.txList).getOrElse(Seq())).distinct
-          existing.copy(noTransactions = noTransactions, estimatedValue = estimatedValue, dstLabels = dstLabels, txList = txList)
-        } else {
-          diff
-        }
+        case (diff, existingOpt) =>
+          if (existingOpt.isEmpty) {
+            diff
+          } else {
+            val existing = existingOpt.get
+            existing.copy(
+              noIncomingTxs = existing.noIncomingTxs + diff.noIncomingTxs,
+              noOutgoingTxs = existing.noOutgoingTxs + diff.noOutgoingTxs,
+              firstTx = if (diff.firstTx.height < existing.firstTx.height) diff.firstTx else existing.firstTx,
+              lastTx = if (diff.lastTx.height > existing.lastTx.height) diff.lastTx else existing.lastTx,
+              totalReceived = sumCurrency.apply(existing.totalReceived, diff.totalReceived),
+              totalSpent = sumCurrency.apply(existing.totalSpent, diff.totalSpent),
+              inDegree = existing.inDegree + diff.inDegree,
+              outDegree = existing.outDegree + diff.outDegree
+            )
+          }
       })
-    newAndUpdatedIn.saveToCassandra(conf.targetKeyspace(), "address_incoming_relations")
-    newAndUpdatedOut.saveToCassandra(conf.targetKeyspace(), "address_outgoing_relations")
+      .toDS()
+    cassandra.store(conf.targetKeyspace(), "address", mergedAddresses)
 
 
-    val props: ((Currency, Currency) => AddressSummary) = { case(totalReceived, totalSpent) => AddressSummary(totalReceived, totalSpent) }
-    val propsUdf = udf(props)
-
-    val mergedIn = cassandra.load[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
-      .join(addressProps, joinExprs = col(Fields.srcAddressId).equalTo(col(Fields.addressId)))
-      .withColumn(Fields.srcProperties, propsUdf(col(Fields.totalReceived), col(Fields.totalSpent)))
-      .as[AddressIncomingRelations]
-    cassandra.store[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations", mergedIn)
-
-    val mergedOut = cassandra.load[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations")
-      .join(addressProps, joinExprs = col(Fields.dstAddressId).equalTo(col(Fields.addressId)))
-      .withColumn(Fields.dstProperties, propsUdf(col(Fields.totalReceived), col(Fields.totalSpent)))
-      .as[AddressOutgoingRelations]
-    cassandra.store[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations", mergedOut)
   }
 
   def verify(args: Array[String]): Unit = {
@@ -301,7 +336,7 @@ object AppendJob {
 //      "address_by_id_group",
 //      "address_transactions",
 //      "address_incoming_relations",
-      "address_outgoing_relations",
+//      "address_outgoing_relations",
       "address"
     )
 
@@ -356,24 +391,46 @@ object AppendJob {
     (cassandra, conf, spark)
   }
 
+  /**
+   * Restores some of the tables of btc_transformed_append to the state it was in btc_tranaformed10k
+   * NOTE: Make sure you truncate the tables before running, this method does not delete rows!
+   * @param args
+   * @param fromKeyspace
+   * @param toKeyspace
+   */
   def restore(args: Array[String], fromKeyspace: String = "btc_transformed10k", toKeyspace: String = "btc_transformed_append"): Unit = {
     val (cassandra, conf, spark) = setupCassandra(args)
     import spark.implicits._
 
-    var table = "address_incoming_relations"
+    val tablesToRestore = List(
+//      "address_incoming_relations",
+//      "address_outgoing_relations",
+      "address"
+    )
 
-    println(s"Restore: Writing table ${table} from keyspace ${fromKeyspace} to ${toKeyspace}")
-    val addrInRelations = cassandra.load[AddressIncomingRelations](fromKeyspace, table)
-    cassandra.store[AddressIncomingRelations](toKeyspace, table, addrInRelations)
 
-    table = "address_outgoing_relations"
-    val addrOutRelations = cassandra.load[AddressOutgoingRelations](fromKeyspace, table)
-    cassandra.store[AddressOutgoingRelations](toKeyspace, table, addrOutRelations)
+    def restoreTable[T <: Product: ClassTag: RowReaderFactory: RowWriterFactory: ValidRDDType: Encoder](table: String): Unit = {
+      println(s"Restore: Writing table ${table} from keyspace ${fromKeyspace} to ${toKeyspace}")
+      val addrInRelations = cassandra.load[T](fromKeyspace, table)
+      cassandra.store[T](toKeyspace, table, addrInRelations.as[T])
+    }
+
+
+    if (tablesToRestore contains "address_incoming_relation")
+      restoreTable[AddressIncomingRelations]("address_incoming_relation")
+
+    if (tablesToRestore contains "address_outgoing_relation")
+      restoreTable[AddressOutgoingRelations]("address_outgoing_relation")
+
+    if (tablesToRestore contains "address")
+      restoreTable[Address]("address")
+
+
   }
 
   def main(args: Array[String]) {
-    compute(args)
-//    verify(args)
+//    compute(args)
+    verify(args)
 //    restore(args)
   }
 }
