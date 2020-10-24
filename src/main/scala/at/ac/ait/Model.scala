@@ -62,6 +62,20 @@ case class Currency(value: Long, eur: Float, usd: Float)
 
 case class AddressSummary(totalReceived: Currency, totalSpent: Currency)
 
+case class AddressPair(
+    srcAddressId: Int,
+    srcAddressIdGroup: Int,
+    dstAddressId: Int,
+    dstAddressIdGroup: Int)
+
+case class AddressPairWithProperties(
+    srcAddressId: Int,
+    srcAddressIdGroup: Int,
+    dstAddressId: Int,
+    dstAddressIdGroup: Int,
+    totalReceived: Currency,
+    totalSpent: Currency)
+
 case class AddressProperties(
     addressIdGroup: Int,
     addressId: Int,
