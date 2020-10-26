@@ -76,6 +76,36 @@ case class AddressPairWithProperties(
     totalReceived: Currency,
     totalSpent: Currency)
 
+case class ReclusteredAddress(
+   addressIdGroup: Int,
+   addressId: Int,
+   cluster: Int, // newly calculated cluster
+   clusterGroup: Int,
+   clusterObj: BasicClusterAddressesExt,
+   existingCluster: AddressCluster
+)
+
+/**
+ * Describes an address and a cluster it belongs to, according to Cassandra
+ * @param addressIdGroup
+ * @param addressId
+ * @param clusterGroup
+ * @param cluster
+ */
+case class CassandraAddressCluster(
+   addressIdGroup: Int,
+   addressId: Int,
+   clusterGroup: Int,
+   cluster: Int
+)
+
+case class ClusterPart(
+                      clusterGroup: Int,
+                      cluster: Int,
+                      addressList: Set[CassandraAddressCluster]
+                      )
+
+
 case class AddressProperties(
     addressIdGroup: Int,
     addressId: Int,
@@ -230,6 +260,24 @@ case class BasicClusterAddresses(
     lastTx: TxIdTime,
     totalReceived: Currency,
     totalSpent: Currency
+)
+
+case class BasicClusterAddressesExt(
+    clusterGroup: Int,
+    cluster: Int,
+    addressId: Int,
+    addressIdGroup: Int,
+    noIncomingTxs: Int,
+    noOutgoingTxs: Int,
+    firstTx: TxIdTime,
+    lastTx: TxIdTime,
+    totalReceived: Currency,
+    totalSpent: Currency
+)
+
+
+case class AddressClusterExt(
+    addressIdGroup: Int, addressId: Int, clusterGroup: Int, cluster: Int
 )
 
 case class Cluster(

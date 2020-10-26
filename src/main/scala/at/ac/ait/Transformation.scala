@@ -328,6 +328,23 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .sort(F.cluster, F.addressId)
   }
 
+  def computeBasicClusterAddressesExt(
+                                  basicAddresses: Dataset[BasicAddress],
+                                  addressCluster: Dataset[AddressClusterExt]
+                                  ): Dataset[BasicClusterAddressesExt] = {
+    addressCluster
+      .join(basicAddresses, Seq(F.addressId))
+      .as[BasicClusterAddressesExt]
+      .sort(F.cluster, F.addressId)
+  }
+
+  def extendBasicClusterAddresses(basicClusterAddresses: Dataset[AddressCluster]): Dataset[AddressClusterExt] = {
+    basicClusterAddresses
+      .transform(t.idGroup(Fields.addressId, Fields.addressIdGroup))
+      .transform(t.idGroup(Fields.cluster, Fields.clusterGroup))
+      .as[AddressClusterExt]
+  }
+
   def computeClusterTransactions(
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
