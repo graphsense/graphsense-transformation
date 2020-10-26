@@ -95,16 +95,34 @@ case class ReclusteredAddress(
 case class CassandraAddressCluster(
    addressIdGroup: Int,
    addressId: Int,
-   clusterGroup: Int,
-   cluster: Int
+   clusterGroup: Option[Int],
+   cluster: Option[Int]
 )
 
-case class ClusterPart(
+case class LocalClusterPart(
                       clusterGroup: Int,
                       cluster: Int,
                       addressList: Set[CassandraAddressCluster]
                       )
 
+case class ClusterMerger(
+                        localClusterGroup: Int,
+                        localCluster: Int,
+                        clusterGroup: Int,
+                        cluster: Int
+                        )
+
+case class ClusterMergeResult(
+                             localClusterGroup: Int,
+                             localCluster: Int,
+                             addressId: Int
+                             )
+
+
+case class MergedCluster(
+                        localCluster: Int,
+                        addresses: List[Int]
+                        )
 
 case class AddressProperties(
     addressIdGroup: Int,

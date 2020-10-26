@@ -6,7 +6,7 @@ import com.datastax.spark.connector.rdd.ValidRDDType
 import com.datastax.spark.connector.rdd.reader.RowReaderFactory
 import com.datastax.spark.connector.writer.RowWriterFactory
 import com.datastax.spark.connector.{SomeColumns, toRDDFunctions}
-import org.apache.spark.sql.functions.{col, collect_set, count, countDistinct, floor, lit, lower, size, struct}
+import org.apache.spark.sql.functions.{col, collect_list, collect_set, count, countDistinct, floor, lit, lower, size, struct}
 import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
 import org.rogach.scallop.ScallopConf
 
@@ -369,37 +369,83 @@ object AppendJob {
       .rdd
       .leftJoinWithCassandraTable[AddressCluster](conf.targetKeyspace(), "address_cluster")
       .on(SomeColumns("address_id_group", "address_id"))
-      .groupBy(r => r._1.cluster) // Group by cluster id that we have just clustered
+      .groupBy(r => r._1.cluster) // Group by cluster id that we have just clustered. Let's call it local cluster
       .map({
-        case (cluster, tuples) =>
+        case (localClusterId, tuples) =>
           val addressList = tuples
             .flatMap({
               case (localCluster, cassandraCluster) =>
                 // these two clusters (local, i.e. in spark memory and cassandra, i.e. stored in cassandra)
                 // definitely have a shared address since we just joined on address id in `joinWithCassandraTable`!
-                val addresses = mutable.MutableList(localCluster.addressId)
+                val addresses = mutable.MutableList(
+                  CassandraAddressCluster(
+                    addressIdGroup = localCluster.addressIdGroup,
+                    addressId = localCluster.addressId,
+                    cluster = None,
+                    clusterGroup = None
+                  ))
+
                 if (cassandraCluster.isDefined)
-                  addresses += cassandraCluster.get.addressId
+                  addresses += CassandraAddressCluster(
+                    addressId = cassandraCluster.get.addressId,
+                    addressIdGroup = cassandraCluster.get.addressIdGroup,
+                    clusterGroup = Some(Math.floorDiv(cassandraCluster.get.cluster, bucketSize)),
+                    cluster = Some(cassandraCluster.get.cluster)
+                  )
                 addresses
             })
 
-          val clusterGroup = Math.floorDiv(cluster, bucketSize)
 
-          ClusterPart(
-            clusterGroup = clusterGroup,
-            cluster = cluster,
-            addressList = addressList.map(addrId => {
-              CassandraAddressCluster(
-                addressIdGroup = Math.floorDiv(addrId, bucketSize),
-                addressId = addrId,
-                clusterGroup = clusterGroup,
-                cluster = cluster
-              )
-            }).toSet
+          val localClusterGroup = Math.floorDiv(localClusterId, bucketSize)
+
+          LocalClusterPart(
+            clusterGroup = localClusterGroup,
+            cluster = localClusterId,
+            addressList = addressList.toSet
           )
       }).toDS()
 
-    val withCassandraAddresses = cassandraClusters
+    val mergers = cassandraClusters
+      .flatMap(local => {
+        local.addressList.filter(r => r.cluster.isDefined).map(r => {
+          ClusterMerger(local.clusterGroup, local.cluster, r.clusterGroup.get, r.cluster.get)
+        })
+      })
+
+    println("Mergers: ")
+    mergers.show(100, false)
+
+    val mergeResults = mergers
+      .rdd
+      .joinWithCassandraTable[ClusterAddresses](conf.targetKeyspace(), "cluster_addresses")
+      .on(SomeColumns("cluster_group", "cluster"))
+      .map({
+        case (merger, relatedAddress) =>
+          ClusterMergeResult(merger.localClusterGroup, merger.localCluster, relatedAddress.addressId)
+      })
+      .toDS()
+
+    println("MergeResults: ")
+    mergeResults.show(100, false)
+
+    val combinedResults = mergeResults
+      .groupBy("localCluster")
+      .agg(collect_list(Fields.addressId) as Fields.addresses)
+
+    println("CombinedResults: ")
+    combinedResults.show(100, false)
+
+    val finalClusters = combinedResults
+      .joinWith(cassandraClusters, condition = col("localCluster") equalTo col("cluster"))
+      .map({
+        case (result, part) =>
+          val addresses = result.getSeq[Int](1)
+          val localClusterAddresses = part.addressList.map(r => r.addressId).toList
+          val mergedAddresses = localClusterAddresses ::: addresses.toList
+          MergedCluster(part.cluster, mergedAddresses.distinct)
+      })
+
+   /* val withCassandraAddresses = cassandraClusters
       .rdd
       .joinWithCassandraTable[ClusterAddresses](conf.targetKeyspace(), "cluster_addresses")
       .on(SomeColumns("cluster_group", "cluster"))
@@ -418,10 +464,12 @@ object AppendJob {
     val newAddressGroups = withCassandraAddresses
       .toDS()
       .select(col(Fields.cluster), size(col("addressList")), col("addressList"))
+*/
 
-
-    println("Reassing addresses: ")
-    newAddressGroups.show(100, false)
+    println("Final clusters: ")
+    finalClusters
+      .withColumn(Fields.noAddresses, size(col(Fields.addresses)))
+      .show(100, false)
   }
 
   def verify(args: Array[String]): Unit = {
