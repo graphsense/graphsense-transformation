@@ -24,7 +24,7 @@ lazy val root = (project in file(".")).
       "-Ywarn-unused-import",
       "-Ywarn-value-discard"),
     resolvers += "Spark Packages Repo" at "https://dl.bintray.com/spark-packages/maven",
-    resolvers += "mvnrepository" at "http://mvnrepository.com/artifact/",
+    resolvers += "mvnrepository" at "https://mvnrepository.com/artifact/",
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % "3.1.2" % Test,
       "MrPowers" % "spark-fast-tests" % "0.21.1-s_2.12" % Test,
