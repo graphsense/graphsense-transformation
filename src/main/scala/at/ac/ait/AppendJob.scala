@@ -110,6 +110,9 @@ object AppendJob {
         )
         .persist()
 
+    println("Address transactions for address 10161: ")
+    addressTransactionsDiff.filter(r => r.addressId == 10161).show(100, false)
+
     if (!disableAddressTransactions) {
       cassandra.store(
         conf.targetKeyspace(),
@@ -246,8 +249,6 @@ object AppendJob {
       cassandra.store[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations", newAndUpdatedOutRelations.toDS())
 
 
-      val props: ((Currency, Currency) => AddressSummary) = { case(totalReceived, totalSpent) => AddressSummary(totalReceived, totalSpent) }
-
       println("Computing addresses")
       val addressesDiff =
         transformation.computeAddresses(
@@ -349,8 +350,14 @@ object AppendJob {
     val addressClusterDiff = transformation
       .computeAddressCluster(regInputsDiff, addressIds, true)
       .persist()
-    //cassandra.store(conf.targetKeyspace(), "address_cluster", addressCluster)
+
+    println("addressClusterDiff for address 10161: ")
+    addressClusterDiff.filter(r => r.addressId == 10161).show(100, false)
+
     val addressClusterExtDiff = transformation.extendBasicClusterAddresses(addressClusterDiff)
+    println("addressClusterExtDiff for address 10161: ")
+    addressClusterExtDiff.filter(r => r.addressId == 10161).show(100, false)
+
 
     // computeBasicClusterAddresses will perform a join operation between basicAddressesDiff and addressClusterDiff.
     // Since basicAddressesDiff will not contain addresses that were not in any transaction since `lastProcessedBlock`,
@@ -361,10 +368,7 @@ object AppendJob {
         .computeBasicClusterAddressesExt(basicAddressesDiff, addressClusterExtDiff)
         .persist()
 
-    println("Basic cluster addresses diff for cluster 9166: ")
-    basicClusterAddressesDiff.filter(r => r.cluster == 9166).show(100, false)
-
-
+    println("Retrieving overlapping clusters from cassandra")
     val cassandraClusters = basicClusterAddressesDiff
       .rdd
       .leftJoinWithCassandraTable[AddressCluster](conf.targetKeyspace(), "address_cluster")
@@ -395,9 +399,7 @@ object AppendJob {
                 addresses
             })
 
-
           val localClusterGroup = Math.floorDiv(localClusterId, bucketSize)
-
           LocalClusterPart(
             clusterGroup = localClusterGroup,
             cluster = localClusterId,
@@ -405,71 +407,152 @@ object AppendJob {
           )
       }).toDS()
 
+    println("Merging ...")
     val mergers = cassandraClusters
       .flatMap(local => {
-        local.addressList.filter(r => r.cluster.isDefined).map(r => {
-          ClusterMerger(local.clusterGroup, local.cluster, r.clusterGroup.get, r.cluster.get)
+        local.addressList.map(r => {
+          ClusterMerger(local.clusterGroup, local.cluster, r.clusterGroup.getOrElse(-1), r.cluster.getOrElse(-1), r.addressIdGroup, r.addressId)
         })
       })
 
-    println("Mergers: ")
-    mergers.show(100, false)
-
     val mergeResults = mergers
       .rdd
-      .joinWithCassandraTable[ClusterAddresses](conf.targetKeyspace(), "cluster_addresses")
+      .leftJoinWithCassandraTable[ClusterAddresses](conf.targetKeyspace(), "cluster_addresses")
       .on(SomeColumns("cluster_group", "cluster"))
-      .map({
+      .flatMap({
         case (merger, relatedAddress) =>
-          ClusterMergeResult(merger.localClusterGroup, merger.localCluster, relatedAddress.addressId)
+          val mergedWithCassandra = ClusterMergeResult(
+            merger.localClusterGroup,
+            merger.localCluster,
+            merger.clusterGroup,
+            merger.cluster,
+            if (relatedAddress.isDefined) Some(Math.floorDiv(relatedAddress.get.addressId, bucketSize)) else None,
+            if (relatedAddress.isDefined) Some(relatedAddress.get.addressId) else None )
+
+          val withAddressFromLocalCluster = ClusterMergeResult(
+            merger.localClusterGroup,
+            merger.localCluster,
+            merger.clusterGroup,
+            merger.cluster,
+            Some(merger.addressIdGroup),
+            Some(merger.addressId)
+          )
+          Seq(mergedWithCassandra, withAddressFromLocalCluster)
       })
       .toDS()
 
-    println("MergeResults: ")
-    mergeResults.show(100, false)
 
-    val combinedResults = mergeResults
-      .groupBy("localCluster")
-      .agg(collect_list(Fields.addressId) as Fields.addresses)
-
-    println("CombinedResults: ")
-    combinedResults.show(100, false)
-
-    val finalClusters = combinedResults
-      .joinWith(cassandraClusters, condition = col("localCluster") equalTo col("cluster"))
-      .map({
-        case (result, part) =>
-          val addresses = result.getSeq[Int](1)
-          val localClusterAddresses = part.addressList.map(r => r.addressId).toList
-          val mergedAddresses = localClusterAddresses ::: addresses.toList
-          MergedCluster(part.cluster, mergedAddresses.distinct)
+    val mergedAddressClusters = mergeResults
+      .groupByKey(r => r.localCluster)
+      .flatMapGroups({
+        case (clusterId, addresses) =>
+          addresses
+            .filter(r => r.addressId.isDefined)
+            .map(r => AddressCluster(r.addressIdGroup.get, r.addressId.get, clusterId))
       })
 
-   /* val withCassandraAddresses = cassandraClusters
+    println("Combining cluster merge results")
+    val clusterSizes = mergeResults
+      .groupBy("localCluster")
+      .agg(countDistinct(col(Fields.addressId)).cast("int") as Fields.noAddresses)
+      .select(col("localCluster") as Fields.cluster, col(Fields.noAddresses))
+
+
+
+    println("Computing cluster transactions")
+    val clusterTransactionsDiff =
+      transformation
+        .computeClusterTransactions(
+          inputsDiff,
+          outputsDiff,
+          transactionsDiff,
+          mergedAddressClusters
+        )
+        .persist()
+
+    clusterTransactionsDiff.filter(r => r.cluster == 9166).show(100, false)
+
+    val (clusterInputs, clusterOutputs) =
+      transformation.splitTransactions(clusterTransactionsDiff)
+    clusterInputs.persist()
+    clusterOutputs.persist()
+
+    println("Computing cluster statistics")
+    val basicClusterDiff =
+      transformation
+        .computeBasicCluster(
+          transactionsDiff,
+          basicClusterAddressesDiff.as[BasicClusterAddresses],
+          clusterTransactionsDiff,
+          clusterInputs,
+          clusterOutputs,
+          exchangeRates
+        )
+        .persist()
+
+    val basicClustersPropsDB = mergeResults
+      .dropDuplicates("localCluster", Fields.cluster)
       .rdd
-      .joinWithCassandraTable[ClusterAddresses](conf.targetKeyspace(), "cluster_addresses")
+      .joinWithCassandraTable[Cluster](conf.targetKeyspace(), "cluster")
       .on(SomeColumns("cluster_group", "cluster"))
       .map({
-        case (part, otherAddressInCassandraCluster) =>
-          val cassandraAddressCluster = CassandraAddressCluster(
-            addressIdGroup = Math.floorDiv(otherAddressInCassandraCluster.addressId, bucketSize),
-            addressId = otherAddressInCassandraCluster.addressId,
-            clusterGroup = otherAddressInCassandraCluster.clusterGroup,
-            cluster = otherAddressInCassandraCluster.cluster
+        case (mergeResult, existingCluster) =>
+          PropertiesOfRelatedCluster(mergeResult.localClusterGroup, mergeResult.localCluster,
+            existingCluster.copy(clusterGroup = mergeResult.clusterGroup, cluster = mergeResult.cluster)
           )
-
-          part.copy(addressList = part.addressList + cassandraAddressCluster)
       })
-
-    val newAddressGroups = withCassandraAddresses
       .toDS()
-      .select(col(Fields.cluster), size(col("addressList")), col("addressList"))
-*/
+      .as[PropertiesOfRelatedCluster]
 
-    println("Final clusters: ")
-    finalClusters
-      .withColumn(Fields.noAddresses, size(col(Fields.addresses)))
-      .show(100, false)
+
+
+
+    val basicClustersWithDiffProperties =
+      mergeResults
+        .groupBy(Fields.cluster)
+        .agg(collect_set(Fields.addressId))
+        .join(basicClusterDiff, usingColumn=Fields.cluster)
+        .as[BasicCluster]
+        .persist()
+
+    val sumCurrency: ((Currency, Currency) => Currency) = { case(curr1, curr2) => Currency(curr1.value + curr2.value, curr1.eur + curr2.eur, curr1.usd + curr1.usd) }
+
+    val basicClustersMerged =
+      basicClustersPropsDB
+      .groupByKey(r => { r.cluster })
+      .mapGroups({
+        case (clusterId, existingClusters_) =>
+          val existingClusters = existingClusters_.toList
+          existingClusters.map(r => r.props).reduce((a, b) => {
+            a.copy(
+              cluster = clusterId,
+              noIncomingTxs = a.noIncomingTxs + b.noIncomingTxs,
+              noOutgoingTxs = a.noOutgoingTxs + b.noOutgoingTxs,
+              firstTx = if (a.firstTx.height < b.firstTx.height) a.firstTx else b.firstTx,
+              lastTx = if (a.firstTx.height > b.firstTx.height) a.firstTx else b.firstTx,
+              totalReceived = sumCurrency.apply(a.totalReceived, b.totalReceived),
+              totalSpent = sumCurrency.apply(a.totalSpent, b.totalSpent)
+            )
+          })
+      }).as("existing")
+      .joinWith(basicClustersWithDiffProperties.as("diff"), col("existing." + Fields.cluster) equalTo col("diff." + Fields.cluster))
+      .map({
+        case (existing, diff) =>
+          existing.copy(
+            noIncomingTxs = existing.noIncomingTxs + diff.noIncomingTxs,
+            noOutgoingTxs = existing.noOutgoingTxs + diff.noOutgoingTxs,
+            firstTx = if (existing.firstTx.height < diff.firstTx.height) existing.firstTx else diff.firstTx,
+            lastTx = if (existing.lastTx.height > diff.lastTx.height) existing.lastTx else diff.lastTx,
+            totalReceived = sumCurrency.apply(existing.totalReceived, diff.totalReceived),
+            totalSpent = sumCurrency.apply(existing.totalSpent, diff.totalSpent)
+          )
+      })
+        .drop(Fields.noAddresses)
+        .join(clusterSizes, Fields.cluster)
+        .as[Cluster]
+        .persist()
+
+    basicClustersMerged.show(100, false)
   }
 
   def verify(args: Array[String]): Unit = {

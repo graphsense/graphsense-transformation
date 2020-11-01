@@ -109,20 +109,26 @@ case class ClusterMerger(
                         localClusterGroup: Int,
                         localCluster: Int,
                         clusterGroup: Int,
-                        cluster: Int
+                        cluster: Int,
+                        addressIdGroup: Int,
+                        addressId: Int
                         )
 
 case class ClusterMergeResult(
                              localClusterGroup: Int,
                              localCluster: Int,
-                             addressId: Int
+                             clusterGroup: Int,
+                             cluster: Int,
+                             addressIdGroup: Option[Int],
+                             addressId: Option[Int],
                              )
 
+case class PropertiesOfRelatedCluster(
+                                       clusterGroup: Int,
+                                       cluster: Int,
+                                       props: Cluster
+                                      )
 
-case class MergedCluster(
-                        localCluster: Int,
-                        addresses: List[Int]
-                        )
 
 case class AddressProperties(
     addressIdGroup: Int,
@@ -233,7 +239,7 @@ case class AddressTags(
     abuse: String
 )
 
-case class AddressCluster(addressIdGroup: Int, addressId: Int, cluster: Int)
+case class AddressCluster(addressIdGroup: Integer, addressId: Integer, cluster: Int)
 
 case class ClusterAddresses(
     clusterGroup: Int,
@@ -295,7 +301,7 @@ case class BasicClusterAddressesExt(
 
 
 case class AddressClusterExt(
-    addressIdGroup: Int, addressId: Int, clusterGroup: Int, cluster: Int
+    addressIdGroup: Integer, addressId: Integer, clusterGroup: Int, cluster: Int
 )
 
 case class Cluster(
