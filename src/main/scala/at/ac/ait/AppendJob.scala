@@ -43,9 +43,9 @@ object AppendJob {
     val (cassandra, conf, spark) = setupCassandra(args)
     import spark.implicits._
 
-    val disableAddressTransactions = true
-    val disableAddressIds = true
-    val disableRelations = true
+    val disableAddressTransactions = false
+    val disableAddressIds = false
+    val disableRelations = false
 
     val exchangeRatesRaw =
       cassandra.load[ExchangeRatesRaw](conf.rawKeyspace(), "exchange_rates")
@@ -86,7 +86,8 @@ object AppendJob {
     val regInputs = transformation.computeRegularInputs(transactions).persist()
     val regInputsDiff = transformation.computeRegularInputs(transactionsDiff).persist()
     println("Extracting transaction outputs")
-    val regOutputs = transformation.computeRegularOutputs(transactions).persist()
+    val regOutputs = transformation.computeRegularOutputs(transactions)
+    val regOutputsDiff = transformation.computeRegularOutputs(transactionsDiff).persist()
 
     println("Computing address IDs")
     val addressIds = transformation.computeAddressIds(regOutputs)
@@ -104,14 +105,11 @@ object AppendJob {
       transformation
         .computeAddressTransactions(
           transactionsDiff,
-          regInputs,
-          regOutputs,
+          regInputsDiff,
+          regOutputsDiff,
           addressIds
         )
         .persist()
-
-    println("Address transactions for address 10161: ")
-    addressTransactionsDiff.filter(r => r.addressId == 10161).show(100, false)
 
     if (!disableAddressTransactions) {
       cassandra.store(
@@ -181,7 +179,7 @@ object AppendJob {
           .computePlainAddressRelations(
             inputsDiff,
             outputsDiff,
-            regInputs,
+            regInputsDiff,
             transactionsDiff
           )
 
@@ -680,7 +678,8 @@ object AppendJob {
     val tablesToRestore = List(
       "address_incoming_relations",
       "address_outgoing_relations",
-      "address"
+      "address",
+      "address_transactions"
     )
 
 
@@ -699,6 +698,9 @@ object AppendJob {
 
     if (tablesToRestore contains "address")
       restoreTable[Address]("address")
+
+    if (tablesToRestore contains "address_transactions")
+      restoreTable[AddressTransactions]("address_transactions")
 
 
   }
