@@ -123,6 +123,19 @@ case class ClusterMergeResult(
                              addressId: Option[Int],
                              )
 
+case class MergedClusterRelationsOut(
+                                   cluster: Int,
+                                   srcAddressIdGroup: Int,
+                                   srcAddressId: Int
+                                   )
+
+case class MergedClusterRelationsIn(
+                                     cluster: Int,
+                                     dstAddressIdGroup: Int,
+                                     dstAddressId: Int
+                                   )
+
+
 case class PropertiesOfRelatedCluster(
                                        clusterGroup: Int,
                                        cluster: Int,
@@ -395,6 +408,26 @@ case class ClusterRelations(
     value: Currency,
     txList: Seq[Array[Byte]]
 )
+
+case class AddressToClusterRelation(
+                                   addressIdGroup: Int,
+                                   addressId: Int,
+                                   clusterGroup: Int,
+                                   cluster: Int,
+                                   addressProperties: AddressSummary,
+                                   noTransactions: Int,
+                                   value: Currency
+                                    )
+
+case class ClusterToAddressRelation(
+                                     clusterGroup: Int,
+                                     cluster: Int,
+                                     addressIdGroup: Int,
+                                     addressId: Int,
+                                     addressProperties: AddressSummary,
+                                     noTransactions: Int,
+                                     value: Currency
+                                   )
 
 case class Tag(
     labelNormPrefix: String,

@@ -552,7 +552,55 @@ object AppendJob {
         .as[Cluster]
         .persist()
 
-    basicClustersMerged.show(100, false)
+
+    val mergedClusterRelationsIn = mergedAddressClusters
+      .withColumnRenamed(Fields.addressIdGroup, Fields.dstAddressIdGroup)
+      .withColumnRenamed(Fields.addressId, Fields.dstAddressId)
+      .as[MergedClusterRelationsIn]
+      .rdd
+      .joinWithCassandraTable[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
+      .on(SomeColumns("dst_address_id_group", "dst_address_id"))
+      .map({
+        case (row, relations) =>
+          AddressToClusterRelation(
+            addressIdGroup = Math.floorDiv(relations.srcAddressId, bucketSize),
+            addressId = relations.srcAddressId,
+            clusterGroup = Math.floorDiv(row.cluster, bucketSize),
+            cluster = row.cluster,
+            addressProperties = relations.srcProperties,
+            noTransactions = relations.noTransactions,
+            value = relations.estimatedValue
+          )
+      }).toDS()
+
+
+    val mergedClusterRelationsOut = mergedAddressClusters
+      .withColumnRenamed(Fields.addressId, Fields.srcAddressId)
+      .withColumnRenamed(Fields.addressIdGroup, Fields.srcAddressIdGroup)
+      .as[MergedClusterRelationsOut]
+      .rdd
+      .joinWithCassandraTable[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations")
+      .on(SomeColumns("src_address_id_group", "src_address_id"))
+      .map({
+        case (row, relations) =>
+          ClusterToAddressRelation(
+            addressIdGroup = Math.floorDiv(relations.srcAddressId, bucketSize),
+            addressId = relations.srcAddressId,
+            clusterGroup = Math.floorDiv(row.cluster, bucketSize),
+            cluster = row.cluster,
+            addressProperties = relations.dstProperties,
+            noTransactions = relations.noTransactions,
+            value = relations.estimatedValue
+          )
+      }).toDS()
+
+    println("Cluster 9166 in relations: ")
+    mergedClusterRelationsIn.filter(r => r.cluster == 9166).show()
+
+    println("Cluster 9166 out relations: ")
+    mergedClusterRelationsOut.filter(r => r.cluster == 9166).show()
+
+
   }
 
   def verify(args: Array[String]): Unit = {
