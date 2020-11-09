@@ -1,25 +1,35 @@
 FROM openjdk:8
 
-RUN apt update && apt install -y python-pip
-RUN pip install cqlsh
+ADD requirements.txt /tmp/requirements.txt
 
-RUN echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list
-RUN curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | apt-key add
-RUN apt update && apt install sbt
+RUN apt update && \
+    echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list && \
+    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | apt-key add && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends -y python3-pip python3-setuptools python3-wheel sbt && \
+    pip3 install -r /tmp/requirements.txt && \
+    useradd -m -d /home/dockeruser -r -u 10000 dockeruser
 
+# install Spark
+RUN mkdir -p /opt/graphsense && \
+    wget https://www.apache.org/dist/spark/spark-2.4.7/spark-2.4.7-bin-without-hadoop-scala-2.12.tgz -O - | tar -xz -C /opt && \
+    ln -s /opt/spark-2.4.7-bin-without-hadoop-scala-2.12 /opt/spark && \
+    wget https://archive.apache.org/dist/hadoop/core/hadoop-2.7.7/hadoop-2.7.7.tar.gz -O - | tar -xz -C /opt && \
+    ln -s /opt/hadoop-2.7.7 /opt/hadoop && \
+    echo "#!/usr/bin/env bash\nexport SPARK_DIST_CLASSPATH=$(/opt/hadoop/bin/hadoop classpath)" >> /opt/spark/conf/spark-env.sh && \
+    chmod 755 /opt/spark/conf/spark-env.sh && \
+    chown -R dockeruser /opt/graphsense
 
-# Install Spark
-RUN mkdir /opt/spark
-WORKDIR /opt/spark
-RUN wget https://downloads.apache.org/spark/spark-3.0.0/spark-3.0.0-bin-hadoop2.7.tgz -O ./spark.tgz
-RUN tar xvf ./spark.tgz -C /usr/local
-RUN mkdir /usr/local/spark && mv /usr/local/spark-3.0.0-bin-hadoop2.7/* /usr/local/spark/
+ENV SPARK_HOME /opt/spark
 
-ENV SPARK_HOME /usr/local/spark
-WORKDIR /root
-ADD entrypoint.sh .
+USER dockeruser
+WORKDIR /opt/graphsense
+
 ADD src/ ./src
 ADD build.sbt .
-ADD scalastyle-config.xml .
-ADD submit.sh .
-ENTRYPOINT ["/root/entrypoint.sh"]
+RUN sbt package
+
+ADD docker/ .
+ADD scripts/ ./scripts
+
+EXPOSE $SPARK_DRIVER_PORT $SPARK_UI_PORT $SPARK_BLOCKMGR_PORT
