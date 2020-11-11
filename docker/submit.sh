@@ -3,7 +3,7 @@
 echo -en "Starting Spark job ...\n" \
          "Config:\n" \
          "- Spark master: $SPARK_MASTER\n" \
-         "- Spark driver: $SPARK_DRIVER_IP\n" \
+         "- Spark driver: $SPARK_DRIVER_HOST\n" \
          "- Cassandra host: $CASSANDRA_HOST\n" \
          "- Executor memory: $SPARK_EXECUTOR_MEMORY\n" \
          "Arguments:\n" \
@@ -15,7 +15,8 @@ echo -en "Starting Spark job ...\n" \
 "$SPARK_HOME"/bin/spark-submit \
   --class "at.ac.ait.TransformationJob" \
   --master "$SPARK_MASTER" \
-  --conf spark.driver.host="$SPARK_DRIVER_IP" \
+  --conf spark.driver.bindAddress="0.0.0.0" \
+  --conf spark.driver.host="$SPARK_DRIVER_HOST" \
   --conf spark.driver.port="$SPARK_DRIVER_PORT" \
   --conf spark.ui.port="$SPARK_UI_PORT" \
   --conf spark.blockManager.port="$SPARK_BLOCKMGR_PORT" \
