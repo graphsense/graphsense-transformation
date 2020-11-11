@@ -17,19 +17,22 @@ RUN mkdir -p /opt/graphsense && \
     wget https://archive.apache.org/dist/hadoop/core/hadoop-2.7.7/hadoop-2.7.7.tar.gz -O - | tar -xz -C /opt && \
     ln -s /opt/hadoop-2.7.7 /opt/hadoop && \
     echo "#!/usr/bin/env bash\nexport SPARK_DIST_CLASSPATH=$(/opt/hadoop/bin/hadoop classpath)" >> /opt/spark/conf/spark-env.sh && \
-    chmod 755 /opt/spark/conf/spark-env.sh && \
-    chown -R dockeruser /opt/graphsense
+    chmod 755 /opt/spark/conf/spark-env.sh
+
 
 ENV SPARK_HOME /opt/spark
 
-USER dockeruser
 WORKDIR /opt/graphsense
 
 ADD src/ ./src
 ADD build.sbt .
-RUN sbt package
+RUN sbt package && \
+    chown -R dockeruser /opt/graphsense && \
+    rm -rf /root/.ivy2 /root/.cache /root/.sbt
 
 ADD docker/ .
 ADD scripts/ ./scripts
+
+USER dockeruser
 
 EXPOSE $SPARK_DRIVER_PORT $SPARK_UI_PORT $SPARK_BLOCKMGR_PORT
