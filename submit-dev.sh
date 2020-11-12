@@ -26,11 +26,11 @@ BUCKET_SIZE=25000
   --conf spark.sql.session.timeZone=UTC \
   --conf spark.memory.offHeap.enabled="true" \
   --conf spark.memory.offHeap.size="10G" \
-  --conf spark.unsafe.sorter.spill.read.ahead.enabled="false" \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:3.4.0,com.codahale.metrics:metrics-core:3.0.2 \
   target/scala-2.12/graphsense-transformation.jar \
   --currency "$CURRENCY" \
   --raw_keyspace "$RAW_KEYSPACE" \
   --tag_keyspace "$TAG_KEYSPACE" \
   --target_keyspace "$TARGET_KEYSPACE" \
-  --bucket_size "$BUCKET_SIZE"
+  --bucket_size "$BUCKET_SIZE" \
+  --append_block_count "5000"

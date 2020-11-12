@@ -35,6 +35,14 @@ object AppendJob {
       default = Some(25000),
       descr = "Bucket size for Cassandra partitions"
     )
+
+    val appendBlockCount = opt[Int](
+      "append_block_count",
+      required = true,
+      default = Some(1000),
+      descr = "Maximum number of blocks the append job will process"
+    )
+
     verify()
   }
 
@@ -60,14 +68,12 @@ object AppendJob {
       cassandra.load[SummaryStatistics](conf.targetKeyspace(), "summary_statistics")
         .first().noBlocks - 1
 
-    val unprocessedBlocks = blocks.filter((b) => {
-      b.height > lastProcessedBlock
-    })
-    val transactionsDiff = transactions.filter((tx) => {
-      tx.height > lastProcessedBlock
-    })
     println()
     println("Computing unprocessed diff")
+    val heightsToProcess = spark.range(start = lastProcessedBlock + 1, end = lastProcessedBlock + conf.appendBlockCount() + 1)
+      .withColumnRenamed("id", Fields.height)
+    val unprocessedBlocks = blocks.join(heightsToProcess, Seq(Fields.height), "left_semi").as[Block].persist()
+    val transactionsDiff = transactions.join(heightsToProcess, Seq(Fields.height), "left_semi").as[Transaction].persist()
     println(s"New blocks:          ${unprocessedBlocks.count()}")
     println(s"New transactions:    ${transactionsDiff.count()}")
     println()

@@ -102,6 +102,7 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   --raw_keyspace "$RAW_KEYSPACE" \
   --tag_keyspace "$TAG_KEYSPACE" \
   --target_keyspace "$TARGET_KEYSPACE" \
-  --bucket_size "$BUCKET_SIZE"
+  --bucket_size "$BUCKET_SIZE" \
+  --append_block_count "$APPEND_BLOCK_COUNT"
 
 exit $?
