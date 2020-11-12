@@ -351,8 +351,8 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       transactions: Dataset[Transaction],
       addressCluster: Dataset[AddressCluster]
   ): Dataset[ClusterTransactions] = {
-    val clusteredInputs = inputs.join(addressCluster, F.addressId)
-    val clusteredOutputs = outputs.join(addressCluster, F.addressId)
+    val clusteredInputs = inputs.join(addressCluster, F.addressId).dropDuplicates(Fields.addressId, Fields.txIndex)
+    val clusteredOutputs = outputs.join(addressCluster, F.addressId).dropDuplicates(Fields.addressId, Fields.txIndex)
     clusteredInputs
       .withColumn(F.value, -col(F.value))
       .union(clusteredOutputs)
