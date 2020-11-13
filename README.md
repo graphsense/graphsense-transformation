@@ -24,11 +24,13 @@ Make sure [Java 8][java] and [sbt >= 1.0][scala-sbt] is installed:
     java -version
     sbt about
 
-Download, install, and run [Apache Spark][apache-spark] (version >= 2.4.0) in $SPARK_HOME:
+Download, install, and run [Apache Spark][apache-spark] (version 2.4.7)
+in $SPARK_HOME:
 
     $SPARK_HOME/sbin/start-master.sh
 
-Download, install, and run [Apache Cassandra][apache-cassandra] (version >= 3.1.1) in $CASSANDRA_HOME
+Download, install, and run [Apache Cassandra][apache-cassandra]
+(version >= 3.1.1) in $CASSANDRA_HOME
 
     $CASSANDRA_HOME/bin/cassandra -f 
 
@@ -48,9 +50,9 @@ This should create a keyspace `btc_raw` (tables `exchange_rates`,
     cqlsh:btc_raw> USE tagpacks;
     cqlsh:tagpacks> DESCRIBE tables;
 
-## Execute Transformation Locally 
+## Execute Transformation Locally
 
-macOS only: make sure gnu-getopt is installed
+macOS only: make sure `gnu-getopt` is installed
 
     brew install gnu-getopt
 
@@ -72,16 +74,34 @@ Run the transformation pipeline on localhost
 
 Check the running job using the local Spark UI at http://localhost:4040/jobs
 
+# Submit on a standalone Spark Cluster
+
+Use the `submit.sh` script and specify the Spark master node
+(e.g., `-s spark://SPARK_MASTER_IP:7077`) and other options:
+
+```
+./submit.sh -h
+Usage: submit.sh [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER]
+                 [--currency CURRENCY] [--src_keyspace RAW_KEYSPACE]
+                 [--tag_keyspace TAG_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE]
+                 [--bucket_size BUCKET_SIZE]
+```
+
+# Submit to an external standalone Spark Cluster using Docker
+
+See the [GraphSense Setup][graphsense-dashboard] component, i.e., the README
+file and the `transformation` subdirectory.
+
+
 [graphsense-blocksci]: https://github.com/graphsense/graphsense-blocksci
 [graphsense-tagpacks]: https://github.com/graphsense/graphsense-tagpacks
 [graphsense-dashboard]: https://github.com/graphsense/graphsense-dashboard
 [graphsense-rest]: https://github.com/graphsense/graphsense-rest
-
+[graphsense-setup]: https://github.com/graphsense/graphsense-setup
 [java]: https://java.com
 [scala-ide]: http://scala-ide.org/
 [scala-lang]: https://www.scala-lang.org/
 [scala-sbt]: http://www.scala-sbt.org
 [sbteclipse]: https://github.com/typesafehub/sbteclipse
-
 [apache-spark]: https://spark.apache.org/downloads.html
 [apache-cassandra]: http://cassandra.apache.org/
