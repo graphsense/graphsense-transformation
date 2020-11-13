@@ -89,7 +89,7 @@ Usage: submit.sh [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER]
 
 # Submit to an external standalone Spark Cluster using Docker
 
-See the [GraphSense Setup][graphsense-dashboard] component, i.e., the README
+See the [GraphSense Setup][graphsense-setup] component, i.e., the README
 file and the `transformation` subdirectory.
 
 
