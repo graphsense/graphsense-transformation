@@ -25,14 +25,14 @@ Make sure [Java 8][java] and [sbt >= 1.0][scala-sbt] is installed:
     sbt about
 
 Download, install, and run [Apache Spark][apache-spark] (version 2.4.7)
-in $SPARK_HOME:
+in `$SPARK_HOME`:
 
     $SPARK_HOME/sbin/start-master.sh
 
 Download, install, and run [Apache Cassandra][apache-cassandra]
-(version >= 3.1.1) in $CASSANDRA_HOME
+(version >= 3.11) in `$CASSANDRA_HOME`
 
-    $CASSANDRA_HOME/bin/cassandra -f 
+    $CASSANDRA_HOME/bin/cassandra -f
 
 ### Ingest Raw Block Data
 
