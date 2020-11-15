@@ -8,6 +8,7 @@ import com.datastax.spark.connector.writer.RowWriterFactory
 import com.datastax.spark.connector.{SomeColumns, toRDDFunctions}
 import org.apache.spark.sql.functions.{col, collect_list, collect_set, count, countDistinct, first, floor, lit, lower, size, struct, sum}
 import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
+import org.apache.spark.storage.StorageLevel
 import org.rogach.scallop.ScallopConf
 
 import scala.collection.mutable
@@ -120,7 +121,7 @@ object AppendJob {
           regOutputsDiff,
           addressIds
         )
-        .persist()
+        .persist(StorageLevel.DISK_ONLY)
 
     //todo uncommment
     if (!disableAddressTransactions) {
@@ -133,8 +134,8 @@ object AppendJob {
 
     val (inputsDiff, outputsDiff) =
       transformation.splitTransactions(addressTransactionsDiff)
-    inputsDiff.persist()
-    outputsDiff.persist()
+    inputsDiff.persist(StorageLevel.DISK_ONLY)
+    outputsDiff.persist(StorageLevel.DISK_ONLY)
 
     println("Computing address statistics")
 
@@ -150,7 +151,7 @@ object AppendJob {
           outputsDiff,
           exchangeRates
         )
-        .persist()
+        .persist(StorageLevel.DISK_ONLY)
 
     val addressTagsDiff: Dataset[AddressTags] =
       if (tagsRaw.count() > 0) {
@@ -163,7 +164,7 @@ object AppendJob {
               addressIds,
               conf.currency()
             )
-            .persist()
+
         //todo uncommment
         cassandra.store(conf.targetKeyspace(), "address_tags", addressTagsDiff)
         val noAddressTagsDiff = addressTagsDiff
@@ -204,7 +205,7 @@ object AppendJob {
             exchangeRates,
             addressTagsDiff
           )
-          .persist()
+          .persist(StorageLevel.MEMORY_AND_DISK)
 
       def sumCurrency: ((Currency, Currency) => Currency) = {
         (c1, c2) =>
@@ -265,7 +266,7 @@ object AppendJob {
           basicAddressesDiff,
           addressRelationsDiff,
           addressIds
-        )
+        ).persist(StorageLevel.MEMORY_AND_DISK)
 
 
       val noChangedAddresses = addressesDiff.count()
@@ -359,7 +360,7 @@ object AppendJob {
     println("Computing address clusters")
     val addressClusterDiff = transformation
       .computeAddressCluster(regInputsDiff, addressIds, true)
-      .persist()
+      .persist(StorageLevel.MEMORY_AND_DISK)
 
     println("addressClusterDiff for address 10161: ")
     addressClusterDiff.filter(r => r.addressId == 10161).show(100, false)
@@ -451,7 +452,7 @@ object AppendJob {
           Seq(mergedWithCassandra, withAddressFromLocalCluster)
       })
       .toDS()
-      .persist()
+      .persist(StorageLevel.MEMORY_AND_DISK)
     println("Merge results cluster 744: ")
     mergeResults.filter(r => r.localCluster == 744).show(1000, false)
 
