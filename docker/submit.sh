@@ -25,6 +25,8 @@ echo -en "Starting Spark job ...\n" \
   --conf spark.sql.session.timeZone=UTC \
   --conf spark.default.parallelism=400 \
   --conf spark.driver.memory="64G" \
+  --conf spark.local.dir="/var/cache/spark" \
+  --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:3.4.0 \
   target/scala-2.12/graphsense-transformation_2.12-0.4.4-SNAPSHOT.jar \
   --currency "$CURRENCY" \
