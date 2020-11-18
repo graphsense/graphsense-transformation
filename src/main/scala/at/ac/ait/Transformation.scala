@@ -2,28 +2,8 @@ package at.ac.ait
 
 import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{
-  col,
-  count,
-  date_format,
-  explode,
-  from_unixtime,
-  lit,
-  lower,
-  max,
-  min,
-  posexplode,
-  regexp_replace,
-  row_number,
-  size,
-  struct,
-  substring,
-  sum,
-  to_date,
-  udf
-}
+import org.apache.spark.sql.functions.{array_distinct, col, collect_list, collect_set, count, date_format, explode, flatten, from_unixtime, lit, lower, max, min, posexplode, regexp_replace, row_number, size, struct, substring, sum, to_date, udf}
 import org.apache.spark.sql.types.{IntegerType, StringType}
-
 import at.ac.ait.{Fields => F}
 
 class Transformation(spark: SparkSession, bucketSize: Int) {
@@ -363,6 +343,55 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         F.txHash
       )
       .as[ClusterTransactions]
+  }
+
+  def computeClusterRelationsWithProperties(
+                                           clusterRelationsIn: Dataset[SimpleClusterRelations],
+                                           clusterRelationsOut: Dataset[SimpleClusterRelations],
+                                           clusterRelationsDiff: Dataset[ClusterRelations],
+                                           clusterProps: Dataset[Cluster]
+                                           ): Dataset[ClusterRelations] = {
+    clusterRelationsIn.union(clusterRelationsOut)
+      .dropDuplicates(F.srcCluster, F.dstCluster)
+      .filter(col(F.srcCluster) notEqual col(F.dstCluster))
+      .as[SimpleClusterRelations]
+      .joinWith(clusterProps, col(Fields.cluster) equalTo col(Fields.srcCluster))
+      .joinWith(clusterProps, col(Fields.cluster) equalTo col("_1." + Fields.dstCluster))
+      .map({
+        case ((relation, srcProps), dstProps) =>
+          ClusterRelations(
+            srcClusterGroup = relation.srcClusterGroup,
+            srcCluster = relation.srcCluster,
+            dstClusterGroup = relation.dstClusterGroup,
+            dstCluster = relation.dstCluster,
+            dstProperties = ClusterSummary(dstProps.noAddresses, dstProps.totalReceived, dstProps.totalSpent),
+            srcProperties = ClusterSummary(srcProps.noAddresses, srcProps.totalReceived, srcProps.totalSpent),
+            srcLabels = Seq(),
+            dstLabels = Seq(),
+            noTransactions = relation.noTransactions,
+            value = relation.value,
+            txList = relation.txList
+          )
+      }).alias("existing")
+      .joinWith(
+        clusterRelationsDiff.alias("diff"),
+        (col("existing." + F.srcCluster) equalTo col("diff." + F.srcCluster)) and (col("existing." + F.dstCluster) equalTo col("diff." + F.dstCluster)),
+        joinType = "full_outer")
+      .map({
+        case (existing, diff) =>
+          if (existing != null && diff != null)
+            existing.copy(
+              noTransactions = existing.noTransactions + diff.noTransactions,
+              value = Currency(existing.value.value + diff.value.value, existing.value.eur + diff.value.eur, existing.value.usd + diff.value.usd),
+              txList = (existing.txList ++ diff.txList).distinct,
+              srcLabels = (existing.srcLabels ++ diff.srcLabels).distinct,
+              dstLabels = (existing.dstLabels ++ diff.dstLabels).distinct
+            )
+          else if (existing != null)
+            existing
+          else
+            diff
+      })
   }
 
   def computeBasicCluster(

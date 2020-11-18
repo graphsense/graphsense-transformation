@@ -2,16 +2,20 @@ package at.ac.ait
 
 import at.ac.ait.clustering.MultipleInputClustering
 import at.ac.ait.storage.CassandraStorage
+import com.datastax.driver.core.DataType
 import com.datastax.spark.connector.rdd.ValidRDDType
 import com.datastax.spark.connector.rdd.reader.RowReaderFactory
 import com.datastax.spark.connector.writer.RowWriterFactory
 import com.datastax.spark.connector.{SomeColumns, toRDDFunctions}
-import org.apache.spark.sql.functions.{col, collect_list, collect_set, count, countDistinct, first, floor, lit, lower, size, struct, sum}
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
+import org.apache.spark.sql.functions.{array_distinct, col, collect_list, collect_set, count, countDistinct, first, flatten, floor, lit, lower, size, struct, sum, when}
+import org.apache.spark.sql.types.{ArrayType, BinaryType, IntegerType}
 import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import org.rogach.scallop.ScallopConf
+import sun.invoke.util.ValueConversions.cast
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import scala.reflect.ClassTag
 
 object AppendJob {
@@ -52,9 +56,9 @@ object AppendJob {
     val (cassandra, conf, spark) = setupCassandra(args)
     import spark.implicits._
 
-    val disableAddressTransactions = true
-    val disableAddressIds = true
-    val disableRelations = true
+    val disableAddressTransactions = false
+    val disableAddressIds = false
+    val disableRelations = false
 
     val exchangeRatesRaw =
       cassandra.load[ExchangeRatesRaw](conf.rawKeyspace(), "exchange_rates")
@@ -452,14 +456,22 @@ object AppendJob {
           Seq(mergedWithCassandra, withAddressFromLocalCluster)
       })
       .toDS()
+      .dropDuplicates("localCluster", Fields.cluster, Fields.addressId)
       .persist(StorageLevel.MEMORY_AND_DISK)
     println("Merge results cluster 744: ")
     mergeResults.filter(r => r.localCluster == 744).show(1000, false)
 
     val sumCurrency: ((Currency, Currency) => Currency) = { case(curr1, curr2) => Currency(curr1.value + curr2.value, curr1.eur + curr2.eur, curr1.usd + curr1.usd) }
-    val sumUpCurrencies: (Seq[Currency]) => Currency = {
-      case list =>
-        list.reduce(sumCurrency)
+    val sumUpCurrencies: (Seq[GenericRowWithSchema]) => Currency = {
+      list =>
+        val vals = list.map(r => (r.getLong(0), r.getFloat(1), r.getFloat(2))).reduce[Tuple3[Long, Float, Float]]({
+          case ((value1: Long, eur1: Float, usd1: Float), (value2: Long, eur2: Float, usd2: Float)) => (
+            value1 + value2,
+            eur1 + eur2,
+            usd1 + usd2
+          )
+        })
+        Currency(vals._1, vals._2, vals._3)
     }
     import org.apache.spark.sql.functions.udf
     val sumCurrenciesUDF = udf(sumUpCurrencies)
@@ -467,6 +479,7 @@ object AppendJob {
     val clusterMapping = mergeResults.select(Fields.cluster, "localCluster").filter(r => r.getInt(0) != -1).persist()
 
     println("Collecting INCOMING cluster relations of overlapping clusters...")
+
     // Collect clusters incoming to any of the contained(existing) clusters
     val containedClusterRelIn = mergeResults
       .select(col("localClusterGroup"), col("localCluster"), col(Fields.clusterGroup) as Fields.dstClusterGroup, col(Fields.cluster) as Fields.dstCluster)
@@ -475,24 +488,40 @@ object AppendJob {
       .joinWithCassandraTable[ClusterIncomingRelations](conf.targetKeyspace(), "cluster_incoming_relations")
       .on(SomeColumns("dst_cluster_group", "dst_cluster"))
       .map({
-        case (row, relations) =>
-          relations.copy(
-            dstClusterGroup = row.localClusterGroup,
-            dstCluster = row.localCluster
+        case (reclustered, relations) =>
+          SimpleClusterRelations(
+            srcClusterGroup = Math.floorDiv(relations.srcCluster, bucketSize),
+            srcCluster = relations.srcCluster,
+            dstClusterGroup = reclustered.dstClusterGroup,
+            dstCluster = reclustered.dstCluster,
+            noTransactions = relations.noTransactions,
+            value = relations.value
+          )
+      })
+      .joinWithCassandraTable[ClusterOutgoingRelations](conf.targetKeyspace(), "cluster_outgoing_relations")
+      .on(SomeColumns("src_cluster_group", "src_cluster"))
+      .map({
+        case (incomingRelation, outgoingRelation) =>
+          // incomingRelation and outgoingRelation in fact represent the same relation, but from perspecitives of two different clusters
+          // This join with cassandra is performed to copy txList from out relation to in relation since in relations don't store txLists.
+          incomingRelation.copy(
+            txList = outgoingRelation.txList
           )
       }).toDS()
-      .join(clusterMapping, joinExprs = col(Fields.srcCluster) equalTo(Fields.cluster))
-      .drop(Fields.srcCluster)
-      .withColumnRenamed("localCluster", Fields.srcCluster)
+      .join(clusterMapping, joinExprs = col(Fields.srcCluster) equalTo(Fields.cluster), "left")
+      .withColumn(Fields.srcCluster, when(col("localCluster").isNotNull, col("localCluster")).otherwise(col(Fields.srcCluster)))
       .withColumn(Fields.srcClusterGroup, floor(col(Fields.srcCluster) / lit(bucketSize)).cast("int"))
       .groupBy(Fields.srcCluster, Fields.dstCluster)
       .agg(
         first(Fields.srcClusterGroup) as Fields.srcClusterGroup,
         first(Fields.dstClusterGroup) as Fields.dstClusterGroup,
         sum(Fields.noTransactions).cast("int") as Fields.noTransactions,
-        sumCurrenciesUDF(collect_list(Fields.value)) as Fields.value)
+        sumCurrenciesUDF(collect_list(Fields.value)) as Fields.value,
+        array_distinct(flatten(collect_set(Fields.txList))) as Fields.txList)
       .as[SimpleClusterRelations]
       .persist()
+
+    val combineTxLists = udf((lists: Seq[Array[Byte]]) => { lists.flatten })
 
     println("Collecting OUTGOING cluster relations of overlapping clusters...")
     // Collect relations outgoing from all the existing clusters. Then, add up noTransactions and value
@@ -509,16 +538,17 @@ object AppendJob {
             srcCluster = row.localCluster
           )
       }).toDS()
-      .join(clusterMapping, joinExprs = col(Fields.dstCluster) equalTo(Fields.cluster))
-      .drop(Fields.dstCluster)
-      .withColumnRenamed("localCluster", Fields.dstCluster)
+      .join(clusterMapping, joinExprs = col(Fields.dstCluster) equalTo(Fields.cluster), "left")
+      .withColumn(Fields.dstCluster, when(col("localCluster").isNotNull, col("localCluster")).otherwise(col(Fields.dstCluster)))
       .withColumn(Fields.dstClusterGroup, floor(col(Fields.dstCluster) / lit(bucketSize)).cast("int"))
       .groupBy(Fields.srcCluster, Fields.dstCluster)
       .agg(
         first(Fields.srcClusterGroup) as Fields.srcClusterGroup,
         first(Fields.dstClusterGroup) as Fields.dstClusterGroup,
         sum(Fields.noTransactions).cast("int") as Fields.noTransactions,
-        sumCurrenciesUDF(collect_list(Fields.value)) as Fields.value)
+        sumCurrenciesUDF(collect_list(Fields.value)) as Fields.value,
+        combineTxLists(collect_set(col(Fields.txList))).cast(ArrayType(BinaryType)) as Fields.txList // todo do the same with incoming relations?
+      )
       .as[SimpleClusterRelations]
       .persist()
 
@@ -592,6 +622,25 @@ object AppendJob {
         )
         .persist()
 
+    println("Computing plain cluster relations")
+    val plainClusterRelationsDiff =
+      transformation
+        .computePlainClusterRelations(
+          clusterInputs,
+          clusterOutputs
+        )
+
+    println("Computing cluster relations")
+    val clusterRelationsDiff =
+      transformation
+        .computeClusterRelations(
+          plainClusterRelationsDiff,
+          basicClusterDiff,
+          exchangeRates,
+          spark.emptyDataset
+        )
+        .persist()
+
     val relatedClusterProperties = mergeResults
       .dropDuplicates("localCluster", Fields.cluster)
       .rdd
@@ -616,23 +665,6 @@ object AppendJob {
       .deleteFromCassandra(conf.targetKeyspace(), "cluster", keyColumns = SomeColumns("cluster_group", "cluster"))
 
 
-    /*val upToDateClusterProps =
-      mergeResults
-        .dropDuplicates("localCluster")
-        .drop(Fields.cluster)
-        .withColumnRenamed("localCluster", Fields.cluster)
-        .join(basicClusterDiff, usingColumn=Fields.cluster)
-        .as[BasicCluster]
-        .persist()*/
-
-
-
-    /*println("existingClusterProps cluster 10146: ")
-    upToDateClusterProps.filter(r => r.cluster == 10146).show(100, false)
-
-    println("upToDateClusterProps cluster 10146: ")
-    upToDateClusterProps.filter(r => r.cluster == 10146).show(100, false)
-*/
     val propSets = relatedClusterProperties
       .union(
         basicClusterDiff.map(localCluster => {
@@ -677,130 +709,23 @@ object AppendJob {
       .as[Cluster]
       .persist()
 
-    val addressToClusterRelations = mergedAddressClusters
-      .withColumnRenamed(Fields.addressIdGroup, Fields.dstAddressIdGroup)
-      .withColumnRenamed(Fields.addressId, Fields.dstAddressId)
-      .as[MergedClusterRelationsIn]
-      .rdd
-      .joinWithCassandraTable[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
-      .on(SomeColumns("dst_address_id_group", "dst_address_id"))
-      .map({
-        case (row, relations) =>
-          AddressToClusterRelation(
-            addressIdGroup = Math.floorDiv(relations.srcAddressId, bucketSize),
-            addressId = relations.srcAddressId,
-            clusterGroup = Math.floorDiv(row.cluster, bucketSize),
-            cluster = row.cluster,
-            addressProperties = relations.srcProperties,
-            noTransactions = relations.noTransactions,
-            value = relations.estimatedValue,
-            srcLabels = relations.srcLabels
-          )
-      }).toDS()
+    println("Cluster props merged cluster 9376: ")
+    clusterPropsMerged.filter(r => r.cluster == 9376).show(100, false)
+
+    val completeClusterRelations =
+      transformation.computeClusterRelationsWithProperties(
+        containedClusterRelIn,
+        containedClusterRelOut,
+        clusterRelationsDiff,
+        clusterPropsMerged
+      ).persist()
 
 
-    val clusterToAddressRelations = mergedAddressClusters
-      .withColumnRenamed(Fields.addressId, Fields.srcAddressId)
-      .withColumnRenamed(Fields.addressIdGroup, Fields.srcAddressIdGroup)
-      .as[MergedClusterRelationsOut]
-      .rdd
-      .joinWithCassandraTable[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations")
-      .on(SomeColumns("src_address_id_group", "src_address_id"))
-      .map({
-        case (row, relations) =>
-          ClusterToAddressRelation(
-            addressIdGroup = Math.floorDiv(relations.srcAddressId, bucketSize),
-            addressId = relations.srcAddressId,
-            clusterGroup = Math.floorDiv(row.cluster, bucketSize),
-            cluster = row.cluster,
-            addressProperties = relations.dstProperties,
-            noTransactions = relations.noTransactions,
-            value = relations.estimatedValue,
-            txList = relations.txList,
-            dstLabels = relations.dstLabels
-          )
-      }).toDS()
-
-
-    println("Cluster 9166 in relations: ")
-    addressToClusterRelations.filter(r => r.cluster == 9166).show()
-
-    println("Cluster 9166 out relations: ")
-    clusterToAddressRelations.filter(r => r.cluster == 9166).show()
-
-    val clusterRelations1 = addressToClusterRelations
-      .as("rel")
-      .joinWith(mergedAddressClusters.as("address"), col("rel.addressId") equalTo col("address.addressId"))
-      .groupByKey(r => (r._1.cluster, r._2.cluster))
-      .mapGroups({
-        case ((dstCluster, srcCluster), srcObjects) =>
-          val sources = srcObjects.toList
-          ClusterRelations(
-            srcClusterGroup = -1,
-            srcCluster = srcCluster,
-            dstClusterGroup = -1,
-            dstCluster = dstCluster,
-            srcProperties = ClusterSummary(0, Currency(0,0,0), Currency(0, 0, 0)), // Fill in later
-            dstProperties = ClusterSummary(0, Currency(0,0,0), Currency(0, 0, 0)), // Fill in later
-            srcLabels = Seq(),
-            dstLabels = Seq(),
-            noTransactions = sources.map(r => r._1.noTransactions).sum,
-            value = sources.map(r => r._1.value).reduce(sumCurrency),
-            txList = Seq()
-          )
-      })
-
-    val clusterRelations2 = clusterToAddressRelations
-      .as("rel")
-      .joinWith(mergedAddressClusters.as("address"), col("rel.addressId") equalTo col("address.addressId"))
-      .groupByKey(r => (r._1.cluster, r._2.cluster))
-      .mapGroups({
-        case ((srcCluster, dstCluster), srcObjects) =>
-          val sources = srcObjects.toList
-          ClusterRelations(
-            srcClusterGroup = -1,
-            srcCluster = srcCluster,
-            dstClusterGroup = -1,
-            dstCluster = dstCluster,
-            srcProperties = ClusterSummary(0, Currency(0,0,0), Currency(0, 0, 0)), // Fill in later
-            dstProperties = ClusterSummary(0, Currency(0,0,0), Currency(0, 0, 0)), // Fill in later
-            srcLabels = Seq(),
-            dstLabels = Seq(),
-            noTransactions = sources.map(r => r._1.noTransactions).sum,
-            value = sources.map(r => r._1.value).reduce(sumCurrency),
-            txList = Seq()
-          )
-      })
-
-
-    println("Filling in srcProperties and dstProperties of cluster relations")
-    val allClusterRelations = clusterRelations1.union(clusterRelations2)
-      .dropDuplicates(Fields.srcCluster, Fields.dstCluster)
-      .withColumn(Fields.srcClusterGroup, floor(col(Fields.srcCluster) / lit(bucketSize)).cast("int"))
-      .withColumn(Fields.dstClusterGroup, floor(col(Fields.dstCluster) / lit(bucketSize)).cast("int"))
-      .as[ClusterRelations]
-      .filter(col(Fields.srcCluster) notEqual col(Fields.dstCluster))
-      .joinWith(clusterPropsMerged, col(Fields.cluster) equalTo col(Fields.srcCluster))
-      .map({
-        case (relations, cluster) =>
-          relations.copy(
-            srcProperties = ClusterSummary(cluster.noAddresses, cluster.totalReceived, cluster.totalSpent)
-          )
-      })
-      .joinWith(clusterPropsMerged, col(Fields.cluster) equalTo col(Fields.dstCluster))
-      .map({
-        case (relations, cluster) =>
-          relations.copy(
-            dstProperties = ClusterSummary(cluster.noAddresses, cluster.totalReceived, cluster.totalSpent)
-          )
-      })
-
-
-    val clusterInDegrees = allClusterRelations
+    val clusterInDegrees = completeClusterRelations
       .groupBy(Fields.dstCluster)
       .agg(countDistinct(Fields.srcCluster).cast("int") as Fields.inDegree)
 
-    val clusterOutDegrees = allClusterRelations
+    val clusterOutDegrees = completeClusterRelations
       .groupBy(Fields.srcCluster)
       .agg(countDistinct(Fields.dstCluster).cast("int") as Fields.outDegree)
 
@@ -811,22 +736,76 @@ object AppendJob {
       .na
       .fill(0)
       .as[Cluster]
-      .persist()
 
-    cassandra.store[Cluster](conf.targetKeyspace(), "cluster", clusterPropsWithDegrees)
+    val clusterPropsWithTotalDegrees = clusterPropsWithDegrees
+      .rdd
+      .leftJoinWithCassandraTable[Cluster](conf.targetKeyspace(), "cluster")
+      .on(SomeColumns("cluster_group", "cluster"))
+      .map({
+        case (cluster, maybeCluster) =>
+          if (maybeCluster.isDefined)
+            cluster.copy(
+              inDegree = cluster.inDegree + maybeCluster.get.inDegree,
+              outDegree = cluster.outDegree + maybeCluster.get.outDegree
+            )
+          else cluster
+      }).toDS()
+
+
+    cassandra.store[Cluster](conf.targetKeyspace(), "cluster", clusterPropsWithTotalDegrees)
+
 
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_incoming_relations",
-      allClusterRelations.sort(Fields.dstClusterGroup, Fields.dstCluster, Fields.srcCluster)
+      completeClusterRelations.sort(Fields.dstClusterGroup, Fields.dstCluster, Fields.srcCluster)
     )
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_outgoing_relations",
-      allClusterRelations.sort(Fields.srcClusterGroup, Fields.srcCluster, Fields.dstCluster)
+      completeClusterRelations.sort(Fields.srcClusterGroup, Fields.srcCluster, Fields.dstCluster)
     )
 
+    val clusterPairs = clusterPropsMerged
+      .select(
+        col(Fields.clusterGroup) as Fields.dstClusterGroup,
+        col(Fields.cluster) as Fields.dstCluster
+      )
+      .rdd
+      .joinWithCassandraTable[ClusterIncomingRelations](conf.targetKeyspace(), "cluster_incoming_relations")
+      .on(SomeColumns("dst_cluster_group", "dst_cluster"))
+      .map({
+        case (row, relations) =>
+          ClusterPair(
+            srcCluster = relations.srcCluster,
+            srcClusterGroup = Math.floorDiv(relations.srcCluster, bucketSize),
+            dstCluster = row.getInt(1),
+            dstClusterGroup = row.getInt(0)
+          )
+      }).toDS().persist()
 
+    println("Filling in srcProperties and dstProperties of cluster relations")
+    clusterPropsMerged
+      .join(clusterPairs, joinExprs = col(Fields.cluster) equalTo col(Fields.srcCluster))
+      .as[ClusterPropsMergerIn]
+      .rdd
+      .joinWithCassandraTable[ClusterIncomingRelations](conf.targetKeyspace(), "cluster_incoming_relations")
+      .on(SomeColumns("dst_cluster_group", "dst_cluster", "src_cluster"))
+      .map({
+        case (stats, relations) =>
+          relations.copy(srcProperties = ClusterSummary(stats.noAddresses, stats.totalReceived, stats.totalSpent))
+      }).saveToCassandra(conf.targetKeyspace(), "cluster_incoming_relations")
+
+    clusterPropsMerged
+      .join(clusterPairs, joinExprs = col(Fields.cluster) equalTo col(Fields.dstCluster))
+      .as[ClusterPropsMergerOut]
+      .rdd
+      .joinWithCassandraTable[ClusterOutgoingRelations](conf.targetKeyspace(), "cluster_outgoing_relations")
+      .on(SomeColumns("src_cluster_group", "src_cluster", "dst_cluster"))
+      .map({
+        case (stats, relations) =>
+          relations.copy(dstProperties = ClusterSummary(stats.noAddresses, stats.totalReceived, stats.totalSpent))
+      }).saveToCassandra(conf.targetKeyspace(), "cluster_outgoing_relations")
   }
 
   def verify(args: Array[String]): Unit = {
@@ -884,6 +863,12 @@ object AppendJob {
     if (verifyTables contains "cluster") {
       verifyTable[Cluster]("cluster", Fields.cluster)
     }
+
+    if (verifyTables contains "cluster_incoming_relations")
+      verifyTable[ClusterIncomingRelations]("cluster_incoming_relations", Fields.dstCluster)
+
+    if (verifyTables contains "cluster_outgoing_relations")
+      verifyTable[ClusterOutgoingRelations]("cluster_outgoing_relations", Fields.srcCluster)
   }
 
   def setupCassandra(args: Array[String]): (CassandraStorage, Conf, SparkSession) = {
@@ -965,8 +950,8 @@ object AppendJob {
   }
 
   def main(args: Array[String]) {
-//    verify(args)
-    restore(args)
-    compute(args)
+    verify(args)
+//    restore(args)
+//    compute(args)
   }
 }

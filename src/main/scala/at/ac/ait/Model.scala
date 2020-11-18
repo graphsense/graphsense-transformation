@@ -68,6 +68,13 @@ case class AddressPair(
     dstAddressId: Int,
     dstAddressIdGroup: Int)
 
+case class ClusterPair(
+    srcClusterGroup: Int,
+    srcCluster: Int,
+    dstClusterGroup: Int,
+    dstCluster: Int
+)
+
 case class AddressPairWithProperties(
     srcAddressId: Int,
     srcAddressIdGroup: Int,
@@ -143,7 +150,8 @@ case class SimpleClusterRelations(
                                  dstClusterGroup: Int,
                                  dstCluster: Int,
                                  noTransactions: Int,
-                                 value: Currency
+                                 value: Currency,
+                                 var txList: Seq[Array[Byte]] = Seq()
                                  )
 
 case class MergedClusterRelationsOut(
@@ -354,6 +362,36 @@ case class Cluster(
     outDegree: Int
 )
 
+case class ClusterPropsMergerIn(
+  dstClusterGroup: Int,
+  dstCluster: Int,
+  srcCluster: Int,
+  noAddresses: Int,
+  noIncomingTxs: Int,
+  noOutgoingTxs: Int,
+  firstTx: TxIdTime,
+  lastTx: TxIdTime,
+  totalReceived: Currency,
+  totalSpent: Currency,
+  inDegree: Int,
+  outDegree: Int
+)
+
+case class ClusterPropsMergerOut(
+  srcClusterGroup: Int,
+  srcCluster: Int,
+  dstCluster: Int,
+  noAddresses: Int,
+  noIncomingTxs: Int,
+  noOutgoingTxs: Int,
+  firstTx: TxIdTime,
+  lastTx: TxIdTime,
+  totalReceived: Currency,
+  totalSpent: Currency,
+  inDegree: Int,
+  outDegree: Int
+)
+
 case class ClusterTags(
     clusterGroup: Int,
     cluster: Int,
@@ -452,6 +490,17 @@ case class ClusterIncomingRelations(
      srcCluster: Int,
      dstClusterGroup: Int,
      dstCluster: Int,
+     var srcProperties: ClusterSummary,
+     srcLabels: Seq[String],
+     noTransactions: Int,
+     value: Currency
+)
+
+case class ReclusteredIncomingRelations(
+     srcClusterGroup: Int,
+     srcCluster: Int,
+     dstClusterGroup: Int,
+     dstCluster: Int,
      srcProperties: ClusterSummary,
      srcLabels: Seq[String],
      noTransactions: Int,
@@ -462,7 +511,7 @@ case class ClusterOutgoingRelations(
      srcClusterGroup: Int,
      dstCluster: Int,
      srcCluster: Int,
-     dstProperties: ClusterSummary,
+     var dstProperties: ClusterSummary,
      dstLabels: Seq[String],
      noTransactions: Int,
      value: Currency,
