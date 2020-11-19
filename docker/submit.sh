@@ -29,7 +29,7 @@ echo -en "Starting Spark job ...\n" \
   --conf spark.sql.session.timeZone=UTC \
   --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:3.4.0 \
-  target/scala-2.12/graphsense-transformation_2.12-0.4.5.jar \
+  target/scala-2.12/graphsense-transformation_2.12-0.4.5-SNAPSHOT.jar \
   --currency "$CURRENCY" \
   --raw_keyspace "$RAW_KEYSPACE" \
   --tag_keyspace "$TAG_KEYSPACE" \
