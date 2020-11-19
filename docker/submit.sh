@@ -4,6 +4,7 @@ echo -en "Starting Spark job ...\n" \
          "Config:\n" \
          "- Spark master: $SPARK_MASTER\n" \
          "- Spark driver: $SPARK_DRIVER_HOST\n" \
+         "- Spark local dir: $SPARK_LOCAL_DIR\n" \
          "- Cassandra host: $CASSANDRA_HOST\n" \
          "- Executor memory: $SPARK_EXECUTOR_MEMORY\n" \
          "Arguments:\n" \
@@ -22,10 +23,10 @@ echo -en "Starting Spark job ...\n" \
   --conf spark.blockManager.port="$SPARK_BLOCKMGR_PORT" \
   --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
-  --conf spark.sql.session.timeZone=UTC \
+  --conf spark.local.dir=$SPARK_LOCAL_DIR \
   --conf spark.default.parallelism=400 \
   --conf spark.driver.memory="64G" \
-  --conf spark.local.dir="/var/cache/spark" \
+  --conf spark.sql.session.timeZone=UTC \
   --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:3.4.0 \
   target/scala-2.12/graphsense-transformation_2.12-0.4.4-SNAPSHOT.jar \
