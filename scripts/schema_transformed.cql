@@ -1,5 +1,5 @@
-DROP KEYSPACE IF EXISTS btc_transformed;
-CREATE KEYSPACE btc_transformed WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+CREATE KEYSPACE IF NOT EXISTS btc_transformed
+    WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
 USE btc_transformed;
 

@@ -97,7 +97,7 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
   --conf spark.sql.session.timeZone=UTC \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:3.4.0 \
-  target/scala-2.12/graphsense-transformation_2.12-0.4.4-SNAPSHOT.jar \
+  target/scala-2.12/graphsense-transformation_2.12-0.4.5.jar \
   --currency "$CURRENCY" \
   --raw_keyspace "$RAW_KEYSPACE" \
   --tag_keyspace "$TAG_KEYSPACE" \
