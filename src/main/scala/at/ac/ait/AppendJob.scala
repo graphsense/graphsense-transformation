@@ -550,10 +550,7 @@ object AppendJob {
 
     cassandra.store[AddressCluster](conf.targetKeyspace(), "address_cluster", mergedAddressClusters)
     val obsoleteClusters = mergeResults.filter(r => r.cluster != r.localCluster).map(r => (r.clusterGroup, r.cluster))
-    /*obsoleteClusters
-      .rdd
-      .deleteFromCassandra(conf.targetKeyspace(), "cluster_addresses", keyColumns = SomeColumns("cluster_group", "cluster"))
-*/
+
     println(" === Mapping of old clusters to clusters they had been merged to === ")
     clusterMapping.distinct().show(Integer.MAX_VALUE, false)
 
@@ -627,12 +624,6 @@ object AppendJob {
       .toDS()
       .as[PropertiesOfRelatedCluster]
       .persist()
-
-    /*println("Deleting clusters that have been merged")
-    obsoleteClusters
-      .rdd
-      .deleteFromCassandra(conf.targetKeyspace(), "cluster", keyColumns = SomeColumns("cluster_group", "cluster"))*/
-
 
     val propSets = relatedClusterProperties
       .union(
@@ -805,6 +796,15 @@ object AppendJob {
         case (stats, relations) =>
           relations.copy(dstProperties = ClusterSummary(stats.noAddresses, stats.totalReceived, stats.totalSpent))
       }).saveToCassandra(conf.targetKeyspace(), "cluster_outgoing_relations")
+
+    println("Deleting clusters that have been merged")
+    obsoleteClusters
+      .rdd
+      .deleteFromCassandra(conf.targetKeyspace(), "cluster_addresses", keyColumns = SomeColumns("cluster_group", "cluster"))
+
+    obsoleteClusters
+      .rdd
+      .deleteFromCassandra(conf.targetKeyspace(), "cluster", keyColumns = SomeColumns("cluster_group", "cluster"))
   }
 
   def verify(args: Array[String]): Unit = {
@@ -953,8 +953,8 @@ object AppendJob {
   }
 
   def main(args: Array[String]) {
-    verify(args)
+//    verify(args)
 //    restore(args)
-//    compute(args)
+    compute(args)
   }
 }
