@@ -8,7 +8,7 @@ import com.datastax.spark.connector.rdd.reader.RowReaderFactory
 import com.datastax.spark.connector.writer.RowWriterFactory
 import com.datastax.spark.connector.{SomeColumns, toRDDFunctions}
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
-import org.apache.spark.sql.functions.{array_distinct, col, collect_list, collect_set, count, countDistinct, first, flatten, floor, lit, lower, size, struct, sum, when}
+import org.apache.spark.sql.functions.{array_distinct, col, collect_list, collect_set, count, countDistinct, first, flatten, floor, lit, lower, size, struct, substring, sum, udf, when}
 import org.apache.spark.sql.types.{ArrayType, BinaryType, IntegerType}
 import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
@@ -69,7 +69,7 @@ object AppendJob {
 
     val tagsRaw = cassandra
       .load[TagRaw](conf.tagKeyspace(), "tag_by_address")
-    val tagsRaw = spark.emptyDataset[TagRaw]
+//    val tagsRaw = spark.emptyDataset[TagRaw]
 
     val lastProcessedBlock =
       cassandra.load[SummaryStatistics](conf.targetKeyspace(), "summary_statistics")
@@ -96,8 +96,6 @@ object AppendJob {
         //todo uncommment
     cassandra.store(conf.targetKeyspace(), "exchange_rates", exchangeRates.filter(r => r.height > lastProcessedBlock))
 
-    println("Extracting transaction inputs")
-    val regInputs = transformation.computeRegularInputs(transactions).persist()
     val regInputsDiff = transformation.computeRegularInputs(transactionsDiff).persist()
     println("Extracting transaction outputs")
     val regOutputs = transformation.computeRegularOutputs(transactions)
@@ -954,7 +952,7 @@ object AppendJob {
 
   def main(args: Array[String]) {
 //    verify(args)
-//    restore(args)
+    restore(args)
     compute(args)
   }
 }
