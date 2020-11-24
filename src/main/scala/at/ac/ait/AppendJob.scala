@@ -67,9 +67,8 @@ object AppendJob {
     val transactions =
       cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
 
-    // todo uncomment
-    /*val tagsRaw = cassandra
-      .load[TagRaw](conf.tagKeyspace(), "tag_by_address")*/
+    val tagsRaw = cassandra
+      .load[TagRaw](conf.tagKeyspace(), "tag_by_address")
     val tagsRaw = spark.emptyDataset[TagRaw]
 
     val lastProcessedBlock =
@@ -233,7 +232,8 @@ object AppendJob {
     }
 
     val newAndUpdatedInRelations = addressRelationsDiff.as[AddressIncomingRelations]
-      .rdd.leftJoinWithCassandraTable[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
+      .rdd
+      .leftJoinWithCassandraTable[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
       .on(SomeColumns("src_address_id", "dst_address_id", "dst_address_id_group"))
       .map(r => {
         val existingOpt = r._2
