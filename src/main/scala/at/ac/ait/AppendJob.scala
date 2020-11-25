@@ -6,7 +6,7 @@ import com.datastax.driver.core.DataType
 import com.datastax.spark.connector.rdd.ValidRDDType
 import com.datastax.spark.connector.rdd.reader.RowReaderFactory
 import com.datastax.spark.connector.writer.RowWriterFactory
-import com.datastax.spark.connector.{SomeColumns, toRDDFunctions}
+import com.datastax.spark.connector.{SomeColumns, toRDDFunctions, toSparkContextFunctions}
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.functions.{array_distinct, col, collect_list, collect_set, count, countDistinct, first, flatten, floor, lit, lower, size, struct, substring, sum, udf, when}
 import org.apache.spark.sql.types.{ArrayType, BinaryType, IntegerType}
@@ -104,13 +104,17 @@ object AppendJob {
     println("Computing address IDs")
     val addressIds = transformation.computeAddressIds(regOutputs)
 
-    val addressByIdGroup = transformation.computeAddressByIdGroups(addressIds)
-    if (!disableAddressIds) {
+    val addressByIdGroup = transformation.computeAddressByIdGroups(addressIds).persist()
+    val totalAddressCount = addressByIdGroup.count()
+    val currentSummary = spark.sparkContext.cassandraTable[SummaryStatistics](conf.targetKeyspace(), "summary_statistics").first()
+    if (!disableAddressIds && currentSummary.noAddresses != totalAddressCount) {
       cassandra.store(
         conf.targetKeyspace(),
         "address_by_id_group",
         addressByIdGroup
       )
+
+      cassandra.store(conf.targetKeyspace(), "summary_statistics", spark.createDataset(Seq(currentSummary.copy(noAddresses = totalAddressCount))))
     }
 
     val addressTransactionsDiff =
@@ -123,12 +127,11 @@ object AppendJob {
         )
         .persist(StorageLevel.DISK_ONLY)
 
-    //todo uncommment
     if (!disableAddressTransactions) {
       cassandra.store(
         conf.targetKeyspace(),
         "address_transactions",
-        addressTransactionsDiff
+        addressTransactionsDiff.sort(Fields.addressId)
       )
     }
 
@@ -963,8 +966,8 @@ object AppendJob {
   }
 
   def main(args: Array[String]) {
-    verify(args)
+//    verify(args)
 //    restore(args)
-//    compute(args)
+    compute(args)
   }
 }
