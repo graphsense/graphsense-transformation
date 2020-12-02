@@ -2,7 +2,7 @@ package at.ac.ait
 
 import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{array_distinct, col, collect_list, collect_set, count, date_format, explode, flatten, from_unixtime, lit, lower, max, min, posexplode, regexp_replace, row_number, size, struct, substring, sum, to_date, udf}
+import org.apache.spark.sql.functions.{array, array_distinct, coalesce, col, collect_list, collect_set, count, date_format, explode, flatten, from_unixtime, lit, lower, max, min, posexplode, regexp_replace, row_number, size, struct, substring, sum, to_date, udf}
 import org.apache.spark.sql.types.{IntegerType, StringType}
 import at.ac.ait.{Fields => F}
 
@@ -379,15 +379,15 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         joinType = "full_outer")
       .map({
         case (existing, diff) =>
-          if (existing != null && diff != null)
+          if (existing != null && diff != null) {
             existing.copy(
               noTransactions = existing.noTransactions + diff.noTransactions,
               value = Currency(existing.value.value + diff.value.value, existing.value.eur + diff.value.eur, existing.value.usd + diff.value.usd),
               txList = (existing.txList ++ diff.txList).distinct,
-              srcLabels = (existing.srcLabels ++ diff.srcLabels).distinct,
-              dstLabels = (existing.dstLabels ++ diff.dstLabels).distinct
+              srcLabels = Seq(),
+              dstLabels = Seq()
             )
-          else if (existing != null)
+          } else if (existing != null)
             existing
           else
             diff
