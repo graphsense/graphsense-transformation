@@ -5,9 +5,11 @@ import com.datastax.spark.connector.rdd.reader.RowReaderFactory
 import com.datastax.spark.connector.writer.{RowWriterFactory, WriteConf}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
-import scala.reflect.ClassTag
 
+import at.ac.ait.AppendProgress
+import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
+
+import scala.reflect.ClassTag
 import at.ac.ait.Util._
 
 class CassandraStorage(spark: SparkSession) {
@@ -41,5 +43,9 @@ class CassandraStorage(spark: SparkSession) {
     println(s"[$timestamp] Writing table ${tableName}")
     val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ifNotExists = ifNotExists)
     time { df.rdd.saveToCassandra(keyspace, tableName, writeConf = conf) }
+  }
+
+  def saveAppendProgress(targetKeyspace: String, progress: AppendProgress): Unit = {
+    store[AppendProgress](targetKeyspace, "append_progress", spark.createDataset(Seq(progress)))
   }
 }

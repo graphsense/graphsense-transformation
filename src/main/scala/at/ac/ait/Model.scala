@@ -564,3 +564,14 @@ case class SummaryStatistics(
     noTags: Long,
     bucketSize: Int
 )
+
+case class AppendProgress(
+   timestamp: Int,
+   addressByIdGroupHeight: Int,
+   exchangeRatesHeight: Int,
+   addressTransactionsHeight: Int,
+   addressTagsCount: Long,
+   addressIncomingRelationsHeight: Int,
+   addressOutgoingRelationsHeight: Int,
+   addressHeight: Int
+                         )

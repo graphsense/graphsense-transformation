@@ -199,3 +199,14 @@ CREATE TABLE summary_statistics (
     no_tags bigint,
     bucket_size int
 );
+
+CREATE TABLE append_progress (
+    timestamp int PRIMARY KEY,
+    address_by_id_group_height int,
+    exchange_rates_height int,
+    address_transactions_height int,
+    address_tags_count bigint,
+    address_incoming_relations_height int,
+    address_outgoing_relations_height int,
+    address_height int
+);
