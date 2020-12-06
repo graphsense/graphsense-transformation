@@ -50,6 +50,10 @@ object AppendJob {
     verify()
   }
 
+  def setStageDescription(spark: SparkSession, description: String): Unit = {
+    spark.sparkContext.setJobDescription(description)
+    println(description)
+  }
 
   def compute(args: Array[String]): Unit = {
     val (cassandra, conf, spark) = setupCassandra(args)
@@ -73,7 +77,6 @@ object AppendJob {
     var progress = cassandra.load[AppendProgress](conf.targetKeyspace(), "append_progress").collect().headOption.getOrElse({AppendProgress(0, 0, 0, 0, 0, 0, 0, 0)})
 
     println()
-    println("Computing unprocessed diff")
 
     /**
      * Last block that is going to be processed in this interation.
@@ -85,14 +88,19 @@ object AppendJob {
     val maxHeight = blocks.select(max(col(Fields.height))).first().getInt(0)
     val heightsToProcess = spark.range(start = lastProcessedBlock + 1, end = targetHeight + 1)
       .withColumnRenamed("id", Fields.height)
+    val blockRangeStr = s"${lastProcessedBlock + 1} - ${targetHeight + 1}"
+
+    setStageDescription(spark, "Selecting blocks to process")
     val unprocessedBlocks = blocks.join(heightsToProcess, Seq(Fields.height), "left_semi").as[Block].persist()
+
+    setStageDescription(spark, s"Retrieving transactions from current block range $blockRangeStr")
     val transactionsDiff = transactions.filter(col(Fields.height).between(lit(lastProcessedBlock + 1), lit(targetHeight))).persist()
     println(s"New blocks:          ${unprocessedBlocks.count()}")
     println()
 
     val transformation = new Transformation(spark, conf.bucketSize())
 
-    println("Computing exchange rates")
+    setStageDescription(spark, "Computing exchange rates")
     val exchangeRates =
       transformation
         .computeExchangeRates(unprocessedBlocks, exchangeRatesRaw)
@@ -102,13 +110,14 @@ object AppendJob {
       cassandra.saveAppendProgress(conf.targetKeyspace(), progress)
     } else println("[SKIP] writing exchange rates to cassandra: up to date")
 
+    setStageDescription(spark, "Extracting transaction inputs")
     val regInputsDiff = transformation.computeRegularInputs(transactionsDiff).persist()
-    println("Extracting transaction outputs")
+    setStageDescription(spark, "Extracting transaction outputs")
     val regOutputsDiff = transformation.computeRegularOutputs(transactionsDiff).persist()
 
     var addressIds: Dataset[AddressId] = null;
     if (progress.addressByIdGroupHeight < targetHeight) {
-      println(s"Computing address IDs for all blocks: 0 - $maxHeight")
+      setStageDescription(spark, s"Computing address IDs for all blocks: 0 - $maxHeight")
       val regOutputs = transformation.computeRegularOutputs(transactions)
       addressIds = transformation.computeAddressIds(regOutputs)
       val addressByIdGroup = transformation.computeAddressByIdGroups(addressIds).persist()
@@ -121,13 +130,13 @@ object AppendJob {
       cassandra.saveAppendProgress(conf.targetKeyspace(), progress)
     } else {
       println("[SKIP] full address id computation: up to date")
-      println("Loading address IDs from address_by_id_group")
+      setStageDescription(spark, "Loading address IDs from address_by_id_group")
       addressIds = cassandra.load[AddressByIdGroup](conf.targetKeyspace(), "address_by_id_group")
         .select(Fields.addressId, Fields.address)
         .as[AddressId]
     }
 
-
+    setStageDescription(spark, s"Computing address transactions for current block range $blockRangeStr")
     // Compute address transactions only for addresses appearing in the current block range.
     val addressTransactionsDiff =
       transformation
@@ -150,13 +159,13 @@ object AppendJob {
     } else println("[SKIP] writing address transactions to cassandra: up to date")
 
 
+    setStageDescription(spark, "Splitting address transactions to inputs and outputs")
     val (inputsDiff, outputsDiff) =
       transformation.splitTransactions(addressTransactionsDiff)
     inputsDiff.persist(StorageLevel.DISK_ONLY)
     outputsDiff.persist(StorageLevel.DISK_ONLY)
 
-    println("Computing address statistics")
-
+    setStageDescription(spark, s"Computing address statistics for addresses active in blocks $blockRangeStr")
     /**
      * All addresses affected by the newly added transactions.
      */
@@ -171,10 +180,11 @@ object AppendJob {
         )
         .persist(StorageLevel.DISK_ONLY)
 
+    setStageDescription(spark, "Counting available tags")
     val tagCount = tagsRaw.count()
     var addressTagsDiff: Dataset[AddressTags] = spark.emptyDataset
     if (tagCount > progress.addressTagsCount) if (tagCount > 0) {
-      println("Computing address tags")
+      setStageDescription(spark, "Computing address tags")
       addressTagsDiff =
         transformation
           .computeAddressTags(
@@ -205,7 +215,7 @@ object AppendJob {
           transactionsDiff
         )
 
-    println("Computing address relations")
+    setStageDescription(spark, "Computing address relations")
     val addressRelationsDiff: Dataset[AddressRelations] =
       transformation
         .computeAddressRelations(
@@ -229,9 +239,8 @@ object AppendJob {
         Currency(vals._1, vals._2, vals._3)
     }
 
-
     if (targetHeight > progress.addressIncomingRelationsHeight) {
-      println(s"Compute address incoming relations for addresses active in blocks $lastProcessedBlock - $targetHeight")
+      setStageDescription(spark, s"Compute address incoming relations for addresses active in blocks $blockRangeStr")
       val updatedAddrIncomingRelations = addressRelationsDiff
         .as[AddressIncomingRelations]
         .rdd
@@ -252,7 +261,7 @@ object AppendJob {
               }
           })
         })
-      cassandra.store[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations", updatedAddrIncomingRelations.toDS().sort(Fields.dstAddressId))
+      cassandra.storeRDD[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations", updatedAddrIncomingRelations)
       progress = progress.copy(addressIncomingRelationsHeight = targetHeight)
       cassandra.saveAppendProgress(conf.targetKeyspace(), progress)
     } else {
@@ -260,8 +269,9 @@ object AppendJob {
     }
 
     if (targetHeight > progress.addressOutgoingRelationsHeight) {
-      println(s"Compute address outgoing relations for addresses active in blocks $lastProcessedBlock - $targetHeight")
-      val updatedAddrOutgoingRelations = addressRelationsDiff.as[AddressOutgoingRelations]
+      setStageDescription(spark, s"Compute address outgoing relations for addresses active in blocks $blockRangeStr")
+      val updatedAddrOutgoingRelations = addressRelationsDiff
+        .as[AddressOutgoingRelations]
         .rdd
         .repartitionByCassandraReplica(conf.targetKeyspace(), "address_outgoing_relations", partitionsPerHost = 10000)
         .leftJoinWithCassandraTable[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations")
@@ -281,14 +291,19 @@ object AppendJob {
               }
           })
         })
-      cassandra.store[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations", updatedAddrOutgoingRelations.toDS().sort(Fields.srcAddressId))
+      cassandra.storeRDD[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations", updatedAddrOutgoingRelations)
       progress = progress.copy(addressOutgoingRelationsHeight = targetHeight)
       cassandra.saveAppendProgress(conf.targetKeyspace(), progress)
     } else {
       println(s"[SKIP] Compute address outgoing relations for addresses active in blocks $lastProcessedBlock - $targetHeight")
     }
 
-    println("Computing addresses")
+    setStageDescription(spark, s"Computing complete statistics for addresses active in block range $blockRangeStr")
+    /**
+     * Address statistics for addresses found in new transactions only (transactionsDiff).
+     * Note that stats will not include any transactions from before lastProcessedBlock,
+     * so first, last tx, total spend and received values will not be final.
+     */
     val addressesDiff =
       transformation.computeAddresses(
         basicAddressesDiff,
@@ -296,9 +311,11 @@ object AppendJob {
         addressIds
       ).persist()
 
-
-    val noChangedAddresses = addressesDiff.count()
-
+    // In the next step we load address statistics already available in cassandra
+    // and combine those with stats computed for the current block range.
+    // The result, mergedAddresses then contains complete, correct stats of each address that was active in current
+    // block range. That result can then be written to cassandra, overwriting previous values.
+    setStageDescription(spark, "Merging computed address statistics with previous state from cassandra")
     /**
      * Information about all affected addresses, merged with their previous state in cassandra.
      */
@@ -327,19 +344,20 @@ object AppendJob {
             })
       })
       .toDS()
-      .persist(StorageLevel.DISK_ONLY)
+      .persist()
+    cassandra.store(conf.targetKeyspace(), "address", mergedAddresses)
 
-    val addressRelationPairs = addressesDiff
-      .withColumnRenamed(Fields.addressId, Fields.dstAddressId)
-      .withColumn(Fields.dstAddressIdGroup, floor(col(Fields.dstAddressId).divide(lit(bucketSize))))
-      .select(Fields.dstAddressIdGroup, Fields.dstAddressId)
-      .rdd
+    // Get address relation pairs,
+    // i.e. for each address active in current block range, retrieve all addresses connected by a relation (in or out).
+    // We need this to be able to update srcProperties and dstProperties
+    // of all rows in both address_incoming_relations and address_outgoing relations.
+    val addressRelationPairs = transformation.asDstAddressSet(addressesDiff)
       .joinWithCassandraTable[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
       .on(SomeColumns("dst_address_id_group", "dst_address_id"))
       .mapPartitions(list => {
             list.map({
               case (row, relations) =>
-                val dstAddressIdGroup = row.getLong(0)
+                val dstAddressIdGroup = row.getInt(0)
                 val dstAddressId = row.getInt(1)
                 AddressPair(relations.srcAddressId, -1, dstAddressId, dstAddressIdGroup.intValue())
             })
@@ -348,7 +366,7 @@ object AppendJob {
       .withColumn(Fields.srcAddressIdGroup, floor(col(Fields.srcAddressId) / lit(bucketSize)).cast("int"))
       .as[AddressPair]
 
-    println("Updating srcProperties field of address_incoming_relations...")
+    setStageDescription(spark, "Updating srcProperties field of address_incoming_relations...")
     val inRelationsUpdated = mergedAddresses
       .join(addressRelationPairs, joinExprs = col(Fields.addressId) equalTo col(Fields.srcAddressId))
       .as[AddressPairWithProperties]
@@ -365,10 +383,10 @@ object AppendJob {
                   )
                 )
             })
-      }).toDS()
-    cassandra.store[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations", inRelationsUpdated.sort(Fields.dstAddressId))
+      })
+    cassandra.storeRDD[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations", inRelationsUpdated)
 
-    println("Updating dstProperties field of address_outgoing_relations...")
+    setStageDescription(spark, "Updating dstProperties field of address_outgoing_relations...")
     val outRelationsUpdated = mergedAddresses
       .join(addressRelationPairs, joinExprs = col(Fields.addressId) equalTo col(Fields.dstAddressId))
       .as[AddressPairWithProperties]
@@ -385,14 +403,12 @@ object AppendJob {
                   )
                 )
             })
-      }).toDS()
-    cassandra.store[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations", outRelationsUpdated.sort(Fields.srcAddressId))
+      })
+    cassandra.storeRDD[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations", outRelationsUpdated)
 
-    cassandra.store(conf.targetKeyspace(), "address", mergedAddresses)
+    setStageDescription(spark, "Perform clustering")
 
-    spark.sparkContext.setJobDescription("Perform clustering")
-
-    println("Computing address clusters")
+    setStageDescription(spark, s"Computing address to cluster mapping for addresses active in blocks $blockRangeStr")
     val addressClusterDiff = transformation
       .computeAddressCluster(regInputsDiff, addressIds, true)
       .persist(StorageLevel.MEMORY_AND_DISK)
@@ -402,14 +418,14 @@ object AppendJob {
     // computeBasicClusterAddresses will perform a join operation between basicAddressesDiff and addressClusterDiff.
     // Since basicAddressesDiff will not contain addresses that were not in any transaction since `lastProcessedBlock`,
     // that operation will not return any rows for these addresses.
-    println("Computing basic cluster addresses")
+    setStageDescription(spark, s"Computing cluster to address mapping for addresses active in blocks $blockRangeStr")
     val basicClusterAddressesDiff =
       transformation
         .computeBasicClusterAddressesExt(basicAddressesDiff, addressClusterExtDiff)
         .persist()
 
-    println("Retrieving overlapping clusters from cassandra")
-    val cassandraClusters = basicClusterAddressesDiff
+    setStageDescription(spark, s"Reading existing clusters that contain addresses from blocks $blockRangeStr")
+    val overlappingCassandraClusters = basicClusterAddressesDiff
       .rdd
       .repartitionByCassandraReplica(conf.targetKeyspace(), "address_cluster")
       .leftJoinWithCassandraTable[AddressCluster](conf.targetKeyspace(), "address_cluster")
@@ -422,6 +438,7 @@ object AppendJob {
               case (localCluster, cassandraCluster) =>
                 // these two clusters (local, i.e. in spark memory and cassandra, i.e. stored in cassandra)
                 // definitely have a shared address since we just joined on address id in `joinWithCassandraTable`!
+                // Collect all addresses belonging to the same local cluster.
                 val addresses = mutable.MutableList(
                   CassandraAddressCluster(
                     addressIdGroup = localCluster.addressIdGroup,
@@ -443,20 +460,18 @@ object AppendJob {
           val localClusterGroup = Math.floorDiv(localClusterId, bucketSize)
           LocalClusterPart(
             clusterGroup = localClusterGroup,
-            cluster = localClusterId,
-            addressList = addressList.toSet
+            cluster = localClusterId, // Same local cluster
+            addressList = addressList.toSet // Many addresses, some of which previously belonged to a different cluster in cassandra.
           )
       }).toDS()
 
-    println("Merging ...")
-    val mergers = cassandraClusters
+    setStageDescription(spark, "Merging computed local clusters based on overlaps with existing ones from cassandra.")
+    val mergeResults = overlappingCassandraClusters
       .flatMap(local => {
         local.addressList.map(r => {
           ClusterMerger(local.clusterGroup, local.cluster, r.clusterGroup.getOrElse(-1), r.cluster.getOrElse(-1), r.addressIdGroup, r.addressId)
         })
       })
-
-    val mergeResults = mergers
       .rdd
       .leftJoinWithCassandraTable[ClusterAddresses](conf.targetKeyspace(), "cluster_addresses")
       .on(SomeColumns("cluster_group", "cluster"))
@@ -487,9 +502,10 @@ object AppendJob {
     import org.apache.spark.sql.functions.udf
     val sumCurrenciesUDF = udf(sumUpCurrencies)
 
+    setStageDescription(spark, "Mapping old cluster ids to new")
     val clusterMapping = mergeResults.select(Fields.cluster, "localCluster").filter(r => r.getInt(0) != -1).persist()
 
-    println("Collecting INCOMING cluster relations of overlapping clusters...")
+    setStageDescription(spark, "Collecting INCOMING cluster relations of overlapping clusters")
 
     // Collect clusters incoming to any of the contained(existing) clusters
     val containedClusterRelIn = mergeResults
@@ -532,9 +548,7 @@ object AppendJob {
       .as[SimpleClusterRelations]
       .persist()
 
-    val combineTxLists = udf((lists: Seq[Array[Byte]]) => { lists.flatten })
-
-    println("Collecting OUTGOING cluster relations of overlapping clusters...")
+    setStageDescription(spark, "Collecting OUTGOING cluster relations of overlapping clusters")
     // Collect relations outgoing from all the existing clusters. Then, add up noTransactions and value
     val containedClusterRelOut = mergeResults
       .select(col("localClusterGroup"), col("localCluster"), col(Fields.clusterGroup) as Fields.srcClusterGroup, col(Fields.cluster) as Fields.srcCluster)
@@ -559,7 +573,6 @@ object AppendJob {
         sum(Fields.noTransactions).cast("int") as Fields.noTransactions,
         sumCurrenciesUDF(collect_list(Fields.value)) as Fields.value,
         array_distinct(flatten(collect_set(Fields.txList))) as Fields.txList
-//        combineTxLists(collect_set(col(Fields.txList))).cast(ArrayType(BinaryType)) as Fields.txList // todo do the same with incoming relations?
       )
       .as[SimpleClusterRelations]
       .persist()
@@ -576,14 +589,15 @@ object AppendJob {
     cassandra.store[AddressCluster](conf.targetKeyspace(), "address_cluster", mergedAddressClusters)
     val obsoleteClusters = mergeResults.filter(r => r.cluster != r.localCluster).map(r => (r.clusterGroup, r.cluster))
 
-    println("Combining cluster merge results")
+    setStageDescription(spark, "Calculating final cluster sizes")
     val clusterSizes = mergeResults
       .groupBy("localCluster")
       .agg(countDistinct(col(Fields.addressId)).cast("int") as Fields.noAddresses)
       .select(col("localCluster") as Fields.cluster, col(Fields.noAddresses))
+      .persist()
 
 
-    println("Computing cluster transactions")
+    setStageDescription(spark, "Computing local cluster transactions")
     val clusterTransactionsDiff =
       transformation
         .computeClusterTransactions(
@@ -594,12 +608,13 @@ object AppendJob {
         )
         .persist()
 
+    setStageDescription(spark, "Splitting cluster transactions into inputs and outputs")
     val (clusterInputs, clusterOutputs) =
       transformation.splitTransactions(clusterTransactionsDiff)
     clusterInputs.persist()
     clusterOutputs.persist()
 
-    println("Computing cluster statistics")
+    setStageDescription(spark, "Computing cluster statistics")
     val basicClusterDiff =
       transformation
         .computeBasicCluster(
@@ -612,7 +627,7 @@ object AppendJob {
         )
         .persist()
 
-    println("Computing plain cluster relations for new blocks only")
+    setStageDescription(spark, s"Computing cluster relations for blocks $blockRangeStr")
     val plainClusterRelationsDiff =
       transformation
         .computePlainClusterRelations(
@@ -620,7 +635,6 @@ object AppendJob {
           clusterOutputs
         )
 
-    println("Computing cluster relations for new blocks only")
     val clusterRelationsDiff =
       transformation
         .computeClusterRelations(
@@ -631,7 +645,7 @@ object AppendJob {
         )
         .persist()
 
-    println("Retrieving cluster properties for existing clusters")
+    setStageDescription(spark, "Retrieving cluster properties for existing clusters")
     val relatedClusterProperties = mergeResults
       .dropDuplicates("localCluster", Fields.cluster)
       .rdd
@@ -647,52 +661,14 @@ object AppendJob {
       .as[PropertiesOfRelatedCluster]
       .persist()
 
-    val propSets = relatedClusterProperties
-      .union(
-        basicClusterDiff.map(localCluster => {
-          val props = Cluster(
-            clusterGroup = Math.floorDiv(localCluster.cluster, bucketSize),
-            cluster = localCluster.cluster,
-            noAddresses = localCluster.noAddresses,
-            noIncomingTxs = localCluster.noIncomingTxs,
-            noOutgoingTxs = localCluster.noOutgoingTxs,
-            firstTx = localCluster.firstTx,
-            lastTx = localCluster.lastTx,
-            totalReceived = localCluster.totalReceived,
-            totalSpent = localCluster.totalSpent,
-            inDegree = 0,
-            outDegree = 0
-          )
-          PropertiesOfRelatedCluster(props.clusterGroup, props.cluster, props)
-        })
-      )
+    setStageDescription(spark, "Merging final cluster properties")
+    val clusterPropsMerged = transformation.mergeClusterProperties(
+      relatedClusterProperties,
+      basicClusterDiff,
+      clusterSizes
+    ).persist()
 
-    println("Coputing final cluster properties")
-    val clusterPropsMerged = propSets
-      .groupByKey(r => { r.cluster })
-      .mapGroups({
-        case (clusterId, existingClusters_) =>
-          val existingClusters = existingClusters_.map(r => r.props).toList
-          Cluster(
-            clusterGroup = Math.floorDiv(clusterId, bucketSize),
-            cluster = clusterId,
-            noAddresses = existingClusters.map(r => r.noAddresses).sum,
-            noIncomingTxs = existingClusters.map(r => r.noIncomingTxs).sum,
-            noOutgoingTxs = existingClusters.map(r => r.noOutgoingTxs).sum,
-            firstTx = existingClusters.map(r => r.firstTx).minBy(txId => txId.height),
-            lastTx = existingClusters.map(r => r.lastTx).maxBy(txId => txId.height),
-            totalReceived = existingClusters.map(r => r.totalReceived).reduce(sumCurrency),
-            totalSpent = existingClusters.map(r => r.totalSpent).reduce(sumCurrency),
-            inDegree = 0,
-            outDegree = 0
-          )
-      })
-      .drop(Fields.noAddresses)
-      .join(clusterSizes, Fields.cluster)
-      .as[Cluster]
-      .persist()
-
-    println("Combining cluster relations")
+    setStageDescription(spark, "Combining cluster relations")
     val completeClusterRelations =
       transformation.computeClusterRelationsWithProperties(
         containedClusterRelIn,
@@ -730,22 +706,21 @@ object AppendJob {
               outDegree = cluster.outDegree + maybeCluster.get.outDegree
             )
           else cluster
-      }).toDS()
+      })
 
 
-    cassandra.store[Cluster](conf.targetKeyspace(), "cluster", clusterPropsWithTotalDegrees)
+    cassandra.storeRDD[Cluster](conf.targetKeyspace(), "cluster", clusterPropsWithTotalDegrees)
 
-    val clusterAddressesMerged = mergedAddressClusters
-      .withColumn(Fields.clusterGroup, floor(col(Fields.cluster) / lit(bucketSize)).cast("int"))
-      .join(mergedAddresses, Fields.addressId)
-      .as[ClusterAddresses]
+    val clusterAddressesMerged = transformation.mergeClusterAddresses(
+      mergedAddressClusters,
+      mergedAddresses
+    )
 
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_addresses",
       clusterAddressesMerged
     )
-
 
     cassandra.store(
       conf.targetKeyspace(),
@@ -758,7 +733,7 @@ object AppendJob {
       completeClusterRelations.sort(Fields.srcClusterGroup, Fields.srcCluster, Fields.dstCluster)
     )
 
-    println("Retrieving cluster relations pairs")
+    setStageDescription(spark, "Retrieving cluster relations pairs")
     val clusterPairs = clusterPropsMerged
       .select(
         col(Fields.clusterGroup) as Fields.dstClusterGroup,
@@ -777,7 +752,7 @@ object AppendJob {
           )
       }).toDS().persist()
 
-    println("Filling in srcProperties of cluster relations")
+    setStageDescription(spark, "Filling in srcProperties of cluster relations")
     clusterPropsMerged
       .join(clusterPairs, joinExprs = col(Fields.cluster) equalTo col(Fields.srcCluster))
       .as[ClusterPropsMergerIn]
@@ -789,7 +764,7 @@ object AppendJob {
           relations.copy(srcProperties = ClusterSummary(stats.noAddresses, stats.totalReceived, stats.totalSpent))
       }).saveToCassandra(conf.targetKeyspace(), "cluster_incoming_relations")
 
-    println("Filling in dstProperties of cluster relations")
+    setStageDescription(spark, "Filling in dstProperties of cluster relations")
     clusterPropsMerged
       .join(clusterPairs, joinExprs = col(Fields.cluster) equalTo col(Fields.dstCluster))
       .as[ClusterPropsMergerOut]
@@ -801,7 +776,7 @@ object AppendJob {
           relations.copy(dstProperties = ClusterSummary(stats.noAddresses, stats.totalReceived, stats.totalSpent))
       }).saveToCassandra(conf.targetKeyspace(), "cluster_outgoing_relations")
 
-    println("Deleting clusters that have been merged")
+    setStageDescription(spark, "Deleting clusters that have been merged")
     obsoleteClusters
       .rdd
       .deleteFromCassandra(conf.targetKeyspace(), "cluster_addresses", keyColumns = SomeColumns("cluster_group", "cluster"))
@@ -811,6 +786,13 @@ object AppendJob {
       .deleteFromCassandra(conf.targetKeyspace(), "cluster", keyColumns = SomeColumns("cluster_group", "cluster"))
   }
 
+  /**
+   * Compares a set of tables row by row across two keyspaces to find any differences.
+   * The keyspaces are: conf.targetKeyspace() and btc_transformed.
+   * For testing, conf.targetKeyspace() was set to btc_transformed_append, which served as target keyspace for the append job.
+   * btc_transformed keyspaces contained the same number of blocks, but transformed by TransformationJob
+   * @param args
+   */
   def verify(args: Array[String]): Unit = {
     val (cassandra, conf, spark) = setupCassandra(args)
     import spark.implicits._

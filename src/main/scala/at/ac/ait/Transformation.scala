@@ -1,10 +1,11 @@
 package at.ac.ait
 
-import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{array, array_distinct, coalesce, col, collect_list, collect_set, count, date_format, explode, flatten, from_unixtime, lit, lower, max, min, posexplode, regexp_replace, row_number, size, struct, substring, sum, to_date, udf}
+import org.apache.spark.sql.functions.{array, array_distinct, coalesce, col, collect_list, collect_set, count, date_format, explode, flatten, floor, from_unixtime, lit, lower, max, min, posexplode, regexp_replace, row_number, size, struct, substring, sum, to_date, udf}
 import org.apache.spark.sql.types.{IntegerType, StringType}
 import at.ac.ait.{Fields => F}
+import org.apache.spark.rdd.RDD
 
 class Transformation(spark: SparkSession, bucketSize: Int) {
 
@@ -256,6 +257,77 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       addressTags,
       txLimit
     )
+  }
+
+  def mergeClusterAddresses(
+     mergedAddressClusters: Dataset[AddressCluster],
+     mergedAddresses: Dataset[Address]): Dataset[ClusterAddresses] = {
+    mergedAddressClusters
+      .transform(t.idGroup(Fields.cluster, Fields.clusterGroup))
+      .join(mergedAddresses, Fields.addressId)
+      .as[ClusterAddresses]
+  }
+
+  def mergeClusterProperties(
+    propertiesOfRelatedCluster: Dataset[PropertiesOfRelatedCluster],
+    localClusterStats: Dataset[BasicCluster],
+    clusterSizes: DataFrame
+  ) = {
+    val propSets = propertiesOfRelatedCluster
+      .union(
+        localClusterStats.map(localCluster => {
+          val props = Cluster(
+            clusterGroup = Math.floorDiv(localCluster.cluster, bucketSize),
+            cluster = localCluster.cluster,
+            noAddresses = localCluster.noAddresses,
+            noIncomingTxs = localCluster.noIncomingTxs,
+            noOutgoingTxs = localCluster.noOutgoingTxs,
+            firstTx = localCluster.firstTx,
+            lastTx = localCluster.lastTx,
+            totalReceived = localCluster.totalReceived,
+            totalSpent = localCluster.totalSpent,
+            inDegree = 0,
+            outDegree = 0
+          )
+          PropertiesOfRelatedCluster(props.clusterGroup, props.cluster, props)
+        })
+      )
+
+    val sumCurrency: (Currency, Currency) => Currency =
+    { case(curr1, curr2) => Currency(curr1.value + curr2.value, curr1.eur + curr2.eur, curr1.usd + curr1.usd) }
+
+    propSets
+      .groupByKey(r => { r.cluster })
+      .mapGroups({
+        case (clusterId, existingClusters_) =>
+          val existingClusters = existingClusters_.map(r => r.props).toList
+          Cluster(
+            clusterGroup = Math.floorDiv(clusterId, bucketSize),
+            cluster = clusterId,
+            noAddresses = existingClusters.map(r => r.noAddresses).sum,
+            noIncomingTxs = existingClusters.map(r => r.noIncomingTxs).sum,
+            noOutgoingTxs = existingClusters.map(r => r.noOutgoingTxs).sum,
+            firstTx = existingClusters.map(r => r.firstTx).minBy(txId => txId.height),
+            lastTx = existingClusters.map(r => r.lastTx).maxBy(txId => txId.height),
+            totalReceived = existingClusters.map(r => r.totalReceived).reduce(sumCurrency),
+            totalSpent = existingClusters.map(r => r.totalSpent).reduce(sumCurrency),
+            inDegree = 0,
+            outDegree = 0
+          )
+      })
+      .drop(Fields.noAddresses)
+      .join(clusterSizes, Fields.cluster)
+      .as[Cluster]
+      .persist()
+  }
+
+  def asDstAddressSet(
+       addresses: Dataset[Address]): RDD[Row] = {
+    addresses
+      .withColumnRenamed(Fields.addressId, Fields.dstAddressId)
+      .transform(t.idGroup(Fields.dstAddressId, Fields.dstAddressIdGroup))
+      .select(Fields.dstAddressIdGroup, Fields.dstAddressId)
+      .rdd
   }
 
   def computeAddresses(
