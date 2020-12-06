@@ -88,7 +88,6 @@ object AppendJob {
     val unprocessedBlocks = blocks.join(heightsToProcess, Seq(Fields.height), "left_semi").as[Block].persist()
     val transactionsDiff = transactions.filter(col(Fields.height).between(lit(lastProcessedBlock + 1), lit(targetHeight))).persist()
     println(s"New blocks:          ${unprocessedBlocks.count()}")
-    println(s"New transactions:    ${transactionsDiff.count()}")
     println()
 
     val transformation = new Transformation(spark, conf.bucketSize())
