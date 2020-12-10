@@ -232,8 +232,10 @@ object AppendJob {
 
     if (targetHeight > progress.addressIncomingRelationsHeight) {
       println(s"Compute address incoming relations for addresses active in blocks $lastProcessedBlock - $targetHeight")
-      val updatedAddrIncomingRelations = addressRelationsDiff.as[AddressIncomingRelations]
+      val updatedAddrIncomingRelations = addressRelationsDiff
+        .as[AddressIncomingRelations]
         .rdd
+        .repartitionByCassandraReplica(conf.targetKeyspace(), "address_incoming_relations", partitionsPerHost = 10000)
         .leftJoinWithCassandraTable[AddressIncomingRelations](conf.targetKeyspace(), "address_incoming_relations")
         .on(SomeColumns("src_address_id", "dst_address_id", "dst_address_id_group"))
         .mapPartitions(list => {
@@ -261,6 +263,7 @@ object AppendJob {
       println(s"Compute address outgoing relations for addresses active in blocks $lastProcessedBlock - $targetHeight")
       val updatedAddrOutgoingRelations = addressRelationsDiff.as[AddressOutgoingRelations]
         .rdd
+        .repartitionByCassandraReplica(conf.targetKeyspace(), "address_outgoing_relations", partitionsPerHost = 10000)
         .leftJoinWithCassandraTable[AddressOutgoingRelations](conf.targetKeyspace(), "address_outgoing_relations")
         .on(SomeColumns("src_address_id", "dst_address_id", "src_address_id_group"))
         .mapPartitions(list => {
