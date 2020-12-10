@@ -272,7 +272,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     propertiesOfRelatedCluster: Dataset[PropertiesOfRelatedCluster],
     localClusterStats: Dataset[BasicCluster],
     clusterSizes: DataFrame
-  ) = {
+  ): Dataset[Cluster] = {
     val propSets = propertiesOfRelatedCluster
       .union(
         localClusterStats.map(localCluster => {
@@ -318,7 +318,6 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .drop(Fields.noAddresses)
       .join(clusterSizes, Fields.cluster)
       .as[Cluster]
-      .persist()
   }
 
   def asDstAddressSet(
