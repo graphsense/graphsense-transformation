@@ -91,11 +91,11 @@ object AppendJob {
     val blockRangeStr = s"${lastProcessedBlock + 1} - ${targetHeight + 1}"
 
     setStageDescription(spark, "Selecting blocks to process")
-    val unprocessedBlocks = blocks.join(heightsToProcess, Seq(Fields.height), "left_semi").as[Block].persist()
+    val blocksInRange = blocks.join(heightsToProcess, Seq(Fields.height), "left_semi").as[Block].persist()
 
     setStageDescription(spark, s"Retrieving transactions from current block range $blockRangeStr")
     val transactionsDiff = transactions.filter(col(Fields.height).between(lit(lastProcessedBlock + 1), lit(targetHeight))).persist()
-    println(s"New blocks:          ${unprocessedBlocks.count()}")
+    println(s"New blocks:          ${blocksInRange.count()}")
     println()
 
     val transformation = new Transformation(spark, conf.bucketSize())
@@ -103,7 +103,7 @@ object AppendJob {
     setStageDescription(spark, "Computing exchange rates")
     val exchangeRates =
       transformation
-        .computeExchangeRates(unprocessedBlocks, exchangeRatesRaw)
+        .computeExchangeRates(blocksInRange, exchangeRatesRaw)
     if (progress.exchangeRatesHeight < targetHeight) {
       cassandra.store(conf.targetKeyspace(), "exchange_rates", exchangeRates)
       progress = progress.copy(exchangeRatesHeight = targetHeight)
@@ -784,6 +784,26 @@ object AppendJob {
     obsoleteClusters
       .rdd
       .deleteFromCassandra(conf.targetKeyspace(), "cluster", keyColumns = SomeColumns("cluster_group", "cluster"))
+
+    setStageDescription(spark, "Updating summary_statistics")
+    val summary = cassandra.load[SummaryStatistics](conf.targetKeyspace(), "summary_statistics").first()
+    cassandra.store[SummaryStatistics](conf.targetKeyspace(), "summary_statistics", spark.createDataset(Seq(
+      summary.copy(
+        timestamp = blocksInRange.map(b => b.timestamp).reduce((a, b) => Math.max(a, b)),
+        noBlocks = targetHeight + 1,
+        noTransactions = summary.noTransactions + transactionsDiff.count(),
+        noAddresses = summary.noAddresses + basicAddressesDiff.count(),
+        noAddressRelations = summary.noAddressRelations + addressRelationsDiff.count(), // May be inaccurate because diff dataset may contain already existing relations
+        noClusters = summary.noClusters + basicClusterDiff.count(), // Same here
+        noTags = tagCount,
+        bucketSize = bucketSize
+      )
+    )))
+
+    // Delete old summary_statistics row
+    spark.createDataset(Seq(summary))
+      .rdd
+      .deleteFromCassandra(conf.targetKeyspace(), "summary_statistics")
   }
 
   /**
