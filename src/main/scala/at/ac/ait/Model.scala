@@ -62,6 +62,127 @@ case class Currency(value: Long, eur: Float, usd: Float)
 
 case class AddressSummary(totalReceived: Currency, totalSpent: Currency)
 
+case class AddressPair(
+    srcAddressId: Int,
+    srcAddressIdGroup: Int,
+    dstAddressId: Int,
+    dstAddressIdGroup: Int)
+
+case class ClusterPair(
+    srcClusterGroup: Int,
+    srcCluster: Int,
+    dstClusterGroup: Int,
+    dstCluster: Int
+)
+
+case class AddressPairWithProperties(
+    srcAddressId: Int,
+    srcAddressIdGroup: Int,
+    dstAddressId: Int,
+    dstAddressIdGroup: Int,
+    totalReceived: Currency,
+    totalSpent: Currency)
+
+case class ReclusteredAddress(
+   addressIdGroup: Int,
+   addressId: Int,
+   cluster: Int, // newly calculated cluster
+   clusterGroup: Int,
+   clusterObj: BasicClusterAddressesExt,
+   existingCluster: AddressCluster
+)
+
+/**
+ * Describes an address and a cluster it belongs to, according to Cassandra
+ * @param addressIdGroup
+ * @param addressId
+ * @param clusterGroup
+ * @param cluster
+ */
+case class CassandraAddressCluster(
+   addressIdGroup: Int,
+   addressId: Int,
+   clusterGroup: Option[Int],
+   cluster: Option[Int]
+)
+
+case class LocalClusterPart(
+                      clusterGroup: Int,
+                      cluster: Int,
+                      addressList: Set[CassandraAddressCluster]
+                      )
+
+case class ClusterMerger(
+                        localClusterGroup: Int,
+                        localCluster: Int,
+                        clusterGroup: Int,
+                        cluster: Int,
+                        addressIdGroup: Int,
+                        addressId: Int
+                        )
+
+case class ClusterMergeResult(
+                             localClusterGroup: Int,
+                             localCluster: Int,
+                             clusterGroup: Int,
+                             cluster: Int,
+                             addressIdGroup: Option[Int],
+                             addressId: Option[Int],
+                             )
+
+case class ClusterMergeResultOut(
+                                  localClusterGroup: Int,
+                                  localCluster: Int,
+                                  srcClusterGroup: Int,
+                                  srcCluster: Int,
+                                )
+
+case class ClusterMergeResultIn(
+                                  localClusterGroup: Int,
+                                  localCluster: Int,
+                                  dstClusterGroup: Int,
+                                  dstCluster: Int,
+                                )
+
+case class SimpleClusterRelations(
+                                 srcClusterGroup: Int,
+                                 srcCluster: Int,
+                                 dstClusterGroup: Int,
+                                 dstCluster: Int,
+                                 noTransactions: Int,
+                                 value: Currency,
+                                 var txList: Seq[Array[Byte]] = Seq()
+                                 )
+
+case class MergedClusterRelationsOut(
+                                   cluster: Int,
+                                   srcAddressIdGroup: Int,
+                                   srcAddressId: Int
+                                   )
+
+case class MergedClusterRelationsIn(
+                                     cluster: Int,
+                                     dstAddressIdGroup: Int,
+                                     dstAddressId: Int
+                                   )
+
+
+case class PropertiesOfRelatedCluster(
+                                       clusterGroup: Int,
+                                       cluster: Int,
+                                       props: Cluster
+                                      )
+
+
+case class AddressProperties(
+    addressIdGroup: Int,
+    addressId: Int,
+    address: String,
+    addressPrefix: String,
+    totalReceived: Currency,
+    totalSpent: Currency
+)
+
 case class ClusterSummary(
     noAddresses: Int,
     totalReceived: Currency,
@@ -162,7 +283,7 @@ case class AddressTags(
     abuse: String
 )
 
-case class AddressCluster(addressIdGroup: Int, addressId: Int, cluster: Int)
+case class AddressCluster(addressIdGroup: Integer, addressId: Integer, cluster: Int)
 
 case class ClusterAddresses(
     clusterGroup: Int,
@@ -209,6 +330,24 @@ case class BasicClusterAddresses(
     totalSpent: Currency
 )
 
+case class BasicClusterAddressesExt(
+    clusterGroup: Int,
+    cluster: Int,
+    addressId: Int,
+    addressIdGroup: Int,
+    noIncomingTxs: Int,
+    noOutgoingTxs: Int,
+    firstTx: TxIdTime,
+    lastTx: TxIdTime,
+    totalReceived: Currency,
+    totalSpent: Currency
+)
+
+
+case class AddressClusterExt(
+    addressIdGroup: Integer, addressId: Integer, clusterGroup: Int, cluster: Int
+)
+
 case class Cluster(
     clusterGroup: Int,
     cluster: Int,
@@ -221,6 +360,36 @@ case class Cluster(
     totalSpent: Currency,
     inDegree: Int,
     outDegree: Int
+)
+
+case class ClusterPropsMergerIn(
+  dstClusterGroup: Int,
+  dstCluster: Int,
+  srcCluster: Int,
+  noAddresses: Int,
+  noIncomingTxs: Int,
+  noOutgoingTxs: Int,
+  firstTx: TxIdTime,
+  lastTx: TxIdTime,
+  totalReceived: Currency,
+  totalSpent: Currency,
+  inDegree: Int,
+  outDegree: Int
+)
+
+case class ClusterPropsMergerOut(
+  srcClusterGroup: Int,
+  srcCluster: Int,
+  dstCluster: Int,
+  noAddresses: Int,
+  noIncomingTxs: Int,
+  noOutgoingTxs: Int,
+  firstTx: TxIdTime,
+  lastTx: TxIdTime,
+  totalReceived: Currency,
+  totalSpent: Currency,
+  inDegree: Int,
+  outDegree: Int
 )
 
 case class ClusterTags(
@@ -258,6 +427,27 @@ case class AddressRelations(
     txList: Seq[Array[Byte]]
 )
 
+case class AddressIncomingRelations(
+    dstAddressIdGroup: Int,
+    dstAddressId: Int,
+    srcAddressId: Int,
+    estimatedValue: Currency,
+    noTransactions: Int,
+    srcLabels: Seq[String],
+    srcProperties: AddressSummary
+)
+
+case class AddressOutgoingRelations(
+    srcAddressIdGroup: Int,
+    dstAddressId: Int,
+    srcAddressId: Int,
+    estimatedValue: Currency,
+    noTransactions: Int,
+    dstLabels: Seq[String],
+    dstProperties: AddressSummary,
+    txList: Seq[Array[Byte]]
+)
+
 case class PlainClusterRelations(
     txHash: Array[Byte],
     srcCluster: Int,
@@ -279,6 +469,76 @@ case class ClusterRelations(
     value: Currency,
     txList: Seq[Array[Byte]]
 )
+
+case class ClusterRelationsMerger(
+                             srcClusterGroup: Int,
+                             srcCluster: Int,
+                             dstClusterGroup: Int,
+                             dstCluster: Int,
+                             addressIdGroup: Int,
+                             addressId: Int,
+                             srcProperties: ClusterSummary,
+                             dstProperties: ClusterSummary,
+                             srcLabels: Seq[String],
+                             dstLabels: Seq[String],
+                             noTransactions: Int,
+                             value: Currency,
+                             txList: Seq[Array[Byte]]
+                           )
+
+case class ClusterIncomingRelations(
+     srcCluster: Int,
+     dstClusterGroup: Int,
+     dstCluster: Int,
+     var srcProperties: ClusterSummary,
+     srcLabels: Seq[String],
+     noTransactions: Int,
+     value: Currency
+)
+
+case class ReclusteredIncomingRelations(
+     srcClusterGroup: Int,
+     srcCluster: Int,
+     dstClusterGroup: Int,
+     dstCluster: Int,
+     srcProperties: ClusterSummary,
+     srcLabels: Seq[String],
+     noTransactions: Int,
+     value: Currency
+)
+
+case class ClusterOutgoingRelations(
+     srcClusterGroup: Int,
+     dstCluster: Int,
+     srcCluster: Int,
+     var dstProperties: ClusterSummary,
+     dstLabels: Seq[String],
+     noTransactions: Int,
+     value: Currency,
+     txList: Seq[Array[Byte]])
+
+case class AddressToClusterRelation(
+                                   addressIdGroup: Int,
+                                   addressId: Int,
+                                   clusterGroup: Int,
+                                   cluster: Int,
+                                   addressProperties: AddressSummary,
+                                   noTransactions: Int,
+                                   value: Currency,
+                                   srcLabels: Seq[String]
+                                    )
+
+case class ClusterToAddressRelation(
+                                     clusterGroup: Int,
+                                     cluster: Int,
+                                     addressIdGroup: Int,
+                                     addressId: Int,
+                                     addressProperties: AddressSummary,
+                                     noTransactions: Int,
+                                     value: Currency,
+                                     txList: Seq[Array[Byte]],
+                                     dstLabels: Seq[String]
+                                   )
 
 case class Tag(
     labelNormPrefix: String,
@@ -304,3 +564,14 @@ case class SummaryStatistics(
     noTags: Long,
     bucketSize: Int
 )
+
+case class AppendProgress(
+   timestamp: Int,
+   addressByIdGroupHeight: Int,
+   exchangeRatesHeight: Int,
+   addressTransactionsHeight: Int,
+   addressTagsCount: Long,
+   addressIncomingRelationsHeight: Int,
+   addressOutgoingRelationsHeight: Int,
+   addressHeight: Int
+                         )

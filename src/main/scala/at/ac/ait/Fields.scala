@@ -52,4 +52,6 @@ object Fields {
   val abuse = "abuse"
   val srcLabels = "srcLabels"
   val dstLabels = "dstLabels"
+  val inDegree = "inDegree"
+  val outDegree = "outDegree"
 }

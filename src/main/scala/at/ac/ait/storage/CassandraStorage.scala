@@ -2,13 +2,16 @@ package at.ac.ait.storage
 
 import com.datastax.spark.connector.rdd.ValidRDDType
 import com.datastax.spark.connector.rdd.reader.RowReaderFactory
-import com.datastax.spark.connector.writer.{RowWriterFactory}
+import com.datastax.spark.connector.writer.{RowWriterFactory, WriteConf}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
-import scala.reflect.ClassTag
 
+import at.ac.ait.AppendProgress
+import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
+
+import scala.reflect.ClassTag
 import at.ac.ait.Util._
+import org.apache.spark.rdd.RDD
 
 class CassandraStorage(spark: SparkSession) {
 
@@ -31,13 +34,26 @@ class CassandraStorage(spark: SparkSession) {
   def store[T <: Product: RowWriterFactory](
       keyspace: String,
       tableName: String,
-      df: Dataset[T]
+      df: Dataset[T],
+      ifNotExists: Boolean = false,
   ) = {
+    storeRDD(keyspace, tableName, df.rdd)
+  }
 
+  def saveAppendProgress(targetKeyspace: String, progress: AppendProgress): Unit = {
+    store[AppendProgress](targetKeyspace, "append_progress", spark.createDataset(Seq(progress)))
+  }
+
+  def storeRDD[T <: Product: RowWriterFactory](
+    keyspace: String,
+    tableName: String,
+    rdd: RDD[T]
+  ) = {
     spark.sparkContext.setJobDescription(s"Writing table ${tableName}")
     val dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     val timestamp = LocalDateTime.now().format(dtf)
     println(s"[$timestamp] Writing table ${tableName}")
-    time { df.rdd.saveToCassandra(keyspace, tableName) }
+    val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf)
+    time { rdd.saveToCassandra(keyspace, tableName, writeConf = conf) }
   }
 }

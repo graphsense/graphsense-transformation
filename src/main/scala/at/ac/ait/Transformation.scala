@@ -1,30 +1,11 @@
 package at.ac.ait
 
-import org.apache.spark.sql.{Dataset, Encoder, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{
-  col,
-  count,
-  date_format,
-  explode,
-  from_unixtime,
-  lit,
-  lower,
-  max,
-  min,
-  posexplode,
-  regexp_replace,
-  row_number,
-  size,
-  struct,
-  substring,
-  sum,
-  to_date,
-  udf
-}
+import org.apache.spark.sql.functions.{array, array_distinct, coalesce, col, collect_list, collect_set, count, date_format, explode, flatten, floor, from_unixtime, lit, lower, max, min, posexplode, regexp_replace, row_number, size, struct, substring, sum, to_date, udf}
 import org.apache.spark.sql.types.{IntegerType, StringType}
-
 import at.ac.ait.{Fields => F}
+import org.apache.spark.rdd.RDD
 
 class Transformation(spark: SparkSession, bucketSize: Int) {
 
@@ -147,7 +128,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   def computeStatistics[A](
       transactions: Dataset[Transaction],
-      all: Dataset[A],
+      all: Dataset[A], // AddressTransactions
       in: Dataset[A],
       out: Dataset[A],
       idColumn: String,
@@ -179,11 +160,12 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .join(txTimes.toDF("firstTxNumber", F.firstTx), "firstTxNumber")
       .join(txTimes.toDF("lastTxNumber", F.lastTx), "lastTxNumber")
       .drop("firstTxNumber", "lastTxNumber")
-      .join(inStats, idColumn)
+      .join(inStats, List(idColumn), joinType = "left_outer")
       .join(outStats, List(idColumn), "left_outer")
       .na
       .fill(0)
       .withColumn(F.totalSpent, zeroValueIfNull(col(F.totalSpent)))
+      .withColumn(F.totalReceived, zeroValueIfNull(col(F.totalReceived)))
   }
 
   def computeNodeDegrees(
@@ -277,6 +259,76 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     )
   }
 
+  def mergeClusterAddresses(
+     mergedAddressClusters: Dataset[AddressCluster],
+     mergedAddresses: Dataset[Address]): Dataset[ClusterAddresses] = {
+    mergedAddressClusters
+      .transform(t.idGroup(Fields.cluster, Fields.clusterGroup))
+      .join(mergedAddresses, Fields.addressId)
+      .as[ClusterAddresses]
+  }
+
+  def mergeClusterProperties(
+    propertiesOfRelatedCluster: Dataset[PropertiesOfRelatedCluster],
+    localClusterStats: Dataset[BasicCluster],
+    clusterSizes: DataFrame
+  ): Dataset[Cluster] = {
+    val propSets = propertiesOfRelatedCluster
+      .union(
+        localClusterStats.map(localCluster => {
+          val props = Cluster(
+            clusterGroup = Math.floorDiv(localCluster.cluster, bucketSize),
+            cluster = localCluster.cluster,
+            noAddresses = localCluster.noAddresses,
+            noIncomingTxs = localCluster.noIncomingTxs,
+            noOutgoingTxs = localCluster.noOutgoingTxs,
+            firstTx = localCluster.firstTx,
+            lastTx = localCluster.lastTx,
+            totalReceived = localCluster.totalReceived,
+            totalSpent = localCluster.totalSpent,
+            inDegree = 0,
+            outDegree = 0
+          )
+          PropertiesOfRelatedCluster(props.clusterGroup, props.cluster, props)
+        })
+      )
+
+    val sumCurrency: (Currency, Currency) => Currency =
+    { case(curr1, curr2) => Currency(curr1.value + curr2.value, curr1.eur + curr2.eur, curr1.usd + curr1.usd) }
+
+    propSets
+      .groupByKey(r => { r.cluster })
+      .mapGroups({
+        case (clusterId, existingClusters_) =>
+          val existingClusters = existingClusters_.map(r => r.props).toList
+          Cluster(
+            clusterGroup = Math.floorDiv(clusterId, bucketSize),
+            cluster = clusterId,
+            noAddresses = existingClusters.map(r => r.noAddresses).sum,
+            noIncomingTxs = existingClusters.map(r => r.noIncomingTxs).sum,
+            noOutgoingTxs = existingClusters.map(r => r.noOutgoingTxs).sum,
+            firstTx = existingClusters.map(r => r.firstTx).minBy(txId => txId.height),
+            lastTx = existingClusters.map(r => r.lastTx).maxBy(txId => txId.height),
+            totalReceived = existingClusters.map(r => r.totalReceived).reduce(sumCurrency),
+            totalSpent = existingClusters.map(r => r.totalSpent).reduce(sumCurrency),
+            inDegree = 0,
+            outDegree = 0
+          )
+      })
+      .drop(Fields.noAddresses)
+      .join(clusterSizes, Fields.cluster)
+      .as[Cluster]
+  }
+
+  def asDstAddressSet(
+       addresses: Dataset[Address]): RDD[Row] = {
+    addresses
+      .withColumnRenamed(Fields.addressId, Fields.dstAddressId)
+      .transform(t.idGroup(Fields.dstAddressId, Fields.dstAddressIdGroup))
+      .select(Fields.dstAddressIdGroup, Fields.dstAddressId)
+      .rdd
+  }
+
   def computeAddresses(
       basicAddresses: Dataset[BasicAddress],
       addressRelations: Dataset[AddressRelations],
@@ -327,14 +379,31 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .sort(F.cluster, F.addressId)
   }
 
+  def computeBasicClusterAddressesExt(
+                                  basicAddresses: Dataset[BasicAddress],
+                                  addressCluster: Dataset[AddressClusterExt]
+                                  ): Dataset[BasicClusterAddressesExt] = {
+    addressCluster
+      .join(basicAddresses, Seq(F.addressId))
+      .as[BasicClusterAddressesExt]
+      .sort(F.cluster, F.addressId)
+  }
+
+  def extendBasicClusterAddresses(basicClusterAddresses: Dataset[AddressCluster]): Dataset[AddressClusterExt] = {
+    basicClusterAddresses
+      .transform(t.idGroup(Fields.addressId, Fields.addressIdGroup))
+      .transform(t.idGroup(Fields.cluster, Fields.clusterGroup))
+      .as[AddressClusterExt]
+  }
+
   def computeClusterTransactions(
       inputs: Dataset[AddressTransactions],
       outputs: Dataset[AddressTransactions],
       transactions: Dataset[Transaction],
       addressCluster: Dataset[AddressCluster]
   ): Dataset[ClusterTransactions] = {
-    val clusteredInputs = inputs.join(addressCluster, F.addressId)
-    val clusteredOutputs = outputs.join(addressCluster, F.addressId)
+    val clusteredInputs = inputs.join(addressCluster, F.addressId).dropDuplicates(Fields.addressId, Fields.txIndex)
+    val clusteredOutputs = outputs.join(addressCluster, F.addressId).dropDuplicates(Fields.addressId, Fields.txIndex)
     clusteredInputs
       .withColumn(F.value, -col(F.value))
       .union(clusteredOutputs)
@@ -345,6 +414,55 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         F.txHash
       )
       .as[ClusterTransactions]
+  }
+
+  def computeClusterRelationsWithProperties(
+                                           clusterRelationsIn: Dataset[SimpleClusterRelations],
+                                           clusterRelationsOut: Dataset[SimpleClusterRelations],
+                                           clusterRelationsDiff: Dataset[ClusterRelations],
+                                           clusterProps: Dataset[Cluster]
+                                           ): Dataset[ClusterRelations] = {
+    clusterRelationsIn.union(clusterRelationsOut)
+      .dropDuplicates(F.srcCluster, F.dstCluster)
+      .filter(col(F.srcCluster) notEqual col(F.dstCluster))
+      .as[SimpleClusterRelations]
+      .joinWith(clusterProps, col(Fields.cluster) equalTo col(Fields.srcCluster))
+      .joinWith(clusterProps, col(Fields.cluster) equalTo col("_1." + Fields.dstCluster))
+      .map({
+        case ((relation, srcProps), dstProps) =>
+          ClusterRelations(
+            srcClusterGroup = relation.srcClusterGroup,
+            srcCluster = relation.srcCluster,
+            dstClusterGroup = relation.dstClusterGroup,
+            dstCluster = relation.dstCluster,
+            dstProperties = ClusterSummary(dstProps.noAddresses, dstProps.totalReceived, dstProps.totalSpent),
+            srcProperties = ClusterSummary(srcProps.noAddresses, srcProps.totalReceived, srcProps.totalSpent),
+            srcLabels = Seq(),
+            dstLabels = Seq(),
+            noTransactions = relation.noTransactions,
+            value = relation.value,
+            txList = relation.txList
+          )
+      }).alias("existing")
+      .joinWith(
+        clusterRelationsDiff.alias("diff"),
+        (col("existing." + F.srcCluster) equalTo col("diff." + F.srcCluster)) and (col("existing." + F.dstCluster) equalTo col("diff." + F.dstCluster)),
+        joinType = "full_outer")
+      .map({
+        case (existing, diff) =>
+          if (existing != null && diff != null) {
+            existing.copy(
+              noTransactions = existing.noTransactions + diff.noTransactions,
+              value = Currency(existing.value.value + diff.value.value, existing.value.eur + diff.value.eur, existing.value.usd + diff.value.usd),
+              txList = (existing.txList ++ diff.txList).distinct,
+              srcLabels = Seq(),
+              dstLabels = Seq()
+            )
+          } else if (existing != null)
+            existing
+          else
+            diff
+      })
   }
 
   def computeBasicCluster(
