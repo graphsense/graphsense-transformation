@@ -102,6 +102,19 @@ object TransformationJob {
 
     val transformation = new Transformation(spark, conf.bucketSize())
 
+    println("Store configuration")
+    val configuration =
+      transformation.configuration(
+        conf.targetKeyspace(),
+        conf.bucketSize(),
+        conf.bech32Prefix(),
+        conf.coinjoinFilter()
+      )
+    cassandra.store(
+      conf.targetKeyspace(),
+      "configuration",
+      configuration
+    )
     println("Computing exchange rates")
     val exchangeRates =
       transformation
@@ -320,8 +333,7 @@ object TransformationJob {
         noAddresses,
         noAddressRelations,
         noCluster,
-        noAddressTags,
-        conf.bucketSize()
+        noAddressTags
       )
     summaryStatistics.show()
     cassandra.store(

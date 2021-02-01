@@ -32,6 +32,22 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   val t = new Transformator(spark, bucketSize)
 
+  def configuration(
+      keyspaceName: String,
+      bucketSize: Int,
+      bech32Prefix: String,
+      coinjoinFiltering: Boolean
+  ) = {
+    Seq(
+      Configuration(
+        keyspaceName,
+        bucketSize,
+        bech32Prefix,
+        coinjoinFiltering,
+      )
+    ).toDS()
+  }
+
   def computeExchangeRates(
       blocks: Dataset[Block],
       exchangeRates: Dataset[ExchangeRatesRaw]
@@ -486,7 +502,6 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       noAddressRelations: Long,
       noCluster: Long,
       noTags: Long,
-      bucketSize: Int
   ) = {
     Seq(
       SummaryStatistics(
@@ -496,8 +511,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         noAddresses,
         noAddressRelations,
         noCluster,
-        noTags,
-        bucketSize
+        noTags
       )
     ).toDS()
   }

@@ -302,5 +302,11 @@ case class SummaryStatistics(
     noAddressRelations: Long,
     noClusters: Long,
     noTags: Long,
-    bucketSize: Int
+)
+
+case class Configuration(
+    keyspaceName: String,
+    bucketSize: Int,
+    bech32Prefix: String,
+    coinjoinFiltering: Boolean
 )

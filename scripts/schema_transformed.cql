@@ -196,6 +196,12 @@ CREATE TABLE summary_statistics (
     no_addresses bigint,
     no_address_relations bigint,
     no_clusters bigint,
-    no_tags bigint,
-    bucket_size int
+    no_tags bigint
+);
+
+CREATE TABLE configuration (
+    keyspace_name text PRIMARY KEY,
+    bucket_size int,
+    bech_32_prefix text,
+    coinjoin_filtering boolean
 );
