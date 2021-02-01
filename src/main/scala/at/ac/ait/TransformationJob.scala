@@ -10,24 +10,44 @@ import at.ac.ait.storage._
 object TransformationJob {
 
   class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
-    val currency = opt[String](
+    val currency: ScallopOption[String] = opt[String](
       required = true,
       descr = "Cryptocurrency (e.g. BTC, BCH, LTC, ZEC)"
     )
-    val rawKeyspace =
-      opt[String]("raw_keyspace", required = true, descr = "Raw keyspace")
-    val tagKeyspace =
-      opt[String]("tag_keyspace", required = true, descr = "Tag keyspace")
-    val targetKeyspace = opt[String](
-      "target_keyspace",
+    val rawKeyspace: ScallopOption[String] =
+      opt[String](
+        "raw-keyspace",
+        required = true,
+        noshort = true,
+        descr = "Raw keyspace"
+      )
+    val tagKeyspace: ScallopOption[String] =
+      opt[String](
+        "tag-keyspace",
+        required = true,
+        noshort = true,
+        descr = "Tag keyspace"
+      )
+    val targetKeyspace: ScallopOption[String] = opt[String](
+      "target-keyspace",
       required = true,
+      noshort = true,
       descr = "Transformed keyspace"
     )
-    val bucketSize = opt[Int](
-      "bucket_size",
+    val bucketSize: ScallopOption[Int] = opt[Int](
+      "bucket-size",
       required = false,
       default = Some(25000),
+      noshort = true,
       descr = "Bucket size for Cassandra partitions"
+    )
+    val coinjoinFilter: ScallopOption[Boolean] = toggle(
+      "coinjoin-filtering",
+      default = Some(true),
+      noshort = true,
+      prefix = "no-",
+      descrYes = "Exclude coinJoin transactions from clustering",
+      descrNo = "Include coinJoin transactions in clustering"
     )
     verify()
   }
@@ -41,11 +61,12 @@ object TransformationJob {
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    println("Currency:        " + conf.currency())
-    println("Raw keyspace:    " + conf.rawKeyspace())
-    println("Tag keyspace:    " + conf.tagKeyspace())
-    println("Target keyspace: " + conf.targetKeyspace())
-    println("Bucket size:     " + conf.bucketSize())
+    println("Currency:                   " + conf.currency())
+    println("Raw keyspace:               " + conf.rawKeyspace())
+    println("Tag keyspace:               " + conf.tagKeyspace())
+    println("Target keyspace:            " + conf.targetKeyspace())
+    println("Bucket size:                " + conf.bucketSize())
+    println("CoinJoin Filtering enabled: " + conf.coinjoinFilter())
 
     import spark.implicits._
 
@@ -148,12 +169,7 @@ object TransformationJob {
     println("Computing plain address relations")
     val plainAddressRelations =
       transformation
-        .computePlainAddressRelations(
-          inputs,
-          outputs,
-          regInputs,
-          transactions
-        )
+        .computePlainAddressRelations(inputs, outputs, regInputs, transactions)
 
     println("Computing address relations")
     val addressRelations =
@@ -190,7 +206,7 @@ object TransformationJob {
     spark.sparkContext.setJobDescription("Perform clustering")
     println("Computing address clusters")
     val addressCluster = transformation
-      .computeAddressCluster(regInputs, addressIds, true)
+      .computeAddressCluster(regInputs, addressIds, conf.coinjoinFilter())
       .persist()
     cassandra.store(conf.targetKeyspace(), "address_cluster", addressCluster)
 
@@ -237,10 +253,7 @@ object TransformationJob {
     println("Computing plain cluster relations")
     val plainClusterRelations =
       transformation
-        .computePlainClusterRelations(
-          clusterInputs,
-          clusterOutputs
-        )
+        .computePlainClusterRelations(clusterInputs, clusterOutputs)
 
     println("Computing cluster relations")
     val clusterRelations =
@@ -282,7 +295,8 @@ object TransformationJob {
       clusterAddresses
     )
 
-    val tags = transformation.computeTagsByLabel(tagsRaw, addressTags, conf.currency())
+    val tags =
+      transformation.computeTagsByLabel(tagsRaw, addressTags, conf.currency())
     cassandra.store(conf.targetKeyspace(), "tag_by_label", tags)
 
     println("Computing summary statistics")
