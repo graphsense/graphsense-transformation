@@ -9,7 +9,7 @@ CURRENCY="BTC"
 RAW_KEYSPACE="btc_raw"
 TAG_KEYSPACE="tagpacks"
 TGT_KEYSPACE="btc_transformed"
-BUCKET_SIZE=10000
+BUCKET_SIZE=25000
 
 
 if [ -z "$SPARK_HOME" ] ; then
