@@ -80,7 +80,7 @@ def main():
     parser = ArgumentParser(description='Create keyspace in Cassandra',
                             epilog='GraphSense - http://graphsense.info')
     parser.add_argument('-d', '--db_nodes', dest='db_nodes', nargs='+',
-                        default='localhost', metavar='DB_NODE',
+                        default=['localhost'], metavar='DB_NODE',
                         help='list of Cassandra nodes (default "localhost")')
     parser.add_argument('-k', '--keyspace', dest='keyspace_name',
                         required=True, metavar='KEYSPACE',
