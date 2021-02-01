@@ -129,8 +129,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       // compute number of transaction per address
       val transactionCount =
         collectiveInputAddresses.groupBy(F.addressId).count()
-      println("transactionCount")
-      transactionCount.show()
 
       val basicAddressCluster = {
         // input for clustering algorithm
@@ -161,15 +159,11 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           Window.partitionBy(F.txIndex).orderBy(col("count").desc)
         val rowNumber = row_number().over(transactionWindow)
 
-        println("collectiveInputAddresses")
-        collectiveInputAddresses.show()
         val addressMax = collectiveInputAddresses
           .join(transactionCount, F.addressId)
           .select(col(F.txIndex), col(F.addressId), rowNumber as "rank")
           .filter(col("rank") === 1)
           .select(col(F.txIndex), col(F.addressId) as reprAddrId)
-        println("addressMax")
-        addressMax
 
         transactionCount
           .filter(col("count") === 1)
@@ -178,8 +172,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           .join(addressMax, F.txIndex)
           .select(F.addressId, reprAddrId)
       }
-      println("initialRepresentative")
-      initialRepresentative.show()
 
       val addressClusterRemainder =
         initialRepresentative
