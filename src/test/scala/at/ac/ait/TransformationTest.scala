@@ -251,8 +251,7 @@ class TransformationTest
       noAddresses,
       noAddressRelations,
       noCluster,
-      noAddressTags,
-      bucketSize
+      noAddressTags
     )
 
   note("test address graph")
