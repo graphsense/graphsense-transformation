@@ -280,8 +280,9 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   def computeAddresses(
       basicAddresses: Dataset[BasicAddress],
       addressRelations: Dataset[AddressRelations],
-      addressIds: Dataset[AddressId]
-  ) = { //: Dataset[Address] = {
+      addressIds: Dataset[AddressId],
+      bech32Prefix: String = ""
+  ): Dataset[Address] = {
     // compute in/out degrees for address graph
     computeNodeDegrees(
       basicAddresses,
@@ -290,7 +291,9 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       F.dstAddressId,
       F.addressId
     ).join(addressIds, Seq(F.addressId))
-      .transform(t.addressPrefix(F.address, F.addressPrefix))
+      .transform(
+        t.addressPrefix(F.address, F.addressPrefix, bech32Prefix = bech32Prefix)
+      )
       .sort(F.addressPrefix)
       .as[Address]
   }

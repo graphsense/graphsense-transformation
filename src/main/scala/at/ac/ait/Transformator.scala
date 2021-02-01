@@ -28,9 +28,24 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   def addressPrefix[T](
       addressColumn: String,
       prefixColumn: String,
-      length: Int = 5
+      length: Int = 5,
+      bech32Prefix: String = ""
   )(ds: Dataset[T]): DataFrame = {
-    ds.withColumn(prefixColumn, substring(col(addressColumn), 0, length))
+    if (bech32Prefix.length == 0) {
+      ds.withColumn(prefixColumn, substring(col(addressColumn), 0, length))
+    } else {
+      ds.withColumn(
+        prefixColumn,
+        when(
+          substring(col(addressColumn), 0, bech32Prefix.length) === bech32Prefix,
+          substring(
+            col(addressColumn),
+            bech32Prefix.length + 1,
+            length
+          )
+        ).otherwise(substring(col(addressColumn), 0, length))
+      )
+    }
   }
 
   def idGroup[T](
@@ -69,7 +84,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .drop(F.eur, F.usd)
   }
 
-  def toAddressSummary(received: Row, sent: Row) =
+  def toAddressSummary(received: Row, sent: Row) = {
     AddressSummary(
       Currency(
         received.getAs[Long]("value"),
@@ -82,12 +97,13 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         sent.getAs[Float]("usd")
       )
     )
+  }
 
   def toClusterSummary(
       noAddresses: Int,
       received: Row,
       sent: Row
-  ) =
+  ) = {
     ClusterSummary(
       noAddresses,
       Currency(
@@ -101,6 +117,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         sent.getAs[Float]("usd")
       )
     )
+  }
 
   def addressCluster(
       regularInputs: Dataset[RegularInput],

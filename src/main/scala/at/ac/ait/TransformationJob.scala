@@ -49,6 +49,14 @@ object TransformationJob {
       descrYes = "Exclude coinJoin transactions from clustering",
       descrNo = "Include coinJoin transactions in clustering"
     )
+    val bech32Prefix: ScallopOption[String] =
+      opt[String](
+        "bech32-prefix",
+        default = Some(""),
+        noshort = true,
+        descr =
+          "Bech32 address prefix (e.g. 'bc1' for Bitcoin or 'ltc1' for Litecoin)"
+      )
     verify()
   }
 
@@ -61,12 +69,15 @@ object TransformationJob {
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    println("Currency:                   " + conf.currency())
-    println("Raw keyspace:               " + conf.rawKeyspace())
-    println("Tag keyspace:               " + conf.tagKeyspace())
-    println("Target keyspace:            " + conf.targetKeyspace())
-    println("Bucket size:                " + conf.bucketSize())
-    println("CoinJoin Filtering enabled: " + conf.coinjoinFilter())
+    println("Currency:                      " + conf.currency())
+    println("Raw keyspace:                  " + conf.rawKeyspace())
+    println("Tag keyspace:                  " + conf.tagKeyspace())
+    println("Target keyspace:               " + conf.targetKeyspace())
+    println("Bucket size:                   " + conf.bucketSize())
+    println("CoinJoin Filtering enabled:    " + conf.coinjoinFilter())
+    if (conf.bech32Prefix().length > 0) {
+      println("Bech32 address prefix:         " + conf.bech32Prefix())
+    }
 
     import spark.implicits._
 
@@ -198,7 +209,8 @@ object TransformationJob {
       transformation.computeAddresses(
         basicAddresses,
         addressRelations,
-        addressIds
+        addressIds,
+        bech32Prefix = conf.bech32Prefix()
       )
     val noAddresses = addresses.count()
     cassandra.store(conf.targetKeyspace(), "address", addresses)
