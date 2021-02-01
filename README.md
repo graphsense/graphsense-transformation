@@ -58,7 +58,7 @@ macOS only: make sure `gnu-getopt` is installed
 
 Create the target keyspace for transformed data
 
-    ./scripts/create_target_schema.sh
+    ./scripts/create_keyspace.py -k btc_raw -s scripts/schema_transformed.cql
 
 Compile and test the implementation
 
