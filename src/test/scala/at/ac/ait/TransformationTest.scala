@@ -17,6 +17,7 @@ trait SparkSessionTestWrapper {
       .builder()
       .master("local")
       .appName("Transformation Test")
+      .config("spark.sql.shuffle.partitions", "3")
       .getOrCreate()
   }
 }
