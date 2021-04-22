@@ -1,6 +1,6 @@
 package at.ac.ait
 
-import com.github.mrpowers.spark.fast.tests.{DataFrameComparer}
+import com.github.mrpowers.spark.fast.tests.DataFrameComparer
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, SparkSession}
 import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.catalyst.ScalaReflection.universe.TypeTag
@@ -269,11 +269,15 @@ class TransformationTest
 
   test("regularInputs") {
     val regInputsRef = readJson[RegularInput](refDir + "regular_inputs.json")
-    assertDataFrameEquality(regInputs, regInputsRef)
+      .sort(F.txHash, F.address)
+    val sortedInputs = regInputs.sort(F.txHash, F.address)
+    assertDataFrameEquality(sortedInputs, regInputsRef)
   }
   test("regularOutputs") {
     val regOutputsRef = readJson[RegularOutput](refDir + "regular_outputs.json")
-    assertDataFrameEquality(regOutputs, regOutputsRef)
+      .sort(F.txHash, F.address)
+    val sortedOutput = regOutputs.sort(F.txHash, F.address)
+    assertDataFrameEquality(sortedOutput, regOutputsRef)
   }
   test("addressTransactions") {
     val addressTransactionsRef =
@@ -354,18 +358,22 @@ class TransformationTest
   }
   test("plainClusterRelations") {
     val plainClusterRelationsRef =
-      readJson[PlainClusterRelations](refDir + "plain_cluster_relations.json")
-    assertDataFrameEquality(plainClusterRelations, plainClusterRelationsRef)
+      readJson[PlainClusterRelations](refDir + "plain_cluster_relations.json").sort(F.txHash)
+    val sortedRels = plainClusterRelations.sort(F.txHash)
+    assertDataFrameEquality(sortedRels, plainClusterRelationsRef)
   }
   test("clusterRelations") {
     val clusterRelationsRef =
-      readJson[ClusterRelations](refDir + "cluster_relations.json")
-    assertDataFrameEquality(clusterRelations, clusterRelationsRef)
+      readJson[ClusterRelations](refDir + "cluster_relations.json").sort(F.srcCluster, F.dstCluster)
+    val sortedRelations = clusterRelations.sort(F.srcCluster, F.dstCluster)
+    assertDataFrameEquality(sortedRelations, clusterRelationsRef)
   }
   test("clusterRelations with txLimit=1") {
     val clusterRelationsLimit1Ref =
       readJson[ClusterRelations](refDir + "cluster_relations_limit1.json")
-    assertDataFrameEquality(clusterRelationsLimit1, clusterRelationsLimit1Ref)
+        .sort(F.srcCluster, F.dstCluster)
+    val sortedRelations = clusterRelationsLimit1.sort(F.srcCluster, F.dstCluster)
+    assertDataFrameEquality(sortedRelations, clusterRelationsLimit1Ref)
   }
   test("clusters") {
     val clusterRef = readJson[Cluster](refDir + "cluster.json")

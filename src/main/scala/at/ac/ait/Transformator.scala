@@ -1,20 +1,8 @@
 package at.ac.ait
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{
-  coalesce,
-  col,
-  collect_set,
-  count,
-  explode,
-  floor,
-  round,
-  row_number,
-  substring,
-  sum,
-  udf,
-  when
-}
+import org.apache.spark.sql.functions.{coalesce, col, collect_set, count, explode, floor, min,
+  round, substring, sum, udf, when}
 import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
 
@@ -133,17 +121,17 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       val addressCount = count(F.addressId).over(Window.partitionBy(F.txIndex))
 
       // filter transactions with multiple input addresses
-      val collectiveInputAddresses = if (removeCoinJoin) {
+      val collectiveInputAddresses = (if (removeCoinJoin) {
         println("Clustering without coinjoin inputs")
         basicTxInputAddresses.filter(col(F.coinjoin) === false)
       } else {
         println("Clustering with coinjoin inputs")
         basicTxInputAddresses
-      }.select(col(F.txIndex), col(F.addressId), addressCount as "count")
+      }).select(col(F.txIndex), col(F.addressId), addressCount as "count")
         .filter(col("count") > 1)
         .select(col(F.txIndex), col(F.addressId))
 
-      // compute number of transaction per address
+      // compute number of transactions per address
       val transactionCount =
         collectiveInputAddresses.groupBy(F.addressId).count()
 
@@ -162,6 +150,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           .as[InputIdSet]
           .rdd
           .toLocalIterator
+
         spark.sparkContext
           .parallelize(
             MultipleInputClustering.getClustersMutable(inputGroups).toSeq
@@ -172,21 +161,14 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       val reprAddrId = "reprAddrId"
 
       val initialRepresentative = {
-        val transactionWindow =
-          Window.partitionBy(F.txIndex).orderBy(col("count").desc)
-        val rowNumber = row_number().over(transactionWindow)
-
-        val addressMax = collectiveInputAddresses
-          .join(transactionCount, F.addressId)
-          .select(col(F.txIndex), col(F.addressId), rowNumber as "rank")
-          .filter(col("rank") === 1)
-          .select(col(F.txIndex), col(F.addressId) as reprAddrId)
+        val addressMin = collectiveInputAddresses
+          .groupBy(col(F.txIndex)).agg(min(F.addressId).as(reprAddrId))
 
         transactionCount
-          .filter(col("count") === 1)
+          .filter(col("count") === 1) // restrict to "trivial" addresses
           .select(F.addressId)
           .join(collectiveInputAddresses, F.addressId)
-          .join(addressMax, F.txIndex)
+          .join(addressMin, F.txIndex)
           .select(F.addressId, reprAddrId)
       }
 
@@ -213,6 +195,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
     // perform multiple-input clustering
     val addressCluster = plainAddressCluster(inputIds, removeCoinJoin)
+
     val singleAddressCluster = addressIds
       .select(F.addressId)
       .distinct
