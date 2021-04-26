@@ -40,8 +40,8 @@ CREATE TABLE address (
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
     last_tx FROZEN <tx_id_time>,
-    total_received frozen <value>,
-    total_spent frozen <value>,
+    total_received FROZEN <value>,
+    total_spent FROZEN <value>,
     in_degree int,
     out_degree int,
     PRIMARY KEY (address_prefix, address)
@@ -78,7 +78,7 @@ CREATE TABLE address_incoming_relations (
     src_properties FROZEN <address_summary>,
     src_labels list<text>,
     no_transactions int,
-    estimated_value frozen <value>,
+    estimated_value FROZEN <value>,
     PRIMARY KEY (dst_address_id_group, dst_address_id, src_address_id)
 );
 
@@ -89,7 +89,7 @@ CREATE TABLE address_outgoing_relations (
     dst_properties FROZEN <address_summary>,
     dst_labels list<text>,
     no_transactions int,
-    estimated_value frozen <value>,
+    estimated_value FROZEN <value>,
     tx_list list<blob>,
     PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
 );
@@ -109,8 +109,8 @@ CREATE TABLE cluster (
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
     last_tx FROZEN <tx_id_time>,
-    total_received frozen <value>,
-    total_spent frozen <value>,
+    total_received FROZEN <value>,
+    total_spent FROZEN <value>,
     in_degree int,
     out_degree int,
     PRIMARY KEY (cluster_group, cluster)
@@ -124,8 +124,8 @@ CREATE TABLE cluster_addresses (
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
     last_tx FROZEN <tx_id_time>,
-    total_received frozen <value>,
-    total_spent frozen <value>,
+    total_received FROZEN <value>,
+    total_spent FROZEN <value>,
     in_degree int,
     out_degree int,
     PRIMARY KEY (cluster_group, cluster, address_id)
@@ -158,7 +158,7 @@ CREATE TABLE cluster_incoming_relations (
     src_properties FROZEN <cluster_summary>,
     src_labels list<text>,
     no_transactions int,
-    value frozen <value>,
+    value FROZEN <value>,
     PRIMARY KEY (dst_cluster_group, dst_cluster, src_cluster)
 );
 
@@ -169,7 +169,7 @@ CREATE TABLE cluster_outgoing_relations (
     dst_properties FROZEN <cluster_summary>,
     dst_labels list<text>,
     no_transactions int,
-    value frozen <value>,
+    value FROZEN <value>,
     tx_list list<blob>,
     PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
 );
