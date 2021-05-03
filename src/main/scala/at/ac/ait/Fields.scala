@@ -25,7 +25,7 @@ object Fields {
   val currency = "currency"
   val eur = "eur"
   val usd = "usd"
-  val activeAddress = "activeAddress"
+  val active = "active"
   val addressId = "addressId"
   val addressIdGroup = "addressIdGroup"
   val coinjoin = "coinJoin"

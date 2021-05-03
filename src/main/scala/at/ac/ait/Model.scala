@@ -1,5 +1,7 @@
 package at.ac.ait
 
+import java.sql.Date
+
 case class RegularInput(
     address: String,
     txHash: Array[Byte],
@@ -95,13 +97,24 @@ case class BlockTransactions(height: Int, txs: Seq[TxSummary])
 
 case class ExchangeRatesRaw(date: String, eur: Float, usd: Float)
 
-case class TagRaw(
+case class AddressTagRaw(
     address: String,
+    currency: String,
     label: String,
     source: String,
     tagpackUri: String,
+    lastmod: Date,
+    category: Option[String],
+    abuse: Option[String]
+)
+
+case class ClusterTagRaw(
+    entity: Int,
     currency: String,
-    lastmod: Int,
+    label: String,
+    source: String,
+    tagpackUri: String,
+    lastmod: Date,
     category: Option[String],
     abuse: Option[String]
 )
@@ -117,7 +130,7 @@ case class SummaryStatisticsRaw(
 
 case class ExchangeRates(height: Int, eur: Float, usd: Float)
 
-case class AddressTransactions(
+case class AddressTransaction(
     addressIdGroup: Int,
     addressId: Int,
     txHash: Array[Byte],
@@ -151,7 +164,7 @@ case class Address(
     outDegree: Int
 )
 
-case class AddressTags(
+case class AddressTag(
     addressId: Int,
     address: String,
     label: String,
@@ -162,9 +175,23 @@ case class AddressTags(
     abuse: String
 )
 
+case class AddressTagByLabel(
+    labelNormPrefix: String,
+    labelNorm: String,
+    label: String,
+    address: String,
+    source: String,
+    tagpackUri: String,
+    currency: String,
+    lastmod: Int,
+    category: Option[String],
+    abuse: Option[String],
+    active: Boolean
+)
+
 case class AddressCluster(addressIdGroup: Int, addressId: Int, cluster: Int)
 
-case class ClusterAddresses(
+case class ClusterAddress(
     clusterGroup: Int,
     cluster: Int,
     addressId: Int,
@@ -178,7 +205,7 @@ case class ClusterAddresses(
     outDegree: Int
 )
 
-case class ClusterTransactions(
+case class ClusterTransaction(
     cluster: Int,
     txHash: Array[Byte],
     value: Long,
@@ -198,7 +225,7 @@ case class BasicCluster(
     totalSpent: Currency
 )
 
-case class BasicClusterAddresses(
+case class BasicClusterAddress(
     cluster: Int,
     addressId: Int,
     noIncomingTxs: Int,
@@ -223,11 +250,8 @@ case class Cluster(
     outDegree: Int
 )
 
-case class ClusterTags(
-    clusterGroup: Int,
+case class ClusterTag(
     cluster: Int,
-    addressId: Int,
-    address: String,
     label: String,
     source: String,
     tagpackUri: String,
@@ -236,7 +260,21 @@ case class ClusterTags(
     abuse: String
 )
 
-case class PlainAddressRelations(
+case class ClusterTagByLabel(
+    labelNormPrefix: String,
+    labelNorm: String,
+    label: String,
+    cluster: Int,
+    source: String,
+    tagpackUri: String,
+    currency: String,
+    lastmod: Int,
+    category: Option[String],
+    abuse: Option[String],
+    active: Boolean
+)
+
+case class PlainAddressRelation(
     txHash: Array[Byte],
     srcAddressId: Int,
     dstAddressId: Int,
@@ -244,7 +282,7 @@ case class PlainAddressRelations(
     estimatedValue: Long
 )
 
-case class AddressRelations(
+case class AddressRelation(
     srcAddressIdGroup: Int,
     srcAddressId: Int,
     dstAddressIdGroup: Int,
@@ -258,7 +296,7 @@ case class AddressRelations(
     txList: Seq[Array[Byte]]
 )
 
-case class PlainClusterRelations(
+case class PlainClusterRelation(
     txHash: Array[Byte],
     srcCluster: Int,
     dstCluster: Int,
@@ -266,7 +304,7 @@ case class PlainClusterRelations(
     height: Int
 )
 
-case class ClusterRelations(
+case class ClusterRelation(
     srcClusterGroup: Int,
     srcCluster: Int,
     dstClusterGroup: Int,
@@ -280,20 +318,6 @@ case class ClusterRelations(
     txList: Seq[Array[Byte]]
 )
 
-case class Tag(
-    labelNormPrefix: String,
-    labelNorm: String,
-    label: String,
-    address: String,
-    source: String,
-    tagpackUri: String,
-    currency: String,
-    lastmod: Int,
-    category: Option[String],
-    abuse: Option[String],
-    activeAddress: Boolean
-)
-
 case class SummaryStatistics(
     timestamp: Int,
     noBlocks: Int,
@@ -301,7 +325,7 @@ case class SummaryStatistics(
     noAddresses: Long,
     noAddressRelations: Long,
     noClusters: Long,
-    noTags: Long,
+    noTags: Long
 )
 
 case class Configuration(

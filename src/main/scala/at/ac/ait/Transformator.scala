@@ -215,11 +215,11 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   }
 
   def plainAddressRelations(
-      inputs: Dataset[AddressTransactions],
-      outputs: Dataset[AddressTransactions],
+      inputs: Dataset[AddressTransaction],
+      outputs: Dataset[AddressTransaction],
       regularInputs: Dataset[RegularInput],
       transactions: Dataset[Transaction]
-  ): Dataset[PlainAddressRelations] = {
+  ): Dataset[PlainAddressRelation] = {
 
     val regularInputSum =
       regularInputs.groupBy(F.txHash).agg(sum(F.value) as "regularSum")
@@ -261,16 +261,16 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         round(col("inValue") / col(F.totalInput) * col("outValue")) cast LongType
       )
       .drop(F.totalInput, "inValue", "outValue")
-      .as[PlainAddressRelations]
+      .as[PlainAddressRelation]
   }
 
   def addressRelations(
-      plainAddressRelations: Dataset[PlainAddressRelations],
+      plainAddressRelations: Dataset[PlainAddressRelation],
       addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates],
-      addressTags: Dataset[AddressTags],
+      addressTags: Dataset[AddressTag],
       txLimit: Int
-  ): Dataset[AddressRelations] = {
+  ): Dataset[AddressRelation] = {
 
     val props =
       addresses.select(
@@ -333,12 +333,12 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
     fullAddressRelations
       .join(txList, Seq(F.srcAddressId, F.dstAddressId), "left")
-      .as[AddressRelations]
+      .as[AddressRelation]
   }
 
   def plainClusterRelations(
-      clusterInputs: Dataset[ClusterTransactions],
-      clusterOutputs: Dataset[ClusterTransactions]
+      clusterInputs: Dataset[ClusterTransaction],
+      clusterOutputs: Dataset[ClusterTransaction]
   ) = {
     clusterInputs
       .select(col(F.txHash), col(F.cluster) as F.srcCluster)
@@ -352,14 +352,14 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           ),
         Seq(F.txHash)
       )
-      .as[PlainClusterRelations]
+      .as[PlainClusterRelation]
   }
 
   def clusterRelations(
-      plainClusterRelations: Dataset[PlainClusterRelations],
+      plainClusterRelations: Dataset[PlainClusterRelation],
       cluster: Dataset[BasicCluster],
       exchangeRates: Dataset[ExchangeRates],
-      clusterTags: Dataset[ClusterTags],
+      clusterTags: Dataset[ClusterTag],
       txLimit: Int
   ) = {
 
@@ -426,6 +426,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
     fullClusterRelations
       .join(txList, Seq(F.srcCluster, F.dstCluster), "left")
-      .as[ClusterRelations]
+      .as[ClusterRelation]
   }
 }

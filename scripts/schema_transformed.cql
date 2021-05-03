@@ -66,6 +66,21 @@ CREATE TABLE address_tags (
     PRIMARY KEY (address, label, source, tagpack_uri)
 );
 
+CREATE TABLE address_tag_by_label (
+    label_norm_prefix text,
+    label_norm text,
+    label text,
+    address text,
+    source text,
+    tagpack_uri text,
+    currency text,
+    lastmod int,
+    category text,
+    abuse text,
+    active boolean,
+    PRIMARY KEY (label_norm_prefix, label_norm, label, address, currency, source, tagpack_uri)
+);
+
 CREATE TYPE address_summary (
     total_received FROZEN <value>,
     total_spent FROZEN <value>
@@ -132,17 +147,29 @@ CREATE TABLE cluster_addresses (
 );
 
 CREATE TABLE cluster_tags (
-    cluster_group int,
     cluster int,
-    address text,
-    address_id int,
     label text,
     source text,
     tagpack_uri text,
     lastmod int,
     category text,
     abuse text,
-    PRIMARY KEY (cluster_group, cluster, address, label, source, tagpack_uri)
+    PRIMARY KEY (cluster, label, source, tagpack_uri)
+);
+
+CREATE TABLE cluster_tag_by_label (
+    label_norm_prefix text,
+    label_norm text,
+    label text,
+    entity int,
+    source text,
+    tagpack_uri text,
+    currency text,
+    lastmod int,
+    category text,
+    abuse text,
+    active boolean,
+    PRIMARY KEY (label_norm_prefix, label_norm, label, entity, currency, source, tagpack_uri)
 );
 
 CREATE TYPE cluster_summary (
@@ -172,21 +199,6 @@ CREATE TABLE cluster_outgoing_relations (
     value FROZEN <value>,
     tx_list list<blob>,
     PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
-);
-
-CREATE TABLE tag_by_label (
-    label_norm_prefix text,
-    label_norm text,
-    label text,
-    address text,
-    source text,
-    tagpack_uri text,
-    currency text,
-    lastmod int,
-    category text,
-    abuse text,
-    active_address boolean,
-    PRIMARY KEY (label_norm_prefix, label_norm, label, address, currency, source, tagpack_uri)
 );
 
 CREATE TABLE summary_statistics (

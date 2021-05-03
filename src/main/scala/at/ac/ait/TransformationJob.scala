@@ -91,8 +91,10 @@ object TransformationJob {
       cassandra.load[Block](conf.rawKeyspace(), "block")
     val transactions =
       cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
-    val tagsRaw = cassandra
-      .load[TagRaw](conf.tagKeyspace(), "tag_by_address")
+    val addressTagsRaw = cassandra
+      .load[AddressTagRaw](conf.tagKeyspace(), "address_tag_by_address")
+    val clusterTagsRaw = cassandra
+      .load[ClusterTagRaw](conf.tagKeyspace(), "entity_tag_by_id")
 
     val noBlocks = summaryStatisticsRaw.select(col("noBlocks")).first.getInt(0)
     val lastBlockTimestamp =
@@ -177,13 +179,16 @@ object TransformationJob {
     val addressTags =
       transformation
         .computeAddressTags(
-          tagsRaw,
+          addressTagsRaw,
           basicAddresses,
           addressIds,
           conf.currency()
         )
         .persist()
     cassandra.store(conf.targetKeyspace(), "address_tags", addressTags)
+    val addressTagsByLabel =
+      transformation.computeAddressTagsByLabel(addressTagsRaw, addressTags, conf.currency())
+    cassandra.store(conf.targetKeyspace(), "address_tag_by_label", addressTagsByLabel)
     val noAddressTags = addressTags
       .select(col("label"))
       .withColumn("label", lower(col("label")))
@@ -272,8 +277,11 @@ object TransformationJob {
 
     println("Computing cluster tags")
     val clusterTags =
-      transformation.computeClusterTags(addressCluster, addressTags).persist()
+      transformation.computeClusterTags(clusterTagsRaw, basicCluster, conf.currency()).persist()
     cassandra.store(conf.targetKeyspace(), "cluster_tags", clusterTags)
+    //val clusterTagsByLabel =
+    //  transformation.computeClusterTagsByLabel(clusterTagsRaw, clusterTags, conf.currency())
+    //cassandra.store(conf.targetKeyspace(), "cluster_tag_by_label", clusterTagsByLabel)
 
     println("Computing plain cluster relations")
     val plainClusterRelations =
@@ -319,10 +327,6 @@ object TransformationJob {
       "cluster_addresses",
       clusterAddresses
     )
-
-    val tags =
-      transformation.computeTagsByLabel(tagsRaw, addressTags, conf.currency())
-    cassandra.store(conf.targetKeyspace(), "tag_by_label", tags)
 
     println("Computing summary statistics")
     val summaryStatistics =
