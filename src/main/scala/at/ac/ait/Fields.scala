@@ -46,10 +46,11 @@ object Fields {
   val srcProperties = "srcProperties"
   val dstProperties = "dstProperties"
   val label = "label"
+  val hasLabels = "hasLabels"
   val labelNorm = "labelNorm"
   val labelNormPrefix = "labelNormPrefix"
   val category = "category"
   val abuse = "abuse"
-  val srcLabels = "srcLabels"
-  val dstLabels = "dstLabels"
+  val hasSrcLabels = "hasSrcLabels"
+  val hasDstLabels = "hasDstLabels"
 }

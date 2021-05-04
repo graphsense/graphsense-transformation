@@ -1,8 +1,21 @@
 package at.ac.ait
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{coalesce, col, collect_set, count, explode, floor, min,
-  round, substring, sum, udf, when}
+import org.apache.spark.sql.functions.{
+  coalesce,
+  col,
+  collect_set,
+  count,
+  explode,
+  floor,
+  lit,
+  min,
+  round,
+  substring,
+  sum,
+  udf,
+  when
+}
 import org.apache.spark.sql.types.{IntegerType, LongType}
 import scala.annotation.tailrec
 
@@ -122,12 +135,19 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
       // filter transactions with multiple input addresses
       val collectiveInputAddresses = (if (removeCoinJoin) {
-        println("Clustering without coinjoin inputs")
-        basicTxInputAddresses.filter(col(F.coinjoin) === false)
-      } else {
-        println("Clustering with coinjoin inputs")
-        basicTxInputAddresses
-      }).select(col(F.txIndex), col(F.addressId), addressCount as "count")
+                                        println(
+                                          "Clustering without coinjoin inputs"
+                                        )
+                                        basicTxInputAddresses.filter(
+                                          col(F.coinjoin) === false
+                                        )
+                                      } else {
+                                        println(
+                                          "Clustering with coinjoin inputs"
+                                        )
+                                        basicTxInputAddresses
+                                      })
+        .select(col(F.txIndex), col(F.addressId), addressCount as "count")
         .filter(col("count") > 1)
         .select(col(F.txIndex), col(F.addressId))
 
@@ -162,7 +182,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
       val initialRepresentative = {
         val addressMin = collectiveInputAddresses
-          .groupBy(col(F.txIndex)).agg(min(F.addressId).as(reprAddrId))
+          .groupBy(col(F.txIndex))
+          .agg(min(F.addressId).as(reprAddrId))
 
         transactionCount
           .filter(col("count") === 1) // restrict to "trivial" addresses
@@ -279,8 +300,9 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       )
 
     val addressLabels = addressTags
-      .groupBy(F.addressId)
-      .agg(collect_set(col(F.label)).as(F.label))
+      .select(F.addressId)
+      .distinct
+      .withColumn(F.hasLabels, lit(true))
 
     val fullAddressRelations = toCurrencyDataFrame(
       exchangeRates,
@@ -303,7 +325,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .join(
         addressLabels.select(
           col(F.addressId).as(F.srcAddressId),
-          col(F.label).as(F.srcLabels)
+          col(F.hasLabels).as(F.hasSrcLabels)
         ),
         Seq(F.srcAddressId),
         "left"
@@ -311,7 +333,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .join(
         addressLabels.select(
           col(F.addressId).as(F.dstAddressId),
-          col(F.label).as(F.dstLabels)
+          col(F.hasLabels).as(F.hasDstLabels)
         ),
         Seq(F.dstAddressId),
         "left"
@@ -333,6 +355,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
     fullAddressRelations
       .join(txList, Seq(F.srcAddressId, F.dstAddressId), "left")
+      .na
+      .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[AddressRelation]
   }
 
@@ -374,8 +398,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       )
 
     val clusterLabels = clusterTags
-      .groupBy(F.cluster)
-      .agg(collect_set(col(F.label)).as(F.label))
+      .select(F.cluster)
+      .withColumn(F.hasLabels, lit(true))
 
     val fullClusterRelations =
       toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
@@ -396,7 +420,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         .join(
           clusterLabels.select(
             col(F.cluster).as(F.srcCluster),
-            col(F.label).as(F.srcLabels)
+            col(F.hasLabels).as(F.hasSrcLabels)
           ),
           Seq(F.srcCluster),
           "left"
@@ -404,7 +428,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         .join(
           clusterLabels.select(
             col(F.cluster).as(F.dstCluster),
-            col(F.label).as(F.dstLabels)
+            col(F.hasLabels).as(F.hasDstLabels)
           ),
           Seq(F.dstCluster),
           "left"
@@ -426,6 +450,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
     fullClusterRelations
       .join(txList, Seq(F.srcCluster, F.dstCluster), "left")
+      .na
+      .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[ClusterRelation]
   }
 }

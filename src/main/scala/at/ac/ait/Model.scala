@@ -289,8 +289,8 @@ case class AddressRelation(
     dstAddressId: Int,
     srcProperties: AddressSummary,
     dstProperties: AddressSummary,
-    srcLabels: Seq[String],
-    dstLabels: Seq[String],
+    hasSrcLabels: Boolean,
+    hasDstLabels: Boolean,
     noTransactions: Int,
     estimatedValue: Currency,
     txList: Seq[Array[Byte]]
@@ -311,8 +311,8 @@ case class ClusterRelation(
     dstCluster: Int,
     srcProperties: ClusterSummary,
     dstProperties: ClusterSummary,
-    srcLabels: Seq[String],
-    dstLabels: Seq[String],
+    hasSrcLabels: Boolean,
+    hasDstLabels: Boolean,
     noTransactions: Int,
     value: Currency,
     txList: Seq[Array[Byte]]
