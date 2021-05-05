@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/graphsense/graphsense-transformation.svg?branch=develop)](https://travis-ci.org/graphsense/graphsense-transformation)
+[![sbt test](https://github.com/graphsense/graphsense-transformation/actions/workflows/sbt_test.yml/badge.svg)](https://github.com/graphsense/graphsense-transformation/actions/workflows/sbt_test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # GraphSense Transformation Pipeline
 
