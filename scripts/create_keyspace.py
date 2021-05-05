@@ -92,6 +92,8 @@ def main():
 
     cassandra = Cassandra(args.db_nodes)
     cassandra.connect()
+    print('Trying to create Keyspace "%s" on host(s) %s' %
+          (args.keyspace_name, ', '.join(args.db_nodes)))
     if not cassandra.has_keyspace(args.keyspace_name):
         cassandra.setup_keyspace(args.keyspace_name, args.schema_template)
         print(f'Success: Keyspace "{args.keyspace_name}" created.')
