@@ -25,15 +25,17 @@ echo -en "Starting Spark job ...\n" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
   --conf spark.local.dir="$SPARK_LOCAL_DIR" \
   --conf spark.default.parallelism=400 \
-  --conf spark.driver.memory="64G" \
+  --conf spark.driver.memory="92G" \
   --conf spark.sql.session.timeZone=UTC \
   --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:4.0.2 \
   target/scala-2.12/graphsense-transformation_2.12-0.5.0-SNAPSHOT.jar \
   --currency "$CURRENCY" \
-  --raw_keyspace "$RAW_KEYSPACE" \
-  --tag_keyspace "$TAG_KEYSPACE" \
-  --target_keyspace "$TGT_KEYSPACE" \
-  --bucket_size 25000
+  --raw-keyspace "$RAW_KEYSPACE" \
+  --tag-keyspace "$TAG_KEYSPACE" \
+  --target-keyspace "$TGT_KEYSPACE" \
+  --bucket-size 25000 \
+  --coinjoin-filtering \
+  --bech32-prefix "$BECH32_PREFIX"
 
 exit $?
