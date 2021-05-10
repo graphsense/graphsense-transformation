@@ -147,6 +147,7 @@ CREATE TABLE cluster_addresses (
 );
 
 CREATE TABLE cluster_tags (
+    cluster_group int,
     cluster int,
     label text,
     source text,
@@ -154,14 +155,27 @@ CREATE TABLE cluster_tags (
     lastmod int,
     category text,
     abuse text,
-    PRIMARY KEY (cluster, label, source, tagpack_uri)
+    PRIMARY KEY (cluster_group, cluster, label, source, tagpack_uri)
+);
+
+CREATE TABLE cluster_address_tags (
+    cluster_group int,
+    cluster int,
+    address_id int,
+    label text,
+    source text,
+    tagpack_uri text,
+    lastmod int,
+    category text,
+    abuse text,
+    PRIMARY KEY (cluster_group, cluster, address_id, label, source, tagpack_uri)
 );
 
 CREATE TABLE cluster_tag_by_label (
     label_norm_prefix text,
     label_norm text,
     label text,
-    entity int,
+    cluster int,
     source text,
     tagpack_uri text,
     currency text,
@@ -169,7 +183,7 @@ CREATE TABLE cluster_tag_by_label (
     category text,
     abuse text,
     active boolean,
-    PRIMARY KEY (label_norm_prefix, label_norm, label, entity, currency, source, tagpack_uri)
+    PRIMARY KEY (label_norm_prefix, label_norm, label, cluster, currency, source, tagpack_uri)
 );
 
 CREATE TYPE cluster_summary (

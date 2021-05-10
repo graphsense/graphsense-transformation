@@ -187,8 +187,16 @@ object TransformationJob {
         .persist()
     cassandra.store(conf.targetKeyspace(), "address_tags", addressTags)
     val addressTagsByLabel =
-      transformation.computeAddressTagsByLabel(addressTagsRaw, addressTags, conf.currency())
-    cassandra.store(conf.targetKeyspace(), "address_tag_by_label", addressTagsByLabel)
+      transformation.computeAddressTagsByLabel(
+        addressTagsRaw,
+        addressTags,
+        conf.currency()
+      )
+    cassandra.store(
+      conf.targetKeyspace(),
+      "address_tag_by_label",
+      addressTagsByLabel
+    )
     val noAddressTags = addressTags
       .select(col("label"))
       .withColumn("label", lower(col("label")))
@@ -277,11 +285,28 @@ object TransformationJob {
 
     println("Computing cluster tags")
     val clusterTags =
-      transformation.computeClusterTags(clusterTagsRaw, basicCluster, conf.currency()).persist()
+      transformation
+        .computeClusterTags(clusterTagsRaw, basicCluster, conf.currency())
+        .persist()
     cassandra.store(conf.targetKeyspace(), "cluster_tags", clusterTags)
-    //val clusterTagsByLabel =
-    //  transformation.computeClusterTagsByLabel(clusterTagsRaw, clusterTags, conf.currency())
-    //cassandra.store(conf.targetKeyspace(), "cluster_tag_by_label", clusterTagsByLabel)
+    val clusterTagsByLabel =
+      transformation.computeClusterTagsByLabel(
+        clusterTagsRaw,
+        clusterTags,
+        conf.currency()
+      )
+    cassandra.store(
+      conf.targetKeyspace(),
+      "cluster_tag_by_label",
+      clusterTagsByLabel
+    )
+    val clusterAddressTags =
+      transformation.computeClusterAddressTags(addressCluster, addressTags)
+    cassandra.store(
+      conf.targetKeyspace(),
+      "cluster_address_tags",
+      clusterAddressTags
+    )
 
     println("Computing plain cluster relations")
     val plainClusterRelations =

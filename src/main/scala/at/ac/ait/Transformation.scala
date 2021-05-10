@@ -330,6 +330,8 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         "lastmod",
         unix_timestamp(col("lastmod"), "yyyy-dd-MM").cast(IntegerType)
       )
+      .transform(t.idGroup(F.addressId, F.addressIdGroup))
+      .sort(F.addressIdGroup, F.addressId)
       .as[AddressTag]
   }
 
@@ -476,7 +478,20 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         "lastmod",
         unix_timestamp(col("lastmod"), "yyyy-dd-MM").cast(IntegerType)
       )
+      .transform(t.idGroup(F.cluster, F.clusterGroup))
+      .sort(F.clusterGroup, F.cluster)
       .as[ClusterTag]
+  }
+
+  def computeClusterAddressTags(
+      addressCluster: Dataset[AddressCluster],
+      tags: Dataset[AddressTag]
+  ): Dataset[ClusterAddressTag] = {
+    addressCluster
+      .join(tags, F.addressId)
+      .transform(t.idGroup(F.cluster, F.clusterGroup))
+      .sort(F.clusterGroup, F.cluster)
+      .as[ClusterAddressTag]
   }
 
   def computeAddressTagsByLabel(

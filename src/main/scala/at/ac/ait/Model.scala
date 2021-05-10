@@ -165,6 +165,7 @@ case class Address(
 )
 
 case class AddressTag(
+    addressIdGroup: Int,
     addressId: Int,
     address: String,
     label: String,
@@ -251,7 +252,20 @@ case class Cluster(
 )
 
 case class ClusterTag(
+    clusterGroup: Int,
     cluster: Int,
+    label: String,
+    source: String,
+    tagpackUri: String,
+    lastmod: Int,
+    category: String,
+    abuse: String
+)
+
+case class ClusterAddressTag(
+    clusterGroup: Int,
+    cluster: Int,
+    addressId: Int,
     label: String,
     source: String,
     tagpackUri: String,
