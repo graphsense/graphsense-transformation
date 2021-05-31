@@ -80,7 +80,7 @@ def main():
     parser = ArgumentParser(description='Create keyspace in Cassandra',
                             epilog='GraphSense - http://graphsense.info')
     parser.add_argument('-d', '--db_nodes', dest='db_nodes', nargs='+',
-                        default='localhost', metavar='DB_NODE',
+                        default=['localhost'], metavar='DB_NODE',
                         help='list of Cassandra nodes (default "localhost")')
     parser.add_argument('-k', '--keyspace', dest='keyspace_name',
                         required=True, metavar='KEYSPACE',
@@ -92,6 +92,8 @@ def main():
 
     cassandra = Cassandra(args.db_nodes)
     cassandra.connect()
+    print('Trying to create Keyspace "%s" on host(s) %s' %
+          (args.keyspace_name, ', '.join(args.db_nodes)))
     if not cassandra.has_keyspace(args.keyspace_name):
         cassandra.setup_keyspace(args.keyspace_name, args.schema_template)
         print(f'Success: Keyspace "{args.keyspace_name}" created.')

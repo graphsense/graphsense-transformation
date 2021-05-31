@@ -9,7 +9,8 @@ CURRENCY="BTC"
 RAW_KEYSPACE="btc_raw"
 TAG_KEYSPACE="tagpacks"
 TGT_KEYSPACE="btc_transformed"
-BUCKET_SIZE=10000
+BUCKET_SIZE=25000
+BECH32_PREFIX=""
 
 
 if [ -z "$SPARK_HOME" ] ; then
@@ -18,7 +19,7 @@ if [ -z "$SPARK_HOME" ] ; then
 fi
 
 EXEC=$(basename "$0")
-USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--currency CURRENCY] [--src_keyspace RAW_KEYSPACE] [--tag_keyspace TAG_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE] [--bucket_size BUCKET_SIZE]"
+USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--currency CURRENCY] [--src_keyspace RAW_KEYSPACE] [--tag_keyspace TAG_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE] [--bucket_size BUCKET_SIZE] [--bech32-prefix BECH32_PREFIX]"
 
 # parse command line options
 args=$(getopt -o hc:m:s: --long raw_keyspace:,tag_keyspace:,tgt_keyspace:,bucket_size:,currency: -- "$@")
@@ -62,6 +63,10 @@ while true; do
             BUCKET_SIZE="$2"
             shift 2
         ;;
+        --bech32-prefix)
+            BECH32_PREFIX="$2"
+            shift 2
+        ;;
         --) # end of all options
             shift
             if [ "x$*" != "x" ] ; then
@@ -87,7 +92,8 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
          "- raw keyspace:    $RAW_KEYSPACE\n" \
          "- tag keyspace:    $TAG_KEYSPACE\n" \
          "- target keyspace: $TGT_KEYSPACE\n" \
-         "- bucket size:     $BUCKET_SIZE\n"
+         "- bucket size:     $BUCKET_SIZE\n" \
+         "- BECH32 prefix:   $BECH32_PREFIX\n"
 
 
 "$SPARK_HOME"/bin/spark-submit \
@@ -96,12 +102,14 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   --conf spark.executor.memory="$MEMORY" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
   --conf spark.sql.session.timeZone=UTC \
-  --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:3.4.0 \
-  target/scala-2.12/graphsense-transformation_2.12-0.4.5.jar \
+  --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:4.0.2 \
+  target/scala-2.12/graphsense-transformation_2.12-0.5.0.jar \
   --currency "$CURRENCY" \
-  --raw_keyspace "$RAW_KEYSPACE" \
-  --tag_keyspace "$TAG_KEYSPACE" \
-  --target_keyspace "$TGT_KEYSPACE" \
-  --bucket_size "$BUCKET_SIZE"
+  --raw-keyspace "$RAW_KEYSPACE" \
+  --tag-keyspace "$TAG_KEYSPACE" \
+  --target-keyspace "$TGT_KEYSPACE" \
+  --bucket-size "$BUCKET_SIZE" \
+  --coinjoin-filtering \
+  --bech32-prefix "$BECH32_PREFIX"
 
 exit $?

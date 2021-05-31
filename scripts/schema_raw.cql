@@ -62,14 +62,26 @@ CREATE KEYSPACE tagpacks WITH replication = {'class': 'SimpleStrategy', 'replica
 
 USE tagpacks;
 
-CREATE TABLE tag_by_address (
+CREATE TABLE address_tag_by_address (
     address text,
+    currency text,
     label text,
     source text,
     tagpack_uri text,
-    currency text,
-    lastmod int,
+    lastmod date,
     category text,
     abuse text,
-    PRIMARY KEY (address, label, source, tagpack_uri)
+    PRIMARY KEY (address, currency, label, source, tagpack_uri)
+);
+
+CREATE TABLE entity_tag_by_id (
+    entity int,
+    currency text,
+    label text,
+    source text,
+    tagpack_uri text,
+    lastmod date,
+    category text,
+    abuse text,
+    PRIMARY KEY (entity, currency, label, source, tagpack_uri)
 );

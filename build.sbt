@@ -1,6 +1,6 @@
 ThisBuild / scalaVersion := "2.12.10"
 ThisBuild / organization := "at.ac.ait"
-ThisBuild / version      := "0.4.5"
+ThisBuild / version      := "0.5.0-SNAPSHOT"
 
 
 lazy val root = (project in file(".")).
@@ -23,11 +23,10 @@ lazy val root = (project in file(".")).
       "-Ywarn-unused",
       "-Ywarn-unused-import",
       "-Ywarn-value-discard"),
-    resolvers += "Spark Packages Repo" at "https://dl.bintray.com/spark-packages/maven",
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % "3.1.2" % Test,
-      "MrPowers" % "spark-fast-tests" % "0.21.1-s_2.12" % Test,
-      "org.rogach" %% "scallop" % "3.4.0" % Provided,
-      "org.apache.spark" %% "spark-sql" % "2.4.5" % Provided,
+      "org.scalatest" %% "scalatest" % "3.2.7" % Test,
+      "com.github.mrpowers" % "spark-fast-tests_2.12" % "0.23.0" % Test,
+      "org.rogach" %% "scallop" % "4.0.2" % Provided,
+      "org.apache.spark" %% "spark-sql" % "2.4.7" % Provided,
       "com.datastax.spark" %% "spark-cassandra-connector" % "2.4.2" % Provided)
   )

@@ -1,6 +1,6 @@
 package at.ac.ait
 
-import com.github.mrpowers.spark.fast.tests.{DataFrameComparer}
+import com.github.mrpowers.spark.fast.tests.DataFrameComparer
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, SparkSession}
 import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.catalyst.ScalaReflection.universe.TypeTag
@@ -17,6 +17,8 @@ trait SparkSessionTestWrapper {
       .builder()
       .master("local")
       .appName("Transformation Test")
+      .config("spark.sql.shuffle.partitions", "3")
+      .config("spark.sql.session.timeZone", "UTC")
       .getOrCreate()
   }
 }
@@ -74,7 +76,10 @@ class TransformationTest
   val transactions = readJson[Transaction](inputDir + "test_txs.json")
   val exchangeRatesRaw =
     readJson[ExchangeRatesRaw](inputDir + "test_exchange_rates.json")
-  val attributionTags = readJson[TagRaw](inputDir + "test_tags.json")
+  val addressTagsRaw =
+    readJson[AddressTagRaw](inputDir + "test_address_tags.json")
+  val clusterTagsRaw =
+    readJson[ClusterTagRaw](inputDir + "test_cluster_tags.json")
 
   val noBlocks = blocks.count.toInt
   val lastBlockTimestamp = blocks
@@ -123,7 +128,7 @@ class TransformationTest
       .persist()
 
   val addressTags =
-    t.computeAddressTags(attributionTags, basicAddresses, addressIds, "BTC")
+    t.computeAddressTags(addressTagsRaw, basicAddresses, addressIds, "BTC")
       .sort(F.addressId)
       .persist()
   val noAddressTags = addressTags
@@ -203,7 +208,15 @@ class TransformationTest
       .persist()
 
   val clusterTags =
-    t.computeClusterTags(addressClusterCoinjoin, addressTags)
+    t.computeClusterTags(clusterTagsRaw, basicCluster, "BTC")
+      .sort(F.cluster)
+      .persist()
+
+  val clusterTagsByLabel =
+    t.computeClusterTagsByLabel(clusterTagsRaw, clusterTags, "BTC").persist()
+
+  val clusterAddressTags =
+    t.computeClusterAddressTags(addressCluster, addressTags)
       .sort(F.cluster)
       .persist()
 
@@ -240,8 +253,8 @@ class TransformationTest
       .sort(F.cluster, F.addressId)
       .persist()
 
-  val tagsByLabel =
-    t.computeTagsByLabel(attributionTags, addressTags, "BTC").persist()
+  val addressTagsByLabel =
+    t.computeAddressTagsByLabel(addressTagsRaw, addressTags, "BTC").persist()
 
   val summaryStatistics =
     t.summaryStatistics(
@@ -251,8 +264,7 @@ class TransformationTest
       noAddresses,
       noAddressRelations,
       noCluster,
-      noAddressTags,
-      bucketSize
+      noAddressTags
     )
 
   note("test address graph")
@@ -269,23 +281,27 @@ class TransformationTest
 
   test("regularInputs") {
     val regInputsRef = readJson[RegularInput](refDir + "regular_inputs.json")
-    assertDataFrameEquality(regInputs, regInputsRef)
+      .sort(F.txHash, F.address)
+    val sortedInputs = regInputs.sort(F.txHash, F.address)
+    assertDataFrameEquality(sortedInputs, regInputsRef)
   }
   test("regularOutputs") {
     val regOutputsRef = readJson[RegularOutput](refDir + "regular_outputs.json")
-    assertDataFrameEquality(regOutputs, regOutputsRef)
+      .sort(F.txHash, F.address)
+    val sortedOutput = regOutputs.sort(F.txHash, F.address)
+    assertDataFrameEquality(sortedOutput, regOutputsRef)
   }
   test("addressTransactions") {
     val addressTransactionsRef =
-      readJson[AddressTransactions](refDir + "address_txs.json")
+      readJson[AddressTransaction](refDir + "address_txs.json")
     assertDataFrameEquality(addressTransactions, addressTransactionsRef)
   }
   test("inputs") {
-    val inputsRef = readJson[AddressTransactions](refDir + "inputs.json")
+    val inputsRef = readJson[AddressTransaction](refDir + "inputs.json")
     assertDataFrameEquality(inputs, inputsRef)
   }
   test("outputs") {
-    val outputsRef = readJson[AddressTransactions](refDir + "outputs.json")
+    val outputsRef = readJson[AddressTransaction](refDir + "outputs.json")
     assertDataFrameEquality(outputs, outputsRef)
   }
   test("basicAddresses") {
@@ -293,18 +309,23 @@ class TransformationTest
       readJson[BasicAddress](refDir + "basic_addresses.json")
     assertDataFrameEquality(basicAddresses, basicAddressesRef)
   }
-  test("addressTag") {
-    val addressTagsRef = readJson[AddressTags](refDir + "address_tags.json")
+  test("addressTags") {
+    val addressTagsRef = readJson[AddressTag](refDir + "address_tags.json")
     assertDataFrameEquality(addressTags, addressTagsRef)
+  }
+  test("addressTagsByLabel") {
+    val addressTagsByLabelRef =
+      readJson[AddressTagByLabel](refDir + "address_tags_by_label.json")
+    assertDataFrameEquality(addressTagsByLabel, addressTagsByLabelRef)
   }
   test("addressRelations") {
     val addressRelationsRef =
-      readJson[AddressRelations](refDir + "address_relations.json")
+      readJson[AddressRelation](refDir + "address_relations.json")
     assertDataFrameEquality(addressRelations, addressRelationsRef)
   }
   test("addressRelations with txLimit=1") {
     val addressRelationsLimit1Ref =
-      readJson[AddressRelations](refDir + "address_relations_limit1.json")
+      readJson[AddressRelation](refDir + "address_relations_limit1.json")
     assertDataFrameEquality(addressRelationsLimit1, addressRelationsLimit1Ref)
   }
   test("addresses") {
@@ -326,22 +347,22 @@ class TransformationTest
   }
   test("basicClusterAddresses") {
     val basicClusterAddressesRef =
-      readJson[BasicClusterAddresses](refDir + "basic_cluster_addresses.json")
+      readJson[BasicClusterAddress](refDir + "basic_cluster_addresses.json")
     assertDataFrameEquality(basicClusterAddresses, basicClusterAddressesRef)
   }
   test("clusterTransactions") {
     val clusterTransactionsRef =
-      readJson[ClusterTransactions](refDir + "cluster_txs.json")
+      readJson[ClusterTransaction](refDir + "cluster_txs.json")
     assertDataFrameEquality(clusterTransactions, clusterTransactionsRef)
   }
   test("clusterInputs") {
     val clusterInputsRef =
-      readJson[ClusterTransactions](refDir + "cluster_inputs.json")
+      readJson[ClusterTransaction](refDir + "cluster_inputs.json")
     assertDataFrameEquality(clusterInputs, clusterInputsRef)
   }
   test("clusterOutputs") {
     val clusterOutputsRef =
-      readJson[ClusterTransactions](refDir + "cluster_outputs.json")
+      readJson[ClusterTransaction](refDir + "cluster_outputs.json")
     assertDataFrameEquality(clusterOutputs, clusterOutputsRef)
   }
   test("basicCluster") {
@@ -349,23 +370,40 @@ class TransformationTest
     assertDataFrameEquality(basicCluster, basicClusterRef)
   }
   test("clusterTags") {
-    val clusterTagsRef = readJson[ClusterTags](refDir + "cluster_tags.json")
+    val clusterTagsRef = readJson[ClusterTag](refDir + "cluster_tags.json")
     assertDataFrameEquality(clusterTags, clusterTagsRef)
+  }
+  test("clusterTagsByLabel") {
+    val clusterTagsByLabelRef =
+      readJson[ClusterTagByLabel](refDir + "cluster_tags_by_label.json")
+    assertDataFrameEquality(clusterTagsByLabel, clusterTagsByLabelRef)
+  }
+  test("clusterAddressTags") {
+    val clusterAddressTagsRef =
+      readJson[ClusterAddressTag](refDir + "cluster_address_tags.json")
+    assertDataFrameEquality(clusterAddressTags, clusterAddressTagsRef)
   }
   test("plainClusterRelations") {
     val plainClusterRelationsRef =
-      readJson[PlainClusterRelations](refDir + "plain_cluster_relations.json")
-    assertDataFrameEquality(plainClusterRelations, plainClusterRelationsRef)
+      readJson[PlainClusterRelation](refDir + "plain_cluster_relations.json")
+        .sort(F.txHash)
+    val sortedRels = plainClusterRelations.sort(F.txHash)
+    assertDataFrameEquality(sortedRels, plainClusterRelationsRef)
   }
   test("clusterRelations") {
     val clusterRelationsRef =
-      readJson[ClusterRelations](refDir + "cluster_relations.json")
-    assertDataFrameEquality(clusterRelations, clusterRelationsRef)
+      readJson[ClusterRelation](refDir + "cluster_relations.json")
+        .sort(F.srcCluster, F.dstCluster)
+    val sortedRelations = clusterRelations.sort(F.srcCluster, F.dstCluster)
+    assertDataFrameEquality(sortedRelations, clusterRelationsRef)
   }
   test("clusterRelations with txLimit=1") {
     val clusterRelationsLimit1Ref =
-      readJson[ClusterRelations](refDir + "cluster_relations_limit1.json")
-    assertDataFrameEquality(clusterRelationsLimit1, clusterRelationsLimit1Ref)
+      readJson[ClusterRelation](refDir + "cluster_relations_limit1.json")
+        .sort(F.srcCluster, F.dstCluster)
+    val sortedRelations =
+      clusterRelationsLimit1.sort(F.srcCluster, F.dstCluster)
+    assertDataFrameEquality(sortedRelations, clusterRelationsLimit1Ref)
   }
   test("clusters") {
     val clusterRef = readJson[Cluster](refDir + "cluster.json")
@@ -373,13 +411,8 @@ class TransformationTest
   }
   test("clusterAdresses") {
     val clusterAddressesRef =
-      readJson[ClusterAddresses](refDir + "cluster_addresses.json")
+      readJson[ClusterAddress](refDir + "cluster_addresses.json")
     assertDataFrameEquality(clusterAddresses, clusterAddressesRef)
-  }
-
-  test("tags") {
-    val tagsRef = readJson[Tag](refDir + "tags_by_label.json")
-    assertDataFrameEquality(tagsByLabel, tagsRef)
   }
 
   note("summary statistics for address and cluster graph")

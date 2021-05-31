@@ -1,1 +1,2 @@
-{"addressId": 1, "address": "1HxbaBMF2jXBVnagoHvaA6rLxmaYL8gb8T", "clusterGroup": 0, "cluster": 1, "label": "Mining Service", "source": "test.com", "tagpackUri": "https://example.org/miner", "lastmod": 1524470607, "category": "Mining Service"}
+{"clusterGroup": 2, "cluster": 4, "label": "Mixing Service", "source": "bitmixer.io", "tagpackUri": "https://example.org/mixer", "lastmod": 1532217600, "category": "Mixing Service"}
+{"clusterGroup": 3, "cluster": 6, "label": "Exchange", "source": "mtgox.com", "tagpackUri": "https://example.org/exchange", "lastmod": 1532217600, "category": "Exchange"}

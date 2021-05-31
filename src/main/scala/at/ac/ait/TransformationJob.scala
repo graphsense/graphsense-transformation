@@ -10,25 +10,53 @@ import at.ac.ait.storage._
 object TransformationJob {
 
   class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
-    val currency = opt[String](
+    val currency: ScallopOption[String] = opt[String](
       required = true,
       descr = "Cryptocurrency (e.g. BTC, BCH, LTC, ZEC)"
     )
-    val rawKeyspace =
-      opt[String]("raw_keyspace", required = true, descr = "Raw keyspace")
-    val tagKeyspace =
-      opt[String]("tag_keyspace", required = true, descr = "Tag keyspace")
-    val targetKeyspace = opt[String](
-      "target_keyspace",
+    val rawKeyspace: ScallopOption[String] =
+      opt[String](
+        "raw-keyspace",
+        required = true,
+        noshort = true,
+        descr = "Raw keyspace"
+      )
+    val tagKeyspace: ScallopOption[String] =
+      opt[String](
+        "tag-keyspace",
+        required = true,
+        noshort = true,
+        descr = "Tag keyspace"
+      )
+    val targetKeyspace: ScallopOption[String] = opt[String](
+      "target-keyspace",
       required = true,
+      noshort = true,
       descr = "Transformed keyspace"
     )
-    val bucketSize = opt[Int](
-      "bucket_size",
+    val bucketSize: ScallopOption[Int] = opt[Int](
+      "bucket-size",
       required = false,
       default = Some(25000),
+      noshort = true,
       descr = "Bucket size for Cassandra partitions"
     )
+    val coinjoinFilter: ScallopOption[Boolean] = toggle(
+      "coinjoin-filtering",
+      default = Some(true),
+      noshort = true,
+      prefix = "no-",
+      descrYes = "Exclude coinJoin transactions from clustering",
+      descrNo = "Include coinJoin transactions in clustering"
+    )
+    val bech32Prefix: ScallopOption[String] =
+      opt[String](
+        "bech32-prefix",
+        default = Some(""),
+        noshort = true,
+        descr =
+          "Bech32 address prefix (e.g. 'bc1' for Bitcoin or 'ltc1' for Litecoin)"
+      )
     verify()
   }
 
@@ -41,11 +69,15 @@ object TransformationJob {
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    println("Currency:        " + conf.currency())
-    println("Raw keyspace:    " + conf.rawKeyspace())
-    println("Tag keyspace:    " + conf.tagKeyspace())
-    println("Target keyspace: " + conf.targetKeyspace())
-    println("Bucket size:     " + conf.bucketSize())
+    println("Currency:                      " + conf.currency())
+    println("Raw keyspace:                  " + conf.rawKeyspace())
+    println("Tag keyspace:                  " + conf.tagKeyspace())
+    println("Target keyspace:               " + conf.targetKeyspace())
+    println("Bucket size:                   " + conf.bucketSize())
+    println("CoinJoin Filtering enabled:    " + conf.coinjoinFilter())
+    if (conf.bech32Prefix().length > 0) {
+      println("Bech32 address prefix:         " + conf.bech32Prefix())
+    }
 
     import spark.implicits._
 
@@ -59,8 +91,10 @@ object TransformationJob {
       cassandra.load[Block](conf.rawKeyspace(), "block")
     val transactions =
       cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
-    val tagsRaw = cassandra
-      .load[TagRaw](conf.tagKeyspace(), "tag_by_address")
+    val addressTagsRaw = cassandra
+      .load[AddressTagRaw](conf.tagKeyspace(), "address_tag_by_address")
+    val clusterTagsRaw = cassandra
+      .load[ClusterTagRaw](conf.tagKeyspace(), "entity_tag_by_id")
 
     val noBlocks = summaryStatisticsRaw.select(col("noBlocks")).first.getInt(0)
     val lastBlockTimestamp =
@@ -70,6 +104,19 @@ object TransformationJob {
 
     val transformation = new Transformation(spark, conf.bucketSize())
 
+    println("Store configuration")
+    val configuration =
+      transformation.configuration(
+        conf.targetKeyspace(),
+        conf.bucketSize(),
+        conf.bech32Prefix(),
+        conf.coinjoinFilter()
+      )
+    cassandra.store(
+      conf.targetKeyspace(),
+      "configuration",
+      configuration
+    )
     println("Computing exchange rates")
     val exchangeRates =
       transformation
@@ -132,13 +179,24 @@ object TransformationJob {
     val addressTags =
       transformation
         .computeAddressTags(
-          tagsRaw,
+          addressTagsRaw,
           basicAddresses,
           addressIds,
           conf.currency()
         )
         .persist()
     cassandra.store(conf.targetKeyspace(), "address_tags", addressTags)
+    val addressTagsByLabel =
+      transformation.computeAddressTagsByLabel(
+        addressTagsRaw,
+        addressTags,
+        conf.currency()
+      )
+    cassandra.store(
+      conf.targetKeyspace(),
+      "address_tag_by_label",
+      addressTagsByLabel
+    )
     val noAddressTags = addressTags
       .select(col("label"))
       .withColumn("label", lower(col("label")))
@@ -148,12 +206,7 @@ object TransformationJob {
     println("Computing plain address relations")
     val plainAddressRelations =
       transformation
-        .computePlainAddressRelations(
-          inputs,
-          outputs,
-          regInputs,
-          transactions
-        )
+        .computePlainAddressRelations(inputs, outputs, regInputs, transactions)
 
     println("Computing address relations")
     val addressRelations =
@@ -182,7 +235,8 @@ object TransformationJob {
       transformation.computeAddresses(
         basicAddresses,
         addressRelations,
-        addressIds
+        addressIds,
+        bech32Prefix = conf.bech32Prefix()
       )
     val noAddresses = addresses.count()
     cassandra.store(conf.targetKeyspace(), "address", addresses)
@@ -190,7 +244,7 @@ object TransformationJob {
     spark.sparkContext.setJobDescription("Perform clustering")
     println("Computing address clusters")
     val addressCluster = transformation
-      .computeAddressCluster(regInputs, addressIds, true)
+      .computeAddressCluster(regInputs, addressIds, conf.coinjoinFilter())
       .persist()
     cassandra.store(conf.targetKeyspace(), "address_cluster", addressCluster)
 
@@ -231,16 +285,33 @@ object TransformationJob {
 
     println("Computing cluster tags")
     val clusterTags =
-      transformation.computeClusterTags(addressCluster, addressTags).persist()
+      transformation
+        .computeClusterTags(clusterTagsRaw, basicCluster, conf.currency())
+        .persist()
     cassandra.store(conf.targetKeyspace(), "cluster_tags", clusterTags)
+    val clusterTagsByLabel =
+      transformation.computeClusterTagsByLabel(
+        clusterTagsRaw,
+        clusterTags,
+        conf.currency()
+      )
+    cassandra.store(
+      conf.targetKeyspace(),
+      "cluster_tag_by_label",
+      clusterTagsByLabel
+    )
+    val clusterAddressTags =
+      transformation.computeClusterAddressTags(addressCluster, addressTags)
+    cassandra.store(
+      conf.targetKeyspace(),
+      "cluster_address_tags",
+      clusterAddressTags
+    )
 
     println("Computing plain cluster relations")
     val plainClusterRelations =
       transformation
-        .computePlainClusterRelations(
-          clusterInputs,
-          clusterOutputs
-        )
+        .computePlainClusterRelations(clusterInputs, clusterOutputs)
 
     println("Computing cluster relations")
     val clusterRelations =
@@ -282,9 +353,6 @@ object TransformationJob {
       clusterAddresses
     )
 
-    val tags = transformation.computeTagsByLabel(tagsRaw, addressTags, conf.currency())
-    cassandra.store(conf.targetKeyspace(), "tag_by_label", tags)
-
     println("Computing summary statistics")
     val summaryStatistics =
       transformation.summaryStatistics(
@@ -294,8 +362,7 @@ object TransformationJob {
         noAddresses,
         noAddressRelations,
         noCluster,
-        noAddressTags,
-        conf.bucketSize()
+        noAddressTags
       )
     summaryStatistics.show()
     cassandra.store(

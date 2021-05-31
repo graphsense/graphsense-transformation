@@ -1,0 +1,2 @@
+{"entity": 4, "label": "Mixing Service", "source": "bitmixer.io", "category": "Mixing Service", "abuse": null, "tagpack_uri": "https://example.org/mixer", "lastmod": "2018-07-22" , "currency": "BTC"}
+{"entity": 6, "label": "Exchange", "source": "mtgox.com", "category": "Exchange", "abuse": null, "tagpack_uri": "https://example.com/exchange", "lastmod": "2018-07-22", "currency": "BTC"}
