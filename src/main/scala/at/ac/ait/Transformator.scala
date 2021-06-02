@@ -9,8 +9,8 @@ import org.apache.spark.sql.functions.{
   explode,
   floor,
   lit,
-  min,
   round,
+  row_number,
   substring,
   sum,
   udf,
@@ -180,16 +180,31 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
       val reprAddrId = "reprAddrId"
 
+      // the initial representative must be one address per transaction, which also occurs
+      // in other transactions (tx count >= 2 in collectiveInputAddresses);
+      // choose address with highest tx count
       val initialRepresentative = {
-        val addressMin = collectiveInputAddresses
-          .groupBy(col(F.txIndex))
-          .agg(min(F.addressId).as(reprAddrId))
+
+        val transactionWindow = Window
+          .partitionBy(F.txIndex)
+          .orderBy(col("count").desc, col(F.addressId).asc)
+        val rowNumber = row_number().over(transactionWindow)
+
+        val addressMax = collectiveInputAddresses
+          .join(transactionCount, F.addressId)
+          .select(
+            col(F.txIndex),
+            col(F.addressId) as reprAddrId,
+            rowNumber as "rank"
+          )
+          .filter(col("rank") === 1)
+          .drop("rank")
 
         transactionCount
           .filter(col("count") === 1) // restrict to "trivial" addresses
           .select(F.addressId)
           .join(collectiveInputAddresses, F.addressId)
-          .join(addressMin, F.txIndex)
+          .join(addressMax, F.txIndex)
           .select(F.addressId, reprAddrId)
       }
 
@@ -198,7 +213,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           .withColumnRenamed(F.addressId, "id")
           .join(
             basicAddressCluster.toDF(reprAddrId, F.cluster),
-            List(reprAddrId),
+            Seq(reprAddrId),
             "left_outer"
           )
           .select(
