@@ -154,6 +154,7 @@ case class Address(
     addressPrefix: String,
     address: String,
     addressId: Int,
+    cluster: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
@@ -190,7 +191,7 @@ case class AddressTagByLabel(
     active: Boolean
 )
 
-case class AddressCluster(addressIdGroup: Int, addressId: Int, cluster: Int)
+case class AddressCluster(addressId: Int, cluster: Int)
 
 case class ClusterAddress(
     clusterGroup: Int,

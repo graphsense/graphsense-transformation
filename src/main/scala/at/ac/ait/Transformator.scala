@@ -246,7 +246,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .union(addressCluster)
       .join(addressIds, F.addressId)
       .select(F.addressId, F.cluster)
-      .transform(idGroup(F.addressId, F.addressIdGroup))
       .as[AddressCluster]
   }
 

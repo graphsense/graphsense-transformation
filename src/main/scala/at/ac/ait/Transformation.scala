@@ -296,6 +296,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   def computeAddresses(
       basicAddresses: Dataset[BasicAddress],
+      addressCluster: Dataset[AddressCluster],
       addressRelations: Dataset[AddressRelation],
       addressIds: Dataset[AddressId],
       bech32Prefix: String = ""
@@ -311,6 +312,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .transform(
         t.addressPrefix(F.address, F.addressPrefix, bech32Prefix = bech32Prefix)
       )
+      .join(addressCluster, Seq(F.addressId), "left")
       .sort(F.addressPrefix)
       .as[Address]
   }

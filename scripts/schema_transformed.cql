@@ -36,6 +36,7 @@ CREATE TABLE address (
     address_prefix text,
     address text,
     address_id int,
+    cluster int,
     no_incoming_txs int,
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
@@ -107,13 +108,6 @@ CREATE TABLE address_outgoing_relations (
     estimated_value FROZEN <value>,
     tx_list list<blob>,
     PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
-);
-
-CREATE TABLE address_cluster (
-    address_id_group int,
-    address_id int,
-    cluster int,
-    PRIMARY KEY (address_id_group, address_id)
 );
 
 CREATE TABLE cluster (

@@ -162,20 +162,25 @@ class TransformationTest
       .persist()
   val noAddressRelations = addressRelations.count()
 
+  val addressCluster =
+    t.computeAddressCluster(regInputs, addressIds, true)
+      .sort(F.addressId)
+      .persist()
+
   val addresses =
-    t.computeAddresses(basicAddresses, addressRelations, addressIds)
+    t.computeAddresses(
+        basicAddresses,
+        addressCluster,
+        addressRelations,
+        addressIds
+      )
       .sort(F.addressId)
       .persist()
   val noAddresses = addresses.count()
 
-  val addressCluster =
-    t.computeAddressCluster(regInputs, addressIds, true)
-      .sort(F.addressIdGroup, F.addressId)
-      .persist()
-
   val addressClusterCoinjoin =
     t.computeAddressCluster(regInputs, addressIds, false)
-      .sort(F.addressIdGroup, F.addressId)
+      .sort(F.addressId)
       .persist()
 
   val basicClusterAddresses =

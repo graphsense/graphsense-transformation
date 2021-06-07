@@ -230,23 +230,23 @@ object TransformationJob {
       addressRelations.sort(F.srcAddressId)
     )
 
+    spark.sparkContext.setJobDescription("Perform clustering")
+    println("Computing address clusters")
+    val addressCluster = transformation
+      .computeAddressCluster(regInputs, addressIds, conf.coinjoinFilter())
+      .persist()
+
     println("Computing addresses")
     val addresses =
       transformation.computeAddresses(
         basicAddresses,
+        addressCluster,
         addressRelations,
         addressIds,
         bech32Prefix = conf.bech32Prefix()
       )
     val noAddresses = addresses.count()
     cassandra.store(conf.targetKeyspace(), "address", addresses)
-
-    spark.sparkContext.setJobDescription("Perform clustering")
-    println("Computing address clusters")
-    val addressCluster = transformation
-      .computeAddressCluster(regInputs, addressIds, conf.coinjoinFilter())
-      .persist()
-    cassandra.store(conf.targetKeyspace(), "address_cluster", addressCluster)
 
     println("Computing basic cluster addresses")
     val basicClusterAddresses =
