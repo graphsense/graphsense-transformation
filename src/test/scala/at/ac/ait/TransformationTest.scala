@@ -163,7 +163,9 @@ class TransformationTest
   val noAddressRelations = addressRelations.count()
 
   val addresses =
-    t.computeAddresses(basicAddresses, addressRelations, addressIds).persist()
+    t.computeAddresses(basicAddresses, addressRelations, addressIds)
+      .sort(F.addressId)
+      .persist()
   val noAddresses = addresses.count()
 
   val addressCluster =

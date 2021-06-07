@@ -5,7 +5,7 @@ USE btc_transformed;
 
 CREATE TYPE tx_id_time (
     height int,
-    tx_hash blob,
+    tx_index bigint,
     timestamp int
 );
 

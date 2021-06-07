@@ -58,7 +58,7 @@ case class TxSummary(
     totalOutput: Long
 )
 
-case class TxIdTime(height: Int, txHash: Array[Byte], timestamp: Int)
+case class TxIdTime(height: Int, txIndex: Long, timestamp: Int)
 
 case class Currency(value: Long, eur: Float, usd: Float)
 

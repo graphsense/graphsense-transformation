@@ -183,7 +183,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     val outStats = statsPart(in).toDF(idColumn, F.noOutgoingTxs, F.totalSpent)
     val txTimes = transactions.select(
       col(F.txIndex),
-      struct(F.height, F.txHash, F.timestamp)
+      struct(F.height, F.txIndex, F.timestamp)
     )
     val zeroValueIfNull = udf[Currency, Row] { b =>
       if (b != null)
