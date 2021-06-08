@@ -489,6 +489,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .join(tags, F.addressId)
       .transform(t.idGroup(F.cluster, F.clusterGroup))
       .sort(F.clusterGroup, F.cluster)
+      .drop(F.addressIdGroup, F.address)
       .as[ClusterAddressTag]
   }
 
