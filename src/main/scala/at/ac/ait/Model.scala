@@ -62,14 +62,6 @@ case class TxIdTime(height: Int, txIndex: Long, timestamp: Int)
 
 case class Currency(value: Long, eur: Float, usd: Float)
 
-case class AddressSummary(totalReceived: Currency, totalSpent: Currency)
-
-case class ClusterSummary(
-    noAddresses: Int,
-    totalReceived: Currency,
-    totalSpent: Currency
-)
-
 // raw schema tables
 
 case class Block(
@@ -302,8 +294,6 @@ case class AddressRelation(
     srcAddressId: Int,
     dstAddressIdGroup: Int,
     dstAddressId: Int,
-    srcProperties: AddressSummary,
-    dstProperties: AddressSummary,
     hasSrcLabels: Boolean,
     hasDstLabels: Boolean,
     noTransactions: Int,
@@ -324,8 +314,6 @@ case class ClusterRelation(
     srcCluster: Int,
     dstClusterGroup: Int,
     dstCluster: Int,
-    srcProperties: ClusterSummary,
-    dstProperties: ClusterSummary,
     hasSrcLabels: Boolean,
     hasDstLabels: Boolean,
     noTransactions: Int,

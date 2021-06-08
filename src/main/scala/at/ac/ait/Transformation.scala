@@ -280,14 +280,12 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   def computeAddressRelations(
       plainAddressRelations: Dataset[PlainAddressRelation],
-      addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates],
       addressTags: Dataset[AddressTag],
       txLimit: Int = 100
   ): Dataset[AddressRelation] = {
     t.addressRelations(
       plainAddressRelations,
-      addresses,
       exchangeRates,
       addressTags,
       txLimit
@@ -410,14 +408,12 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   def computeClusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelation],
-      cluster: Dataset[BasicCluster],
       exchangeRates: Dataset[ExchangeRates],
       clusterTags: Dataset[ClusterTag],
       txLimit: Int = 100
   ): Dataset[ClusterRelation] = {
     t.clusterRelations(
       plainClusterRelations,
-      cluster,
       exchangeRates,
       clusterTags,
       txLimit

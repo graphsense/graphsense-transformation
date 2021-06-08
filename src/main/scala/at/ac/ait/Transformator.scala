@@ -1,5 +1,5 @@
 package at.ac.ait
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   coalesce,
@@ -83,41 +83,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         )
     processColumns(tableWithHeight.join(exchangeRates, F.height), columns)
       .drop(F.eur, F.usd)
-  }
-
-  def toAddressSummary(received: Row, sent: Row) = {
-    AddressSummary(
-      Currency(
-        received.getAs[Long]("value"),
-        received.getAs[Float]("eur"),
-        received.getAs[Float]("usd")
-      ),
-      Currency(
-        sent.getAs[Long]("value"),
-        sent.getAs[Float]("eur"),
-        sent.getAs[Float]("usd")
-      )
-    )
-  }
-
-  def toClusterSummary(
-      noAddresses: Int,
-      received: Row,
-      sent: Row
-  ) = {
-    ClusterSummary(
-      noAddresses,
-      Currency(
-        received.getAs[Long]("value"),
-        received.getAs[Float]("eur"),
-        received.getAs[Float]("usd")
-      ),
-      Currency(
-        sent.getAs[Long]("value"),
-        sent.getAs[Float]("eur"),
-        sent.getAs[Float]("usd")
-      )
-    )
   }
 
   def addressCluster(
@@ -301,17 +266,10 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
   def addressRelations(
       plainAddressRelations: Dataset[PlainAddressRelation],
-      addresses: Dataset[BasicAddress],
       exchangeRates: Dataset[ExchangeRates],
       addressTags: Dataset[AddressTag],
       txLimit: Int
   ): Dataset[AddressRelation] = {
-
-    val props =
-      addresses.select(
-        col(F.addressId),
-        udf(toAddressSummary _).apply($"totalReceived", $"totalSpent")
-      )
 
     val addressLabels = addressTags
       .select(F.addressId)
@@ -332,8 +290,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           sum("estimatedValue.usd")
         ) as F.estimatedValue
       )
-      .join(props.toDF(F.srcAddressId, F.srcProperties), F.srcAddressId)
-      .join(props.toDF(F.dstAddressId, F.dstProperties), F.dstAddressId)
       .transform(idGroup(F.srcAddressId, F.srcAddressIdGroup))
       .transform(idGroup(F.dstAddressId, F.dstAddressIdGroup))
       .join(
@@ -395,21 +351,10 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
   def clusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelation],
-      cluster: Dataset[BasicCluster],
       exchangeRates: Dataset[ExchangeRates],
       clusterTags: Dataset[ClusterTag],
       txLimit: Int
   ) = {
-
-    val props = cluster
-      .select(
-        col(F.cluster),
-        udf(toClusterSummary _).apply(
-          col(F.noAddresses),
-          col("totalReceived"),
-          col("totalSpent")
-        )
-      )
 
     val clusterLabels = clusterTags
       .select(F.cluster)
@@ -427,8 +372,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
             sum("value.usd")
           ) as F.value
         )
-        .join(props.toDF(F.srcCluster, F.srcProperties), F.srcCluster)
-        .join(props.toDF(F.dstCluster, F.dstProperties), F.dstCluster)
         .transform(idGroup(F.srcCluster, F.srcClusterGroup))
         .transform(idGroup(F.dstCluster, F.dstClusterGroup))
         .join(

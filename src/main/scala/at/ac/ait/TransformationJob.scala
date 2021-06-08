@@ -213,7 +213,6 @@ object TransformationJob {
       transformation
         .computeAddressRelations(
           plainAddressRelations,
-          basicAddresses,
           exchangeRates,
           addressTags
         )
@@ -318,7 +317,6 @@ object TransformationJob {
       transformation
         .computeClusterRelations(
           plainClusterRelations,
-          basicCluster,
           exchangeRates,
           clusterTags
         )

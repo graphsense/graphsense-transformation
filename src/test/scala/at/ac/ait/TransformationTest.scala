@@ -143,7 +143,6 @@ class TransformationTest
   val addressRelationsLimit1 =
     t.computeAddressRelations(
         plainAddressRelations,
-        basicAddresses,
         exchangeRates,
         addressTags,
         1
@@ -154,7 +153,6 @@ class TransformationTest
   val addressRelations =
     t.computeAddressRelations(
         plainAddressRelations,
-        basicAddresses,
         exchangeRates,
         addressTags
       )
@@ -233,7 +231,6 @@ class TransformationTest
   val clusterRelationsLimit1 =
     t.computeClusterRelations(
         plainClusterRelations,
-        basicCluster,
         exchangeRates,
         clusterTags,
         1
@@ -243,7 +240,6 @@ class TransformationTest
   val clusterRelations =
     t.computeClusterRelations(
         plainClusterRelations,
-        basicCluster,
         exchangeRates,
         clusterTags
       )
