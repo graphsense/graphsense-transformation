@@ -85,24 +85,28 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .drop(F.eur, F.usd)
   }
 
-  def plainAddressCluster(basicTxInputAddresses: DataFrame, removeCoinJoin: Boolean) = {
+  def plainAddressCluster(
+      basicTxInputAddresses: DataFrame,
+      removeCoinJoin: Boolean
+  ) = {
     val addressCount = count(F.addressId).over(Window.partitionBy(F.txIndex))
 
     // filter transactions with multiple input addresses
-    val collectiveInputAddresses = (if (removeCoinJoin) {
-      println(
-        "Clustering without coinjoin inputs"
-      )
-      basicTxInputAddresses.filter(
-        col(F.coinjoin) === false
-      )
-    } else {
-      println(
-        "Clustering with coinjoin inputs"
-      )
-      basicTxInputAddresses
-    })
-      .select(col(F.txIndex), col(F.addressId), addressCount as "count")
+    val collectiveInputAddresses = {
+      if (removeCoinJoin) {
+        println(
+          "Clustering without coinjoin inputs"
+        )
+        basicTxInputAddresses.filter(
+          col(F.coinjoin) === false
+        )
+      } else {
+        println(
+          "Clustering with coinjoin inputs"
+        )
+        basicTxInputAddresses
+      }
+    }.select(col(F.txIndex), col(F.addressId), addressCount as "count")
       .filter(col("count") > 1)
       .select(col(F.txIndex), col(F.addressId))
 
@@ -181,13 +185,11 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     basicAddressCluster.union(addressClusterRemainder).toDF()
   }
 
-
   def addressCluster(
       regularInputs: Dataset[RegularInput],
       addressIds: Dataset[AddressId],
       removeCoinJoin: Boolean
   ) = {
-
 
     val inputIds = regularInputs
       .join(addressIds, Seq(F.address))
