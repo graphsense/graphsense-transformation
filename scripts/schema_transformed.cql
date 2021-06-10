@@ -24,12 +24,11 @@ CREATE TABLE exchange_rates (
 CREATE TABLE address_transactions (
     address_id_group int,
     address_id int,
-    tx_hash blob,
+    tx_index bigint,
     value bigint,
     height int,
-    tx_index int,
     timestamp int,
-    PRIMARY KEY (address_id_group, address_id, tx_hash)
+    PRIMARY KEY (address_id_group, address_id, tx_index)
 );
 
 CREATE TABLE address (
@@ -104,7 +103,7 @@ CREATE TABLE address_outgoing_relations (
     has_dst_labels boolean,
     no_transactions int,
     estimated_value FROZEN <value>,
-    tx_list list<blob>,
+    tx_list list<bigint>,
     PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
 );
 
@@ -201,7 +200,7 @@ CREATE TABLE cluster_outgoing_relations (
     has_dst_labels boolean,
     no_transactions int,
     value FROZEN <value>,
-    tx_list list<blob>,
+    tx_list list<bigint>,
     PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
 );
 

@@ -174,7 +174,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       t.toCurrencyDataFrame(exchangeRates, inOrOut, List(F.value))
         .groupBy(idColumn)
         .agg(
-          count(F.txHash).cast(IntegerType),
+          count(F.txIndex).cast(IntegerType),
           udf(Currency)
             .apply(sum("value.value"), sum("value.eur"), sum("value.usd"))
         )
@@ -234,11 +234,11 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     regInputs
       .withColumn(F.value, -col(F.value))
       .union(regOutputs.drop(F.n))
-      .groupBy(F.txHash, F.address)
+      .groupBy(F.txIndex, F.address)
       .agg(sum(F.value) as F.value)
       .join(
-        tx.select(F.txHash, F.height, F.txIndex, F.timestamp).distinct(),
-        F.txHash
+        tx.select(F.txIndex, F.height, F.timestamp).distinct(),
+        F.txIndex
       )
       .join(addressIds, Seq(F.address))
       .drop(F.addressPrefix, F.address)
@@ -364,11 +364,11 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     clusteredInputs
       .withColumn(F.value, -col(F.value))
       .union(clusteredOutputs)
-      .groupBy(F.txHash, F.cluster)
+      .groupBy(F.txIndex, F.cluster)
       .agg(sum(F.value) as F.value)
       .join(
-        transactions.select(F.txHash, F.height, F.txIndex, F.timestamp),
-        F.txHash
+        transactions.select(F.txIndex, F.height, F.txIndex, F.timestamp),
+        F.txIndex
       )
       .as[ClusterTransaction]
   }

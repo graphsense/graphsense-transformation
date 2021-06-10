@@ -125,10 +125,9 @@ case class ExchangeRates(height: Int, eur: Float, usd: Float)
 case class AddressTransaction(
     addressIdGroup: Int,
     addressId: Int,
-    txHash: Array[Byte],
+    txIndex: Long,
     value: Long,
     height: Int,
-    txIndex: Long,
     timestamp: Int
 )
 
@@ -201,10 +200,9 @@ case class ClusterAddress(
 
 case class ClusterTransaction(
     cluster: Int,
-    txHash: Array[Byte],
+    txIndex: Long,
     value: Long,
     height: Int,
-    txIndex: Long,
     timestamp: Int
 )
 
@@ -282,7 +280,7 @@ case class ClusterTagByLabel(
 )
 
 case class PlainAddressRelation(
-    txHash: Array[Byte],
+    txIndex: Long,
     srcAddressId: Int,
     dstAddressId: Int,
     height: Int,
@@ -298,11 +296,11 @@ case class AddressRelation(
     hasDstLabels: Boolean,
     noTransactions: Int,
     estimatedValue: Currency,
-    txList: Seq[Array[Byte]]
+    txList: Seq[Long]
 )
 
 case class PlainClusterRelation(
-    txHash: Array[Byte],
+    txIndex: Long,
     srcCluster: Int,
     dstCluster: Int,
     value: Long,
@@ -318,7 +316,7 @@ case class ClusterRelation(
     hasDstLabels: Boolean,
     noTransactions: Int,
     value: Currency,
-    txList: Seq[Array[Byte]]
+    txList: Seq[Long]
 )
 
 case class SummaryStatistics(

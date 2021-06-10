@@ -390,8 +390,8 @@ class TransformationTest
   test("plainClusterRelations") {
     val plainClusterRelationsRef =
       readJson[PlainClusterRelation](refDir + "plain_cluster_relations.json")
-        .sort(F.txHash)
-    val sortedRels = plainClusterRelations.sort(F.txHash)
+        .sort(F.txIndex)
+    val sortedRels = plainClusterRelations.sort(F.txIndex)
     assertDataFrameEquality(sortedRels, plainClusterRelationsRef)
   }
   test("clusterRelations") {
