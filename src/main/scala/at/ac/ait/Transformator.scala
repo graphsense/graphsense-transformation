@@ -2,6 +2,7 @@ package at.ac.ait
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
+  array,
   coalesce,
   col,
   collect_set,
@@ -13,11 +14,10 @@ import org.apache.spark.sql.functions.{
   row_number,
   substring,
   sum,
-  udf,
+  struct,
   when
 }
-import org.apache.spark.sql.types.{IntegerType, LongType}
-import scala.annotation.tailrec
+import org.apache.spark.sql.types.{FloatType, IntegerType, LongType}
 
 import at.ac.ait.{Fields => F}
 import at.ac.ait.clustering._
@@ -54,35 +54,25 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       idGroupColum: String,
       size: Int = bucketSize
   )(ds: Dataset[T]): DataFrame = {
-    ds.withColumn(idGroupColum, floor(col(idColumn) / size).cast("int"))
+    ds.withColumn(idGroupColum, floor(col(idColumn) / size).cast(IntegerType))
   }
 
-  def toCurrencyDataFrame(
-      exchangeRates: Dataset[ExchangeRates],
-      tableWithHeight: Dataset[_],
-      columns: List[String]
+  def toFiatCurrency(valueColumn: String, fiatValueColumn: String, length: Int)(
+      df: DataFrame
   ) = {
-    val toCurrency = udf[Currency, Long, Float, Float] {
-      (value, eurPrice, usdPrice) =>
-        val convert: (Long, Float) => Float =
-          (value, price) =>
-            ((value * price / 1000000 + 0.5).toLong / 100.0).toFloat
-        Currency(
-          value,
-          convert(value, eurPrice),
-          convert(value, usdPrice)
-        )
-    }
-    @tailrec
-    def processColumns(df: DataFrame, cs: List[String]): DataFrame =
-      if (cs.isEmpty) df
-      else
-        processColumns(
-          df.withColumn(cs(0), toCurrency(col(cs(0)), col(F.eur), col(F.usd))),
-          cs.tail
-        )
-    processColumns(tableWithHeight.join(exchangeRates, F.height), columns)
-      .drop(F.eur, F.usd)
+    // see `transform_values` in Spark 3
+    df.withColumn(
+      fiatValueColumn,
+      array(
+        (0 until length)
+          .map(
+            i =>
+              ((col(valueColumn) * col(fiatValueColumn)
+                .getItem(i) / 1e6 + 0.5).cast(LongType) / 100.0)
+                .cast(FloatType)
+          ): _*
+      )
+    )
   }
 
   def plainAddressCluster(
@@ -106,7 +96,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         )
         basicTxInputAddresses
       }
-    }.select(col(F.txIndex), col(F.addressId), addressCount as "count")
+    }.select(col(F.txIndex), col(F.addressId), addressCount.as("count"))
       .filter(col("count") > 1)
       .select(col(F.txIndex), col(F.addressId))
 
@@ -124,7 +114,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         .select(F.addressId)
         .join(collectiveInputAddresses, F.addressId)
         .groupBy(col(F.txIndex))
-        .agg(collect_set(F.addressId) as "inputs")
+        .agg(collect_set(F.addressId).as("inputs"))
         .select(col("inputs"))
         .as[InputIdSet]
         .rdd
@@ -154,8 +144,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         .join(transactionCount, F.addressId)
         .select(
           col(F.txIndex),
-          col(F.addressId) as reprAddrId,
-          rowNumber as "rank"
+          col(F.addressId).as(reprAddrId),
+          rowNumber.as("rank")
         )
         .filter(col("rank") === 1)
         .drop("rank")
@@ -178,7 +168,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         )
         .select(
           col("id"),
-          coalesce(col(F.cluster), col(reprAddrId)) as F.cluster
+          coalesce(col(F.cluster), col(reprAddrId)).as(F.cluster)
         )
         .as[Result[Int]]
 
@@ -223,14 +213,14 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   ): Dataset[PlainAddressRelation] = {
 
     val regularInputSum =
-      regularInputs.groupBy(F.txIndex).agg(sum(F.value) as "regularSum")
+      regularInputs.groupBy(F.txIndex).agg(sum(F.value).as("regularSum"))
     val addressInputSum =
-      inputs.groupBy(F.height, F.txIndex).agg(sum(F.value) as "addressSum")
+      inputs.groupBy(F.height, F.txIndex).agg(sum(F.value).as("addressSum"))
     val totalInput = transactions
       .withColumn("input", explode(col("inputs")))
       .select(F.txIndex, "input.value")
       .groupBy(F.txIndex)
-      .agg(sum(F.value) as F.totalInput)
+      .agg(sum(F.value).as(F.totalInput))
     val reducedInputSum =
       addressInputSum
         .join(regularInputSum, F.txIndex)
@@ -239,27 +229,28 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           col(F.height),
           col(F.txIndex),
           // regularSum == addressSum, unless input address is used as output in same tx
-          col(F.totalInput) - col("regularSum") + col("addressSum") as F.totalInput
+          (col(F.totalInput) - col("regularSum") + col("addressSum"))
+            .as(F.totalInput)
         )
 
     inputs
       .select(
         col(F.txIndex),
-        col(F.addressId) as F.srcAddressId,
-        col(F.value) as "inValue"
+        col(F.addressId).as(F.srcAddressId),
+        col(F.value).as("inValue")
       )
       .join(
         outputs.select(
           col(F.txIndex),
-          col(F.addressId) as F.dstAddressId,
-          col(F.value) as "outValue"
+          col(F.addressId).as(F.dstAddressId),
+          col(F.value).as("outValue")
         ),
         F.txIndex
       )
       .join(reducedInputSum, F.txIndex)
       .withColumn(
         F.estimatedValue,
-        round(col("inValue") / col(F.totalInput) * col("outValue")) cast LongType
+        round(col("inValue") / col(F.totalInput) * col("outValue")).cast(LongType)
       )
       .drop(F.totalInput, "inValue", "outValue")
       .as[PlainAddressRelation]
@@ -269,6 +260,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       plainAddressRelations: Dataset[PlainAddressRelation],
       exchangeRates: Dataset[ExchangeRates],
       addressTags: Dataset[AddressTag],
+      noFiatCurrencies: Int,
       txLimit: Int
   ): Dataset[AddressRelation] = {
 
@@ -277,19 +269,22 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .distinct
       .withColumn(F.hasLabels, lit(true))
 
-    val fullAddressRelations = toCurrencyDataFrame(
-      exchangeRates,
-      plainAddressRelations,
-      List(F.estimatedValue)
-    ).drop(F.height)
+    val fullAddressRelations = plainAddressRelations
+      .join(exchangeRates, Seq("height"), "left")
+      .transform(
+        toFiatCurrency(F.estimatedValue, F.fiatValues, noFiatCurrencies)
+      )
+      .drop(F.height)
       .groupBy(F.srcAddressId, F.dstAddressId)
       .agg(
-        count(F.txIndex) cast IntegerType as F.noTransactions,
-        udf(Currency).apply(
-          sum("estimatedValue.value"),
-          sum("estimatedValue.eur"),
-          sum("estimatedValue.usd")
-        ) as F.estimatedValue
+        count(F.txIndex).cast(IntegerType).as(F.noTransactions),
+        struct(
+          sum(col(F.estimatedValue)).as(F.value),
+          array(
+            (0 until noFiatCurrencies)
+              .map(i => sum(col(F.fiatValues).getItem(i)).cast(FloatType)): _*
+          ).as(F.fiatValues)
+        ).as(F.estimatedValue)
       )
       .transform(idGroup(F.srcAddressId, F.srcAddressIdGroup))
       .transform(idGroup(F.dstAddressId, F.dstAddressIdGroup))
@@ -321,7 +316,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       )
       .groupBy(F.srcAddressId, F.dstAddressId)
       .agg(
-        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txIndex))) as F.txList
+        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txIndex)))
+          .as(F.txList)
       )
 
     fullAddressRelations
@@ -336,12 +332,12 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       clusterOutputs: Dataset[ClusterTransaction]
   ) = {
     clusterInputs
-      .select(col(F.txIndex), col(F.cluster) as F.srcCluster)
+      .select(col(F.txIndex), col(F.cluster).as(F.srcCluster))
       .join(
         clusterOutputs
           .select(
             col(F.txIndex),
-            col(F.cluster) as F.dstCluster,
+            col(F.cluster).as(F.dstCluster),
             col(F.value),
             col(F.height)
           ),
@@ -354,6 +350,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       plainClusterRelations: Dataset[PlainClusterRelation],
       exchangeRates: Dataset[ExchangeRates],
       clusterTags: Dataset[ClusterTag],
+      noFiatCurrencies: Int,
       txLimit: Int
   ) = {
 
@@ -361,36 +358,41 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .select(F.cluster)
       .withColumn(F.hasLabels, lit(true))
 
-    val fullClusterRelations =
-      toCurrencyDataFrame(exchangeRates, plainClusterRelations, List(F.value))
-        .drop(F.height)
-        .groupBy(F.srcCluster, F.dstCluster)
-        .agg(
-          count(F.txIndex) cast IntegerType as F.noTransactions,
-          udf(Currency).apply(
-            sum("value.value"),
-            sum("value.eur"),
-            sum("value.usd")
-          ) as F.value
-        )
-        .transform(idGroup(F.srcCluster, F.srcClusterGroup))
-        .transform(idGroup(F.dstCluster, F.dstClusterGroup))
-        .join(
-          clusterLabels.select(
-            col(F.cluster).as(F.srcCluster),
-            col(F.hasLabels).as(F.hasSrcLabels)
-          ),
-          Seq(F.srcCluster),
-          "left"
-        )
-        .join(
-          clusterLabels.select(
-            col(F.cluster).as(F.dstCluster),
-            col(F.hasLabels).as(F.hasDstLabels)
-          ),
-          Seq(F.dstCluster),
-          "left"
-        )
+    val fullClusterRelations = plainClusterRelations
+      .join(exchangeRates, Seq(F.height), "left")
+      .transform(
+        toFiatCurrency(F.value, F.fiatValues, noFiatCurrencies)
+      )
+      .drop(F.height)
+      .groupBy(F.srcCluster, F.dstCluster)
+      .agg(
+        count(F.txIndex).cast(IntegerType).as(F.noTransactions),
+        struct(
+          sum(col(F.value)).as(F.value),
+          array(
+            (0 until noFiatCurrencies)
+              .map(i => sum(col(F.fiatValues).getItem(i)).cast(FloatType)): _*
+          ).as(F.fiatValues)
+        ).as(F.value)
+      )
+      .transform(idGroup(F.srcCluster, F.srcClusterGroup))
+      .transform(idGroup(F.dstCluster, F.dstClusterGroup))
+      .join(
+        clusterLabels.select(
+          col(F.cluster).as(F.srcCluster),
+          col(F.hasLabels).as(F.hasSrcLabels)
+        ),
+        Seq(F.srcCluster),
+        "left"
+      )
+      .join(
+        clusterLabels.select(
+          col(F.cluster).as(F.dstCluster),
+          col(F.hasLabels).as(F.hasDstLabels)
+        ),
+        Seq(F.dstCluster),
+        "left"
+      )
 
     val txList = plainClusterRelations
     // compute list column of transactions (only if #tx <= txLimit)
@@ -403,7 +405,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       )
       .groupBy(F.srcCluster, F.dstCluster)
       .agg(
-        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txIndex))) as F.txList
+        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txIndex)))
+          .as(F.txList)
       )
 
     fullClusterRelations

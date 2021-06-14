@@ -110,7 +110,8 @@ object TransformationJob {
         conf.targetKeyspace(),
         conf.bucketSize(),
         conf.bech32Prefix(),
-        conf.coinjoinFilter()
+        conf.coinjoinFilter(),
+        transformation.getFiatCurrencies(exchangeRatesRaw)
       )
     cassandra.store(
       conf.targetKeyspace(),

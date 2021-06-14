@@ -9,16 +9,14 @@ CREATE TYPE tx_id_time (
     timestamp int
 );
 
-CREATE TYPE value (
+CREATE TYPE currency (
     value bigint,
-    eur float,
-    usd float
+    fiat_values list<float>
 );
 
 CREATE TABLE exchange_rates (
     height int PRIMARY KEY,
-    usd float,
-    eur float
+    fiat_values list<float>
 );
 
 CREATE TABLE address_transactions (
@@ -40,8 +38,8 @@ CREATE TABLE address (
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
     last_tx FROZEN <tx_id_time>,
-    total_received FROZEN <value>,
-    total_spent FROZEN <value>,
+    total_received FROZEN <currency>,
+    total_spent FROZEN <currency>,
     in_degree int,
     out_degree int,
     PRIMARY KEY (address_prefix, address)
@@ -81,18 +79,13 @@ CREATE TABLE address_tag_by_label (
     PRIMARY KEY (label_norm_prefix, label_norm, label, address, currency, source, tagpack_uri)
 );
 
-CREATE TYPE address_summary (
-    total_received FROZEN <value>,
-    total_spent FROZEN <value>
-);
-
 CREATE TABLE address_incoming_relations (
     dst_address_id_group int,
     dst_address_id int,
     src_address_id int,
     has_src_labels boolean,
     no_transactions int,
-    estimated_value FROZEN <value>,
+    estimated_value FROZEN <currency>,
     PRIMARY KEY (dst_address_id_group, dst_address_id, src_address_id)
 );
 
@@ -102,7 +95,7 @@ CREATE TABLE address_outgoing_relations (
     dst_address_id int,
     has_dst_labels boolean,
     no_transactions int,
-    estimated_value FROZEN <value>,
+    estimated_value FROZEN <currency>,
     tx_list list<bigint>,
     PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
 );
@@ -115,8 +108,8 @@ CREATE TABLE cluster (
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
     last_tx FROZEN <tx_id_time>,
-    total_received FROZEN <value>,
-    total_spent FROZEN <value>,
+    total_received FROZEN <currency>,
+    total_spent FROZEN <currency>,
     in_degree int,
     out_degree int,
     PRIMARY KEY (cluster_group, cluster)
@@ -130,8 +123,8 @@ CREATE TABLE cluster_addresses (
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
     last_tx FROZEN <tx_id_time>,
-    total_received FROZEN <value>,
-    total_spent FROZEN <value>,
+    total_received FROZEN <currency>,
+    total_spent FROZEN <currency>,
     in_degree int,
     out_degree int,
     PRIMARY KEY (cluster_group, cluster, address_id)
@@ -177,19 +170,13 @@ CREATE TABLE cluster_tag_by_label (
     PRIMARY KEY (label_norm_prefix, label_norm, label, cluster, currency, source, tagpack_uri)
 );
 
-CREATE TYPE cluster_summary (
-    no_addresses int,
-    total_received FROZEN <value>,
-    total_spent FROZEN <value>
-);
-
 CREATE TABLE cluster_incoming_relations (
     dst_cluster_group int,
     dst_cluster int,
     src_cluster int,
     has_src_labels boolean,
     no_transactions int,
-    value FROZEN <value>,
+    value FROZEN <currency>,
     PRIMARY KEY (dst_cluster_group, dst_cluster, src_cluster)
 );
 
@@ -199,7 +186,7 @@ CREATE TABLE cluster_outgoing_relations (
     dst_cluster int,
     has_dst_labels boolean,
     no_transactions int,
-    value FROZEN <value>,
+    value FROZEN <currency>,
     tx_list list<bigint>,
     PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
 );
@@ -218,5 +205,6 @@ CREATE TABLE configuration (
     keyspace_name text PRIMARY KEY,
     bucket_size int,
     bech_32_prefix text,
-    coinjoin_filtering boolean
+    coinjoin_filtering boolean,
+    fiat_currencies list<text>
 );

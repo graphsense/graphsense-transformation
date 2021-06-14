@@ -60,7 +60,7 @@ case class TxSummary(
 
 case class TxIdTime(height: Int, txIndex: Long, timestamp: Int)
 
-case class Currency(value: Long, eur: Float, usd: Float)
+case class Currency(value: Long, fiatValues: Seq[Float])
 
 // raw schema tables
 
@@ -87,7 +87,10 @@ case class Transaction(
 
 case class BlockTransactions(height: Int, txs: Seq[TxSummary])
 
-case class ExchangeRatesRaw(date: String, eur: Float, usd: Float)
+case class ExchangeRatesRaw(
+    date: String,
+    fiatValues: Option[Map[String, Float]]
+  )
 
 case class AddressTagRaw(
     address: String,
@@ -120,7 +123,7 @@ case class SummaryStatisticsRaw(
 
 // transformed schema tables
 
-case class ExchangeRates(height: Int, eur: Float, usd: Float)
+case class ExchangeRates(height: Int, fiatValues: Seq[Float])
 
 case class AddressTransaction(
     addressIdGroup: Int,
@@ -333,5 +336,6 @@ case class Configuration(
     keyspaceName: String,
     bucketSize: Int,
     bech32Prefix: String,
-    coinjoinFiltering: Boolean
+    coinjoinFiltering: Boolean,
+    fiatCurrencies: Seq[String]
 )
