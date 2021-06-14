@@ -1,6 +1,8 @@
-package at.ac.ait.clustering
+package info.graphsense
 
+import info.graphsense.clustering.MultipleInputClustering
 import org.scalatest.flatspec.AnyFlatSpec
+
 import scala.collection.Seq
 
 class MultipleInputClusteringTestSpec extends AnyFlatSpec {

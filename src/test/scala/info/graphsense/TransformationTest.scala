@@ -1,4 +1,4 @@
-package at.ac.ait
+package info.graphsense
 
 import com.github.mrpowers.spark.fast.tests.DataFrameComparer
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, SparkSession}
@@ -8,7 +8,7 @@ import org.apache.spark.sql.functions.{col, lower}
 import org.apache.spark.sql.types.{DataType, StructType}
 import org.scalatest.funsuite._
 
-import at.ac.ait.{Fields => F}
+import info.graphsense.{Fields => F}
 
 trait SparkSessionTestWrapper {
 

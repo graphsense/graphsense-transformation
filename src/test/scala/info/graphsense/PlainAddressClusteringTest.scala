@@ -1,4 +1,4 @@
-package at.ac.ait
+package info.graphsense
 
 import com.github.mrpowers.spark.fast.tests.DataFrameComparer
 import org.scalatest.funsuite.AnyFunSuite

@@ -1,4 +1,4 @@
-package at.ac.ait
+package info.graphsense
 
 import java.sql.Date
 

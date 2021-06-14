@@ -1,4 +1,5 @@
-package at.ac.ait
+package info.graphsense
+
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
@@ -19,8 +20,8 @@ import org.apache.spark.sql.functions.{
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType, LongType}
 
-import at.ac.ait.{Fields => F}
-import at.ac.ait.clustering._
+import info.graphsense.{Fields => F}
+import info.graphsense.clustering._
 
 class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 

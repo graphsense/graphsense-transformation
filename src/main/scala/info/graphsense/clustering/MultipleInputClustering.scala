@@ -1,4 +1,4 @@
-package at.ac.ait.clustering
+package info.graphsense.clustering
 
 import scala.annotation.tailrec
 import scala.collection.mutable

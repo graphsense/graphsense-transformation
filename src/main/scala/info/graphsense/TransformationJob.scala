@@ -1,11 +1,11 @@
-package at.ac.ait
+package info.graphsense
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, lower}
 import org.rogach.scallop._
 
-import at.ac.ait.{Fields => F}
-import at.ac.ait.storage._
+import info.graphsense.{Fields => F}
+import info.graphsense.storage._
 
 object TransformationJob {
 

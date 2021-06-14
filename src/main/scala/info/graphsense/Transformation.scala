@@ -1,4 +1,4 @@
-package at.ac.ait
+package info.graphsense
 
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, SparkSession}
 import org.apache.spark.sql.expressions.Window
@@ -29,7 +29,7 @@ import org.apache.spark.sql.functions.{
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType, StringType}
 
-import at.ac.ait.{Fields => F}
+import info.graphsense.{Fields => F}
 
 class Transformation(spark: SparkSession, bucketSize: Int) {
 

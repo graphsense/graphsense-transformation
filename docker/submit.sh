@@ -14,7 +14,7 @@ echo -en "Starting Spark job ...\n" \
          "- Target keyspace: $TGT_KEYSPACE\n"
 
 "$SPARK_HOME"/bin/spark-submit \
-  --class "at.ac.ait.TransformationJob" \
+  --class "info.graphsense.TransformationJob" \
   --master "$SPARK_MASTER" \
   --conf spark.driver.bindAddress="0.0.0.0" \
   --conf spark.driver.host="$SPARK_DRIVER_HOST" \
