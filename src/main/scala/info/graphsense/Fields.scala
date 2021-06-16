@@ -26,6 +26,7 @@ object Fields {
   val active = "active"
   val addressId = "addressId"
   val addressIdGroup = "addressIdGroup"
+  val addressIdSecondaryGroup = "addressIdSecondaryGroup"
   val coinjoin = "coinJoin"
   val cluster = "cluster"
   val clusterGroup = "clusterGroup"

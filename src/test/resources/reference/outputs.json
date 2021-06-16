@@ -1,15 +1,15 @@
-{"txHash": "ab100004ba5dd70a143ca2359693c19fc879bb86b259870eed0de573f51d34e6", "value": 2500000, "height": 1, "txIndex": 1, "timestamp": 1230948000, "addressIdGroup": 0, "addressId": 0}
-{"txHash": "ab200013f626405ddebf1a7b2e0af34253d09e80f9ef7f981ec1ec59d6200c1f", "value": 2500000, "height": 2, "txIndex": 2, "timestamp": 1231466400, "addressIdGroup": 0, "addressId": 1}
-{"txHash": "ab20101c4ca509cd1bbb31bef15b96cc5f987e6438f770e105e41d012057930a", "value": 1480000, "height": 2, "txIndex": 3, "timestamp": 1231466400, "addressIdGroup": 1, "addressId": 2}
-{"txHash": "ab20101c4ca509cd1bbb31bef15b96cc5f987e6438f770e105e41d012057930a", "value": 495000, "height": 2, "txIndex": 3, "timestamp": 1231466400, "addressIdGroup": 1, "addressId": 3}
-{"txHash": "ab20101c4ca509cd1bbb31bef15b96cc5f987e6438f770e105e41d012057930a", "value": 495000, "height": 2, "txIndex": 3, "timestamp": 1231466400, "addressIdGroup": 2, "addressId": 4}
-{"txHash": "ab300013f626405ddebf1a7b2e0af34253d09e80f9ef7f981ec1ec59d6200c1f", "value": 2500000, "height": 3, "txIndex": 4, "timestamp": 1231552800, "addressIdGroup": 2, "addressId": 5}
-{"txHash": "ab30109910f327700e0f199972eed8ea7c6b1920e965f9cb48a92973e7325046", "value": 1325000, "height": 3, "txIndex": 5, "timestamp": 1231552800, "addressIdGroup": 3, "addressId": 6}
-{"txHash": "ab30109910f327700e0f199972eed8ea7c6b1920e965f9cb48a92973e7325046", "value": 100000, "height": 3, "txIndex": 5, "timestamp": 1231552800, "addressIdGroup": 3, "addressId": 7}
-{"txHash": "ab30109910f327700e0f199972eed8ea7c6b1920e965f9cb48a92973e7325046", "value": 2350000, "height": 3, "txIndex": 5, "timestamp": 1231552800, "addressIdGroup": 4, "addressId": 8}
-{"txHash": "ab3020c34bed7a86eef78534d72fd38c3c247c25d58be632201cb2027c9d2197", "value": 140000, "height": 3, "txIndex": 6, "timestamp": 1231552800, "addressIdGroup": 4, "addressId": 9}
-{"txHash": "ab40231bd240c232eb8a8ed1b2267fe9f76d46c892415ab74427195cce5c6cff", "value": 340000, "height": 4, "txIndex": 9, "timestamp": 1231639200, "addressIdGroup": 4, "addressId": 9}
-{"txHash": "ab4006c39b99683ac8f456721b270786c627ecb246700888315991877024b983", "value": 2500000, "height": 4, "txIndex": 7, "timestamp": 1231639200, "addressIdGroup": 5, "addressId": 10}
-{"txHash": "ab40158fdb719f333927a92f72727b996f1ebf565fce2cc83aea04b0f6902c6f", "value": 4300000, "height": 4, "txIndex": 8, "timestamp": 1231639200, "addressIdGroup": 5, "addressId": 11}
-{"txHash": "ab40158fdb719f333927a92f72727b996f1ebf565fce2cc83aea04b0f6902c6f", "value": 149000, "height": 4, "txIndex": 8, "timestamp": 1231639200, "addressIdGroup": 6, "addressId": 12}
-{"txHash": "ab403d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d", "value": 1400000, "height": 4, "txIndex": 10, "timestamp": 1231639200, "addressIdGroup": 6, "addressId": 13}
+{"txHash": "ab100004ba5dd70a143ca2359693c19fc879bb86b259870eed0de573f51d34e6", "value": 2500000, "height": 1, "txIndex": 1, "timestamp": 1230948000, "addressIdGroup": 0, "addressIdSecondaryGroup": 0, "addressId": 0}
+{"txHash": "ab200013f626405ddebf1a7b2e0af34253d09e80f9ef7f981ec1ec59d6200c1f", "value": 2500000, "height": 2, "txIndex": 2, "timestamp": 1231466400, "addressIdGroup": 0, "addressIdSecondaryGroup": 0, "addressId": 1}
+{"txHash": "ab20101c4ca509cd1bbb31bef15b96cc5f987e6438f770e105e41d012057930a", "value": 1480000, "height": 2, "txIndex": 3, "timestamp": 1231466400, "addressIdGroup": 1, "addressIdSecondaryGroup": 0, "addressId": 2}
+{"txHash": "ab20101c4ca509cd1bbb31bef15b96cc5f987e6438f770e105e41d012057930a", "value": 495000, "height": 2, "txIndex": 3, "timestamp": 1231466400, "addressIdGroup": 1, "addressIdSecondaryGroup": 0, "addressId": 3}
+{"txHash": "ab20101c4ca509cd1bbb31bef15b96cc5f987e6438f770e105e41d012057930a", "value": 495000, "height": 2, "txIndex": 3, "timestamp": 1231466400, "addressIdGroup": 2, "addressIdSecondaryGroup": 0, "addressId": 4}
+{"txHash": "ab300013f626405ddebf1a7b2e0af34253d09e80f9ef7f981ec1ec59d6200c1f", "value": 2500000, "height": 3, "txIndex": 4, "timestamp": 1231552800, "addressIdGroup": 2, "addressIdSecondaryGroup": 0, "addressId": 5}
+{"txHash": "ab30109910f327700e0f199972eed8ea7c6b1920e965f9cb48a92973e7325046", "value": 1325000, "height": 3, "txIndex": 5, "timestamp": 1231552800, "addressIdGroup": 3, "addressIdSecondaryGroup": 0, "addressId": 6}
+{"txHash": "ab30109910f327700e0f199972eed8ea7c6b1920e965f9cb48a92973e7325046", "value": 100000, "height": 3, "txIndex": 5, "timestamp": 1231552800, "addressIdGroup": 3, "addressIdSecondaryGroup": 0, "addressId": 7}
+{"txHash": "ab30109910f327700e0f199972eed8ea7c6b1920e965f9cb48a92973e7325046", "value": 2350000, "height": 3, "txIndex": 5, "timestamp": 1231552800, "addressIdGroup": 4, "addressIdSecondaryGroup": 0, "addressId": 8}
+{"txHash": "ab3020c34bed7a86eef78534d72fd38c3c247c25d58be632201cb2027c9d2197", "value": 140000, "height": 3, "txIndex": 6, "timestamp": 1231552800, "addressIdGroup": 4, "addressIdSecondaryGroup": 0, "addressId": 9}
+{"txHash": "ab40231bd240c232eb8a8ed1b2267fe9f76d46c892415ab74427195cce5c6cff", "value": 340000, "height": 4, "txIndex": 9, "timestamp": 1231639200, "addressIdGroup": 4, "addressIdSecondaryGroup": 0, "addressId": 9}
+{"txHash": "ab4006c39b99683ac8f456721b270786c627ecb246700888315991877024b983", "value": 2500000, "height": 4, "txIndex": 7, "timestamp": 1231639200, "addressIdGroup": 5, "addressIdSecondaryGroup": 0, "addressId": 10}
+{"txHash": "ab40158fdb719f333927a92f72727b996f1ebf565fce2cc83aea04b0f6902c6f", "value": 4300000, "height": 4, "txIndex": 8, "timestamp": 1231639200, "addressIdGroup": 5, "addressIdSecondaryGroup": 0, "addressId": 11}
+{"txHash": "ab40158fdb719f333927a92f72727b996f1ebf565fce2cc83aea04b0f6902c6f", "value": 149000, "height": 4, "txIndex": 8, "timestamp": 1231639200, "addressIdGroup": 6, "addressIdSecondaryGroup": 0, "addressId": 12}
+{"txHash": "ab403d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d", "value": 1400000, "height": 4, "txIndex": 10, "timestamp": 1231639200, "addressIdGroup": 6, "addressIdSecondaryGroup": 0, "addressId": 13}

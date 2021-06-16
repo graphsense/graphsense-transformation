@@ -21,12 +21,18 @@ CREATE TABLE exchange_rates (
 
 CREATE TABLE address_transactions (
     address_id_group int,
+    address_id_secondary_group int,
     address_id int,
     tx_index bigint,
     value bigint,
     height int,
     timestamp int,
-    PRIMARY KEY (address_id_group, address_id, tx_index)
+    PRIMARY KEY ((address_id_group, address_id_secondary_group), address_id, tx_index)
+);
+
+CREATE TABLE address_transactions_secondary_ids (
+    address_id_group int PRIMARY KEY,
+    max_secondary_id int
 );
 
 CREATE TABLE address (

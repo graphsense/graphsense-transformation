@@ -157,6 +157,17 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .as[RegularOutput]
   }
 
+  def computeSecondaryPartitionIdLookup[T: Encoder](
+      df: DataFrame,
+      primaryPartitionColumn: String,
+      secondaryPartitionColumn: String
+  ): Dataset[T] = {
+    df.groupBy(primaryPartitionColumn)
+      .agg(max(secondaryPartitionColumn).as("maxSecondaryId"))
+      // to save storage space, store only records with multiple secondary IDs
+      .filter(col("maxSecondaryId") > 0)
+      .as[T]
+  }
   def computeAddressIds(
       regularOutputs: Dataset[RegularOutput]
   ): Dataset[AddressId] = {
@@ -181,14 +192,14 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   ): Dataset[AddressByIdGroup] = {
     addressIds
       .select(F.addressId, F.address)
-      .transform(t.idGroup(F.addressId, F.addressIdGroup))
+      .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
       .as[AddressByIdGroup]
   }
 
-  def splitTransactions[A](txTable: Dataset[A])(implicit evidence: Encoder[A]) =
+  def splitTransactions[A](transactions: Dataset[A])(implicit evidence: Encoder[A]) =
     (
-      txTable.filter(col(F.value) < 0).withColumn(F.value, -col(F.value)).as[A],
-      txTable.filter(col(F.value) > 0)
+      transactions.filter(col(F.value) < 0).withColumn(F.value, -col(F.value)).as[A],
+      transactions.filter(col(F.value) > 0)
     )
 
   def computeStatistics[A](
@@ -301,8 +312,15 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       )
       .join(addressIds, Seq(F.address))
       .drop(F.addressPrefix, F.address)
-      .transform(t.idGroup(F.addressId, F.addressIdGroup))
+      .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
       .sort(F.addressIdGroup, F.addressId)
+      .transform(
+        t.withSecondaryIdGroup(
+          F.addressIdGroup,
+          F.addressIdSecondaryGroup,
+          F.txIndex
+        )
+      )
       .as[AddressTransaction]
   }
 
@@ -368,7 +386,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       F.addressId
     ).join(addressIds, Seq(F.addressId))
       .transform(
-        t.addressPrefix(F.address, F.addressPrefix, bech32Prefix = bech32Prefix)
+        t.withAddressPrefix(F.address, F.addressPrefix, bech32Prefix = bech32Prefix)
       )
       .join(addressCluster, Seq(F.addressId), "left")
       .sort(F.addressPrefix)
@@ -390,7 +408,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         "lastmod",
         unix_timestamp(col("lastmod"), "yyyy-dd-MM").cast(IntegerType)
       )
-      .transform(t.idGroup(F.addressId, F.addressIdGroup))
+      .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
       .sort(F.addressIdGroup, F.addressId)
       .as[AddressTag]
   }
@@ -491,7 +509,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         Seq(F.addressId),
         "left"
       )
-      .transform(t.idGroup(F.cluster, F.clusterGroup))
+      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
       .as[ClusterAddress]
   }
 
@@ -514,7 +532,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         "right"
       )
       .withColumn(F.cluster, col(F.cluster).cast(IntegerType))
-      .transform(t.idGroup(F.cluster, F.clusterGroup))
+      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
       .sort(F.clusterGroup, F.cluster)
       .as[Cluster]
   }
@@ -537,7 +555,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         "lastmod",
         unix_timestamp(col("lastmod"), "yyyy-dd-MM").cast(IntegerType)
       )
-      .transform(t.idGroup(F.cluster, F.clusterGroup))
+      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
       .sort(F.clusterGroup, F.cluster)
       .as[ClusterTag]
   }
@@ -548,7 +566,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   ): Dataset[ClusterAddressTag] = {
     addressCluster
       .join(tags, F.addressId)
-      .transform(t.idGroup(F.cluster, F.clusterGroup))
+      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
       .sort(F.clusterGroup, F.cluster)
       .drop(F.addressIdGroup, F.address)
       .as[ClusterAddressTag]

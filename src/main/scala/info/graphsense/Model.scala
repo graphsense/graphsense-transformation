@@ -127,11 +127,17 @@ case class ExchangeRates(height: Int, fiatValues: Seq[Float])
 
 case class AddressTransaction(
     addressIdGroup: Int,
+    addressIdSecondaryGroup: Int,
     addressId: Int,
     txIndex: Long,
     value: Long,
     height: Int,
     timestamp: Int
+)
+
+case class AddressTransactionSecondaryIds(
+    addressIdGroup: Int,
+    maxSecondaryId: Int
 )
 
 case class BasicAddress(

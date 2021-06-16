@@ -158,6 +158,18 @@ object TransformationJob {
       "address_transactions",
       addressTransactions
     )
+    val addressTransactionsSecondaryIds =
+      transformation
+        .computeSecondaryPartitionIdLookup[AddressTransactionSecondaryIds](
+          addressTransactions.toDF,
+          "addressIdGroup",
+          "addressIdSecondaryGroup"
+        )
+    cassandra.store(
+      conf.targetKeyspace(),
+      "address_transactions_secondary_ids",
+      addressTransactionsSecondaryIds
+    )
 
     val (inputs, outputs) =
       transformation.splitTransactions(addressTransactions)

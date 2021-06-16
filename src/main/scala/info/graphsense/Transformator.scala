@@ -14,8 +14,8 @@ import org.apache.spark.sql.functions.{
   round,
   row_number,
   substring,
-  sum,
   struct,
+  sum,
   when
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType, LongType}
@@ -27,7 +27,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
   import spark.implicits._
 
-  def addressPrefix[T](
+  def withAddressPrefix[T](
       addressColumn: String,
       prefixColumn: String,
       length: Int = 5,
@@ -50,13 +50,41 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     }
   }
 
-  def idGroup[T](
+  def withIdGroup[T](
       idColumn: String,
       idGroupColum: String,
       size: Int = bucketSize
   )(ds: Dataset[T]): DataFrame = {
     ds.withColumn(idGroupColum, floor(col(idColumn) / size).cast(IntegerType))
   }
+
+  def withSecondaryIdGroup[T](
+      idColumn: String,
+      secondaryIdColumn: String,
+      windowOrderColumn: String,
+      skewedPartitionFactor: Float = 2.5f
+  )(ds: Dataset[T]): DataFrame = {
+    val partitionSize =
+      ds.select(col(idColumn)).groupBy(idColumn).count().persist()
+    val noPartitions = partitionSize.count()
+    val approxMedian = partitionSize
+      .sort(col("count").asc)
+      .select(col("count"))
+      .rdd
+      .zipWithIndex
+      .filter(_._2 == noPartitions / 2)
+      .map(_._1)
+      .first()
+      .getLong(0)
+    val window = Window.partitionBy(idColumn).orderBy(windowOrderColumn)
+    ds.withColumn(
+      secondaryIdColumn,
+      floor(
+        row_number().over(window) / (approxMedian * skewedPartitionFactor)
+      ).cast(IntegerType)
+    )
+  }
+
 
   def toFiatCurrency(valueColumn: String, fiatValueColumn: String, length: Int)(
       df: DataFrame
@@ -287,8 +315,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           ).as(F.fiatValues)
         ).as(F.estimatedValue)
       )
-      .transform(idGroup(F.srcAddressId, F.srcAddressIdGroup))
-      .transform(idGroup(F.dstAddressId, F.dstAddressIdGroup))
+      .transform(withIdGroup(F.srcAddressId, F.srcAddressIdGroup))
+      .transform(withIdGroup(F.dstAddressId, F.dstAddressIdGroup))
       .join(
         addressLabels.select(
           col(F.addressId).as(F.srcAddressId),
@@ -376,8 +404,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           ).as(F.fiatValues)
         ).as(F.value)
       )
-      .transform(idGroup(F.srcCluster, F.srcClusterGroup))
-      .transform(idGroup(F.dstCluster, F.dstClusterGroup))
+      .transform(withIdGroup(F.srcCluster, F.srcClusterGroup))
+      .transform(withIdGroup(F.dstCluster, F.dstClusterGroup))
       .join(
         clusterLabels.select(
           col(F.cluster).as(F.srcCluster),
