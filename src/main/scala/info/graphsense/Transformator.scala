@@ -315,8 +315,25 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           ).as(F.fiatValues)
         ).as(F.estimatedValue)
       )
+      // add partitioning columns for outgoing addresses
       .transform(withIdGroup(F.srcAddressId, F.srcAddressIdGroup))
+      .transform(
+        withSecondaryIdGroup(
+          F.srcAddressIdGroup,
+          F.srcAddressIdSecondaryGroup,
+          F.srcAddressId
+        )
+      )
+      // add partitioning columns for incoming addresses
       .transform(withIdGroup(F.dstAddressId, F.dstAddressIdGroup))
+      .transform(
+        withSecondaryIdGroup(
+          F.dstAddressIdGroup,
+          F.dstAddressIdSecondaryGroup,
+          F.dstAddressId
+        )
+      )
+      // flag tagged src addresses
       .join(
         addressLabels.select(
           col(F.addressId).as(F.srcAddressId),
@@ -325,6 +342,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         Seq(F.srcAddressId),
         "left"
       )
+      // flag tagged dst addresses
       .join(
         addressLabels.select(
           col(F.addressId).as(F.dstAddressId),
@@ -404,8 +422,25 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           ).as(F.fiatValues)
         ).as(F.value)
       )
+      // add partitioning columns for outgoing clusters
       .transform(withIdGroup(F.srcCluster, F.srcClusterGroup))
+      .transform(
+        withSecondaryIdGroup(
+          F.srcClusterGroup,
+          F.srcClusterSecondaryGroup,
+          F.srcCluster
+        )
+      )
+      // add partitioning columns for incoming clusters
       .transform(withIdGroup(F.dstCluster, F.dstClusterGroup))
+      .transform(
+        withSecondaryIdGroup(
+          F.dstClusterGroup,
+          F.dstClusterSecondaryGroup,
+          F.dstCluster
+        )
+      )
+      // flag tagged src clusters
       .join(
         clusterLabels.select(
           col(F.cluster).as(F.srcCluster),
@@ -414,6 +449,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         Seq(F.srcCluster),
         "left"
       )
+      // flag tagged dst clusters
       .join(
         clusterLabels.select(
           col(F.cluster).as(F.dstCluster),

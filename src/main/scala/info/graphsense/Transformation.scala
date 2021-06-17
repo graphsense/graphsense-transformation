@@ -166,6 +166,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .agg(max(secondaryPartitionColumn).as("maxSecondaryId"))
       // to save storage space, store only records with multiple secondary IDs
       .filter(col("maxSecondaryId") > 0)
+      .sort(primaryPartitionColumn)
       .as[T]
   }
   def computeAddressIds(
@@ -313,7 +314,6 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .join(addressIds, Seq(F.address))
       .drop(F.addressPrefix, F.address)
       .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
-      .sort(F.addressIdGroup, F.addressId)
       .transform(
         t.withSecondaryIdGroup(
           F.addressIdGroup,
@@ -321,6 +321,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
           F.txIndex
         )
       )
+      .sort(F.addressIdGroup, F.addressIdSecondaryGroup, F.addressId)
       .as[AddressTransaction]
   }
 

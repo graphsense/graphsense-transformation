@@ -87,23 +87,35 @@ CREATE TABLE address_tag_by_label (
 
 CREATE TABLE address_incoming_relations (
     dst_address_id_group int,
+    dst_address_id_secondary_group int,
     dst_address_id int,
     src_address_id int,
     has_src_labels boolean,
     no_transactions int,
     estimated_value FROZEN <currency>,
-    PRIMARY KEY (dst_address_id_group, dst_address_id, src_address_id)
+    PRIMARY KEY ((dst_address_id_group, dst_address_id_secondary_group), dst_address_id, src_address_id)
+);
+
+CREATE TABLE address_incoming_relations_secondary_ids (
+    dst_address_id_group int PRIMARY KEY,
+    max_secondary_id int
 );
 
 CREATE TABLE address_outgoing_relations (
     src_address_id_group int,
+    src_address_id_secondary_group int,
     src_address_id int,
     dst_address_id int,
     has_dst_labels boolean,
     no_transactions int,
     estimated_value FROZEN <currency>,
     tx_list list<bigint>,
-    PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
+    PRIMARY KEY ((src_address_id_group, src_address_id_secondary_group), src_address_id, dst_address_id)
+);
+
+CREATE TABLE address_outgoing_relations_secondary_ids (
+    src_address_id_group int PRIMARY KEY,
+    max_secondary_id int
 );
 
 CREATE TABLE cluster (
@@ -178,23 +190,35 @@ CREATE TABLE cluster_tag_by_label (
 
 CREATE TABLE cluster_incoming_relations (
     dst_cluster_group int,
+    dst_cluster_secondary_group int,
     dst_cluster int,
     src_cluster int,
     has_src_labels boolean,
     no_transactions int,
     value FROZEN <currency>,
-    PRIMARY KEY (dst_cluster_group, dst_cluster, src_cluster)
+    PRIMARY KEY ((dst_cluster_group, dst_cluster_secondary_group), dst_cluster, src_cluster)
+);
+
+CREATE TABLE cluster_incoming_relations_secondary_ids (
+    dst_cluster_group int PRIMARY KEY,
+    max_secondary_id int
 );
 
 CREATE TABLE cluster_outgoing_relations (
     src_cluster_group int,
+    src_cluster_secondary_group int,
     src_cluster int,
     dst_cluster int,
     has_dst_labels boolean,
     no_transactions int,
     value FROZEN <currency>,
     tx_list list<bigint>,
-    PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
+    PRIMARY KEY ((src_cluster_group, src_cluster_secondary_group), src_cluster, dst_cluster)
+);
+
+CREATE TABLE cluster_outgoing_relations_secondary_ids (
+    src_cluster_group int PRIMARY KEY,
+    max_secondary_id int
 );
 
 CREATE TABLE summary_statistics (
