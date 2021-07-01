@@ -28,16 +28,10 @@ case class AddressId(
     addressId: Int
 )
 
-case class AddressIdByAddress(
+case class AddressByAddressPrefix(
     addressPrefix: String,
     address: String,
     addressId: Int
-)
-
-case class AddressByIdGroup(
-    addressIdGroup: Int,
-    addressId: Int,
-    address: String
 )
 
 case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
@@ -145,9 +139,9 @@ case class BasicAddress(
 )
 
 case class Address(
-    addressPrefix: String,
-    address: String,
+    addressIdGroup: Int,
     addressId: Int,
+    address: String,
     cluster: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,

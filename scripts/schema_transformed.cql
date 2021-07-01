@@ -30,9 +30,9 @@ CREATE TABLE address_transactions (
 );
 
 CREATE TABLE address (
-    address_prefix text,
-    address text,
+    address_id_group int,
     address_id int,
+    address text,
     cluster int,
     no_incoming_txs int,
     no_outgoing_txs int,
@@ -42,14 +42,14 @@ CREATE TABLE address (
     total_spent FROZEN <currency>,
     in_degree int,
     out_degree int,
-    PRIMARY KEY (address_prefix, address)
+    PRIMARY KEY (address_id_group, address_id)
 );
 
-CREATE TABLE address_by_id_group (
-    address_id_group int,
-    address_id int,
+CREATE TABLE address_by_address_prefix (
+    address_prefix text,
     address text,
-    PRIMARY KEY (address_id_group, address_id)
+    address_id int,
+    PRIMARY KEY (address_prefix, address)
 );
 
 CREATE TABLE address_tags (

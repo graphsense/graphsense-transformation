@@ -176,13 +176,16 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .toDS()
   }
 
-  def computeAddressByIdGroups(
-      addressIds: Dataset[AddressId]
-  ): Dataset[AddressByIdGroup] = {
+  def computeAddressByAddressPrefix(
+      addressIds: Dataset[AddressId],
+      bech32Prefix: String = ""
+  ): Dataset[AddressByAddressPrefix] = {
     addressIds
       .select(F.addressId, F.address)
-      .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
-      .as[AddressByIdGroup]
+      .transform(
+        t.withAddressPrefix(F.address, F.addressPrefix, bech32Prefix = bech32Prefix)
+      )
+      .as[AddressByAddressPrefix]
   }
 
   def splitTransactions[A](transactions: Dataset[A])(implicit evidence: Encoder[A]) =
@@ -356,8 +359,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       basicAddresses: Dataset[BasicAddress],
       addressCluster: Dataset[AddressCluster],
       addressRelations: Dataset[AddressRelation],
-      addressIds: Dataset[AddressId],
-      bech32Prefix: String = ""
+      addressIds: Dataset[AddressId]
   ): Dataset[Address] = {
     // compute in/out degrees for address graph
     computeNodeDegrees(
@@ -367,11 +369,9 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       F.dstAddressId,
       F.addressId
     ).join(addressIds, Seq(F.addressId))
-      .transform(
-        t.withAddressPrefix(F.address, F.addressPrefix, bech32Prefix = bech32Prefix)
-      )
+      .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
       .join(addressCluster, Seq(F.addressId), "left")
-      .sort(F.addressPrefix)
+      .sort(F.addressId)
       .as[Address]
   }
 

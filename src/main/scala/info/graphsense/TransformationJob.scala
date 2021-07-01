@@ -136,11 +136,14 @@ object TransformationJob {
     val addressIds =
       transformation.computeAddressIds(regOutputs)
 
-    val addressByIdGroup = transformation.computeAddressByIdGroups(addressIds)
+    val addressByAddressPrefix = transformation.computeAddressByAddressPrefix(
+      addressIds,
+      bech32Prefix = conf.bech32Prefix()
+    )
     cassandra.store(
       conf.targetKeyspace(),
-      "address_by_id_group",
-      addressByIdGroup
+      "address_by_address_prefix",
+      addressByAddressPrefix
     )
 
     println("Computing address transactions")
@@ -242,8 +245,7 @@ object TransformationJob {
         basicAddresses,
         addressCluster,
         addressRelations,
-        addressIds,
-        bech32Prefix = conf.bech32Prefix()
+        addressIds
       )
     val noAddresses = addresses.count()
     cassandra.store(conf.targetKeyspace(), "address", addresses)
