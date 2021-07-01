@@ -119,14 +119,6 @@ CREATE TABLE cluster_addresses (
     cluster_group int,
     cluster int,
     address_id int,
-    no_incoming_txs int,
-    no_outgoing_txs int,
-    first_tx FROZEN <tx_id_time>,
-    last_tx FROZEN <tx_id_time>,
-    total_received FROZEN <currency>,
-    total_spent FROZEN <currency>,
-    in_degree int,
-    out_degree int,
     PRIMARY KEY (cluster_group, cluster, address_id)
 );
 

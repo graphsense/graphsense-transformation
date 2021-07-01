@@ -250,11 +250,16 @@ object TransformationJob {
     val noAddresses = addresses.count()
     cassandra.store(conf.targetKeyspace(), "address", addresses)
 
-    println("Computing basic cluster addresses")
-    val basicClusterAddresses =
+    println("Computing cluster addresses")
+    val clusterAddresses =
       transformation
-        .computeBasicClusterAddresses(basicAddresses, addressCluster)
+        .computeClusterAddresses(addressCluster)
         .persist()
+    cassandra.store(
+      conf.targetKeyspace(),
+      "cluster_addresses",
+      clusterAddresses
+    )
 
     println("Computing cluster transactions")
     val clusterTransactions =
@@ -277,7 +282,7 @@ object TransformationJob {
       transformation
         .computeBasicCluster(
           transactions,
-          basicClusterAddresses,
+          clusterAddresses,
           clusterTransactions,
           clusterInputs,
           clusterOutputs,
@@ -350,17 +355,6 @@ object TransformationJob {
         .persist()
     val noCluster = cluster.count()
     cassandra.store(conf.targetKeyspace(), "cluster", cluster)
-
-    println("Computing cluster addresses")
-    val clusterAddresses =
-      transformation
-        .computeClusterAddresses(addresses, basicClusterAddresses)
-        .persist()
-    cassandra.store(
-      conf.targetKeyspace(),
-      "cluster_addresses",
-      clusterAddresses
-    )
 
     println("Computing summary statistics")
     val summaryStatistics =

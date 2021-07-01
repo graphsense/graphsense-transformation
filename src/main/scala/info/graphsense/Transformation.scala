@@ -403,14 +403,13 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     t.addressCluster(regularInputs, addressIds, removeCoinJoin)
   }
 
-  def computeBasicClusterAddresses(
-      basicAddresses: Dataset[BasicAddress],
+  def computeClusterAddresses(
       addressCluster: Dataset[AddressCluster]
-  ): Dataset[BasicClusterAddress] = {
+  ): Dataset[ClusterAddress] = {
     addressCluster
-      .join(basicAddresses, Seq(F.addressId))
-      .as[BasicClusterAddress]
+      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
       .sort(F.cluster, F.addressId)
+      .as[ClusterAddress]
   }
 
   def computeClusterTransactions(
@@ -435,14 +434,14 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   def computeBasicCluster(
       transactions: Dataset[Transaction],
-      basicClusterAddresses: Dataset[BasicClusterAddress],
+      clusterAddresses: Dataset[ClusterAddress],
       clusterTransactions: Dataset[ClusterTransaction],
       clusterInputs: Dataset[ClusterTransaction],
       clusterOutputs: Dataset[ClusterTransaction],
       exchangeRates: Dataset[ExchangeRates]
   ): Dataset[BasicCluster] = {
     val noAddresses =
-      basicClusterAddresses
+      clusterAddresses
         .groupBy(F.cluster)
         .agg(count("*").cast(IntegerType).as(F.noAddresses))
     computeStatistics(
@@ -479,20 +478,6 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       noFiatCurrencies.get,
       txLimit
     )
-  }
-
-  def computeClusterAddresses(
-      addresses: Dataset[Address],
-      basicClusterAddresses: Dataset[BasicClusterAddress]
-  ): Dataset[ClusterAddress] = {
-    basicClusterAddresses
-      .join(
-        addresses.select(col(F.addressId), col("inDegree"), col("outDegree")),
-        Seq(F.addressId),
-        "left"
-      )
-      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
-      .as[ClusterAddress]
   }
 
   def computeCluster(

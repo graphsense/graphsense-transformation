@@ -182,8 +182,8 @@ class TransformationTest
       .sort(F.addressId)
       .persist()
 
-  val basicClusterAddresses =
-    t.computeBasicClusterAddresses(basicAddresses, addressClusterCoinjoin)
+  val clusterAddresses =
+    t.computeClusterAddresses(addressClusterCoinjoin)
       .sort(F.cluster, F.addressId)
       .persist()
 
@@ -204,7 +204,7 @@ class TransformationTest
   val basicCluster =
     t.computeBasicCluster(
         transactions,
-        basicClusterAddresses,
+        clusterAddresses,
         clusterTransactions,
         clusterInputs,
         clusterOutputs,
@@ -251,11 +251,6 @@ class TransformationTest
       .sort(F.cluster)
       .persist()
   val noCluster = cluster.count()
-
-  val clusterAddresses =
-    t.computeClusterAddresses(addresses, basicClusterAddresses)
-      .sort(F.cluster, F.addressId)
-      .persist()
 
   val addressTagsByLabel =
     t.computeAddressTagsByLabel(addressTagsRaw, addressTags, "BTC").persist()
@@ -348,11 +343,6 @@ class TransformationTest
     val addressClusterRef =
       readJson[AddressCluster](refDir + "address_cluster_with_coinjoin.json")
     assertDataFrameEquality(addressClusterCoinjoin, addressClusterRef)
-  }
-  test("basicClusterAddresses") {
-    val basicClusterAddressesRef =
-      readJson[BasicClusterAddress](refDir + "basic_cluster_addresses.json")
-    assertDataFrameEquality(basicClusterAddresses, basicClusterAddressesRef)
   }
   test("clusterTransactions") {
     val clusterTransactionsRef =
