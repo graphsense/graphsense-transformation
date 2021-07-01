@@ -127,17 +127,11 @@ case class ExchangeRates(height: Int, fiatValues: Seq[Float])
 
 case class AddressTransaction(
     addressIdGroup: Int,
-    addressIdSecondaryGroup: Int,
     addressId: Int,
     txIndex: Long,
     value: Long,
     height: Int,
     timestamp: Int
-)
-
-case class AddressTransactionSecondaryIds(
-    addressIdGroup: Int,
-    maxSecondaryId: Int
 )
 
 case class BasicAddress(
@@ -298,26 +292,14 @@ case class PlainAddressRelation(
 
 case class AddressRelation(
     srcAddressIdGroup: Int,
-    srcAddressIdSecondaryGroup: Int,
     srcAddressId: Int,
     dstAddressIdGroup: Int,
-    dstAddressIdSecondaryGroup: Int,
     dstAddressId: Int,
     hasSrcLabels: Boolean,
     hasDstLabels: Boolean,
     noTransactions: Int,
     estimatedValue: Currency,
     txList: Seq[Long]
-)
-
-case class AddressOutgoingRelationSecondaryIds(
-    srcAddressIdGroup: Int,
-    maxSecondaryId: Int
-)
-
-case class AddressIncomingRelationSecondaryIds(
-    dstAddressIdGroup: Int,
-    maxSecondaryId: Int
 )
 
 case class PlainClusterRelation(
@@ -330,26 +312,14 @@ case class PlainClusterRelation(
 
 case class ClusterRelation(
     srcClusterGroup: Int,
-    srcClusterSecondaryGroup: Int,
     srcCluster: Int,
     dstClusterGroup: Int,
-    dstClusterSecondaryGroup: Int,
     dstCluster: Int,
     hasSrcLabels: Boolean,
     hasDstLabels: Boolean,
     noTransactions: Int,
     value: Currency,
     txList: Seq[Long]
-)
-
-case class ClusterOutgoingRelationSecondaryIds(
-    srcClusterGroup: Int,
-    maxSecondaryId: Int
-)
-
-case class ClusterIncomingRelationSecondaryIds(
-    dstClusterGroup: Int,
-    maxSecondaryId: Int
 )
 
 case class SummaryStatistics(

@@ -157,18 +157,6 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .as[RegularOutput]
   }
 
-  def computeSecondaryPartitionIdLookup[T: Encoder](
-      df: DataFrame,
-      primaryPartitionColumn: String,
-      secondaryPartitionColumn: String
-  ): Dataset[T] = {
-    df.groupBy(primaryPartitionColumn)
-      .agg(max(secondaryPartitionColumn).as("maxSecondaryId"))
-      // to save storage space, store only records with multiple secondary IDs
-      .filter(col("maxSecondaryId") > 0)
-      .sort(primaryPartitionColumn)
-      .as[T]
-  }
   def computeAddressIds(
       regularOutputs: Dataset[RegularOutput]
   ): Dataset[AddressId] = {
@@ -314,14 +302,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       .join(addressIds, Seq(F.address))
       .drop(F.addressPrefix, F.address)
       .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
-      .transform(
-        t.withSecondaryIdGroup(
-          F.addressIdGroup,
-          F.addressIdSecondaryGroup,
-          F.txIndex
-        )
-      )
-      .sort(F.addressIdGroup, F.addressIdSecondaryGroup, F.addressId)
+      .sort(F.addressIdGroup, F.addressId)
       .as[AddressTransaction]
   }
 

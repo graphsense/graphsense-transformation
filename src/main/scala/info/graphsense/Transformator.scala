@@ -58,34 +58,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     ds.withColumn(idGroupColum, floor(col(idColumn) / size).cast(IntegerType))
   }
 
-  def withSecondaryIdGroup[T](
-      idColumn: String,
-      secondaryIdColumn: String,
-      windowOrderColumn: String,
-      skewedPartitionFactor: Float = 2.5f
-  )(ds: Dataset[T]): DataFrame = {
-    val partitionSize =
-      ds.select(col(idColumn)).groupBy(idColumn).count().persist()
-    val noPartitions = partitionSize.count()
-    val approxMedian = partitionSize
-      .sort(col("count").asc)
-      .select(col("count"))
-      .rdd
-      .zipWithIndex
-      .filter(_._2 == noPartitions / 2)
-      .map(_._1)
-      .first()
-      .getLong(0)
-    val window = Window.partitionBy(idColumn).orderBy(windowOrderColumn)
-    ds.withColumn(
-      secondaryIdColumn,
-      floor(
-        row_number().over(window) / (approxMedian * skewedPartitionFactor)
-      ).cast(IntegerType)
-    )
-  }
-
-
   def toFiatCurrency(valueColumn: String, fiatValueColumn: String, length: Int)(
       df: DataFrame
   ) = {
@@ -317,22 +289,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       )
       // add partitioning columns for outgoing addresses
       .transform(withIdGroup(F.srcAddressId, F.srcAddressIdGroup))
-      .transform(
-        withSecondaryIdGroup(
-          F.srcAddressIdGroup,
-          F.srcAddressIdSecondaryGroup,
-          F.srcAddressId
-        )
-      )
       // add partitioning columns for incoming addresses
       .transform(withIdGroup(F.dstAddressId, F.dstAddressIdGroup))
-      .transform(
-        withSecondaryIdGroup(
-          F.dstAddressIdGroup,
-          F.dstAddressIdSecondaryGroup,
-          F.dstAddressId
-        )
-      )
       // flag tagged src addresses
       .join(
         addressLabels.select(
@@ -424,22 +382,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       )
       // add partitioning columns for outgoing clusters
       .transform(withIdGroup(F.srcCluster, F.srcClusterGroup))
-      .transform(
-        withSecondaryIdGroup(
-          F.srcClusterGroup,
-          F.srcClusterSecondaryGroup,
-          F.srcCluster
-        )
-      )
       // add partitioning columns for incoming clusters
       .transform(withIdGroup(F.dstCluster, F.dstClusterGroup))
-      .transform(
-        withSecondaryIdGroup(
-          F.dstClusterGroup,
-          F.dstClusterSecondaryGroup,
-          F.dstCluster
-        )
-      )
       // flag tagged src clusters
       .join(
         clusterLabels.select(

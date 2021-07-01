@@ -158,18 +158,6 @@ object TransformationJob {
       "address_transactions",
       addressTransactions
     )
-    val addressTransactionsSecondaryIds =
-      transformation
-        .computeSecondaryPartitionIdLookup[AddressTransactionSecondaryIds](
-          addressTransactions.toDF,
-          "addressIdGroup",
-          "addressIdSecondaryGroup"
-        )
-    cassandra.store(
-      conf.targetKeyspace(),
-      "address_transactions_secondary_ids",
-      addressTransactionsSecondaryIds
-    )
 
     val (inputs, outputs) =
       transformation.splitTransactions(addressTransactions)
@@ -234,38 +222,12 @@ object TransformationJob {
     cassandra.store(
       conf.targetKeyspace(),
       "address_incoming_relations",
-      addressRelations.sort(F.dstAddressIdGroup, F.dstAddressIdSecondaryGroup)
+      addressRelations.sort(F.dstAddressIdGroup, F.dstAddressId)
     )
     cassandra.store(
       conf.targetKeyspace(),
       "address_outgoing_relations",
-      addressRelations.sort(F.srcAddressIdGroup, F.srcAddressIdSecondaryGroup)
-    )
-
-    val addressIncomingRelationsSecondaryIds =
-      transformation
-        .computeSecondaryPartitionIdLookup[AddressIncomingRelationSecondaryIds](
-          addressRelations.toDF,
-          F.dstAddressIdGroup,
-          F.dstAddressIdSecondaryGroup
-        )
-    val addressOutgoingRelationsSecondaryIds =
-      transformation
-        .computeSecondaryPartitionIdLookup[AddressOutgoingRelationSecondaryIds](
-          addressRelations.toDF,
-          F.srcAddressIdGroup,
-          F.srcAddressIdSecondaryGroup
-        )
-
-    cassandra.store(
-      conf.targetKeyspace(),
-      "address_incoming_relations_secondary_ids",
-      addressIncomingRelationsSecondaryIds
-    )
-    cassandra.store(
-      conf.targetKeyspace(),
-      "address_outgoing_relations_secondary_ids",
-      addressOutgoingRelationsSecondaryIds
+      addressRelations.sort(F.srcAddressIdGroup, F.srcAddressId)
     )
 
     spark.sparkContext.setJobDescription("Perform clustering")
@@ -365,7 +327,6 @@ object TransformationJob {
       "cluster_incoming_relations",
       clusterRelations.sort(
         F.dstClusterGroup,
-        F.dstClusterSecondaryGroup,
         F.dstCluster,
         F.srcCluster
       )
@@ -375,36 +336,9 @@ object TransformationJob {
       "cluster_outgoing_relations",
       clusterRelations.sort(
         F.srcClusterGroup,
-        F.srcClusterSecondaryGroup,
         F.srcCluster,
         F.dstCluster
       )
-    )
-
-    val clusterIncomingRelationsSecondaryIds =
-      transformation
-        .computeSecondaryPartitionIdLookup[ClusterIncomingRelationSecondaryIds](
-          clusterRelations.toDF,
-          F.dstClusterGroup,
-          F.dstClusterSecondaryGroup
-        )
-    val clusterOutgoingRelationsSecondaryIds =
-      transformation
-        .computeSecondaryPartitionIdLookup[ClusterOutgoingRelationSecondaryIds](
-          clusterRelations.toDF,
-          F.srcClusterGroup,
-          F.srcClusterSecondaryGroup
-        )
-
-    cassandra.store(
-      conf.targetKeyspace(),
-      "cluster_incoming_relations_secondary_ids",
-      clusterIncomingRelationsSecondaryIds
-    )
-    cassandra.store(
-      conf.targetKeyspace(),
-      "cluster_outgoing_relations_secondary_ids",
-      clusterOutgoingRelationsSecondaryIds
     )
 
     println("Computing cluster")
