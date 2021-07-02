@@ -48,10 +48,10 @@ case object MultipleInputClustering {
 }
 
 // For each node fed into the algorithm, one of these is returned.
-//   id:      Address of node
-//   cluster: Address of representative of this node
-case class Result[A](id: A, cluster: A) {
-  override def toString(): String = s"$id -> $cluster"
+//   id:        Address of node
+//   clusterId: Address of representative of this node
+case class Result[A](id: A, clusterId: A) {
+  override def toString(): String = s"$id -> $clusterId"
 }
 
 // For each element in UF-DS an instance of Representative is stored that

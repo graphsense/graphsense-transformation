@@ -11,7 +11,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
 
   spark.sparkContext.setLogLevel("ERROR")
 
-  test(" 'simple' addresses that appear in only one transaction are not clustered here") {
+  test("'simple' addresses that appear in only one transaction are not clustered here") {
     import spark.implicits._
     val tx = Seq(
       (666L, 1, false),
@@ -32,7 +32,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
 
     val expected = Seq(
       (1, 1),
-      (2, 1)).toDF("id", "cluster")
+      (2, 1)).toDF("id", "clusterId")
 
 
     val clusters = t.plainAddressCluster(tx, removeCoinJoin = true)
@@ -50,11 +50,11 @@ class PlainAddressClusteringTest extends AnyFunSuite
       .toDF("txIndex", "addressId", "coinJoin")
 
     val expected = Seq(
-      // address, cluster
+      // addressId, clusterId
       (1, 2),
       (2, 2),
       (3, 2),
-    ).toDF("id", "cluster")
+    ).toDF("id", "clusterId")
 
     val clusters = t.plainAddressCluster(tx, removeCoinJoin = true)
     assertSmallDataFrameEquality(clusters, expected, orderedComparison = false)
@@ -73,12 +73,12 @@ class PlainAddressClusteringTest extends AnyFunSuite
       .toDF("txIndex", "addressId", "coinJoin")
 
     val expected = Seq(
-      // address, cluster
+      // addressId, clusterId
       (1, 2),
       (2, 2),
       (3, 2),
       (4, 2)
-    ).toDF("id", "cluster")
+    ).toDF("id", "clusterId")
 
     val clusters = t.plainAddressCluster(tx, removeCoinJoin = true)
     assertSmallDataFrameEquality(clusters, expected, orderedComparison = false)
@@ -87,7 +87,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
   test("two clusters are found") {
     import spark.implicits._
     val tx = Seq(
-      (100L, 2, false), // adr 2 appears in most transactions in this cluster
+      (100L, 2, false), // address 2 appears in most transactions in this cluster
       (100L, 3, false),
 
       (404L, 1, false),
@@ -103,7 +103,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
       (3, 2),
       (10, 10),
       (11, 10)
-    ).toDF("id", "cluster")
+    ).toDF("id", "clusterId")
 
     val clusters = t.plainAddressCluster(tx, removeCoinJoin = true)
     assertSmallDataFrameEquality(clusters, expected, orderedComparison = false)
@@ -127,7 +127,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
       (2, 2),
       (3, 2),
       (4, 2),
-    ).toDF("id", "cluster")
+    ).toDF("id", "clusterId")
 
     val clusters = t.plainAddressCluster(tx, removeCoinJoin = true)
     assertSmallDataFrameEquality(clusters, expected, orderedComparison = false)
@@ -152,7 +152,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
       (2, 2),
       (3, 2),
       (4, 2)
-    ).toDF("id", "cluster")
+    ).toDF("id", "clusterId")
 
     val clusters = t.plainAddressCluster(tx, removeCoinJoin = true)
     assertSmallDataFrameEquality(clusters, expected, orderedComparison = false)

@@ -183,14 +183,23 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     addressIds
       .select(F.addressId, F.address)
       .transform(
-        t.withAddressPrefix(F.address, F.addressPrefix, bech32Prefix = bech32Prefix)
+        t.withAddressPrefix(
+          F.address,
+          F.addressPrefix,
+          bech32Prefix = bech32Prefix
+        )
       )
       .as[AddressByAddressPrefix]
   }
 
-  def splitTransactions[A](transactions: Dataset[A])(implicit evidence: Encoder[A]) =
+  def splitTransactions[A](
+      transactions: Dataset[A]
+  )(implicit evidence: Encoder[A]) =
     (
-      transactions.filter(col(F.value) < 0).withColumn(F.value, -col(F.value)).as[A],
+      transactions
+        .filter(col(F.value) < 0)
+        .withColumn(F.value, -col(F.value))
+        .as[A],
       transactions.filter(col(F.value) > 0)
     )
 
@@ -407,8 +416,8 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       addressCluster: Dataset[AddressCluster]
   ): Dataset[ClusterAddress] = {
     addressCluster
-      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
-      .sort(F.cluster, F.addressId)
+      .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
+      .sort(F.clusterId, F.addressId)
       .as[ClusterAddress]
   }
 
@@ -423,7 +432,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     clusteredInputs
       .withColumn(F.value, -col(F.value))
       .union(clusteredOutputs)
-      .groupBy(F.txIndex, F.cluster)
+      .groupBy(F.txIndex, F.clusterId)
       .agg(sum(F.value).as(F.value))
       .join(
         transactions.select(F.txIndex, F.height, F.txIndex, F.timestamp),
@@ -442,16 +451,16 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   ): Dataset[BasicCluster] = {
     val noAddresses =
       clusterAddresses
-        .groupBy(F.cluster)
+        .groupBy(F.clusterId)
         .agg(count("*").cast(IntegerType).as(F.noAddresses))
     computeStatistics(
       transactions,
       clusterTransactions,
       clusterInputs,
       clusterOutputs,
-      F.cluster,
+      F.clusterId,
       exchangeRates
-    ).join(noAddresses, F.cluster)
+    ).join(noAddresses, F.clusterId)
       .as[BasicCluster]
   }
 
@@ -488,19 +497,19 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     // basicCluster contains only clusters of size > 1 with an integer ID
     // clusterRelations includes also cluster of size 1 (using the address string as ID)
     computeNodeDegrees(
-      basicCluster.withColumn(F.cluster, col(F.cluster).cast(StringType)),
-      clusterRelations.select(col(F.srcCluster), col(F.dstCluster)),
-      F.srcCluster,
-      F.dstCluster,
-      F.cluster
+      basicCluster.withColumn(F.clusterId, col(F.clusterId).cast(StringType)),
+      clusterRelations.select(col(F.srcClusterId), col(F.dstClusterId)),
+      F.srcClusterId,
+      F.dstClusterId,
+      F.clusterId
     ).join(
-        basicCluster.select(col(F.cluster).cast(StringType)),
-        Seq(F.cluster),
+        basicCluster.select(col(F.clusterId).cast(StringType)),
+        Seq(F.clusterId),
         "right"
       )
-      .withColumn(F.cluster, col(F.cluster).cast(IntegerType))
-      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
-      .sort(F.clusterGroup, F.cluster)
+      .withColumn(F.clusterId, col(F.clusterId).cast(IntegerType))
+      .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
+      .sort(F.clusterIdGroup, F.clusterId)
       .as[Cluster]
   }
 
@@ -511,19 +520,19 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   ): Dataset[ClusterTag] = {
     tags
       .filter(col(F.currency) === currency)
-      .withColumnRenamed("entity", F.cluster)
+      .withColumnRenamed("entity", F.clusterId)
       .drop(col(F.currency))
       .join(
         cluster,
-        Seq(F.cluster),
+        Seq(F.clusterId),
         joinType = "left_semi"
       )
       .withColumn(
         "lastmod",
         unix_timestamp(col("lastmod"), "yyyy-dd-MM").cast(IntegerType)
       )
-      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
-      .sort(F.clusterGroup, F.cluster)
+      .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
+      .sort(F.clusterIdGroup, F.clusterId)
       .as[ClusterTag]
   }
 
@@ -533,8 +542,8 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   ): Dataset[ClusterAddressTag] = {
     addressCluster
       .join(tags, F.addressId)
-      .transform(t.withIdGroup(F.cluster, F.clusterGroup))
-      .sort(F.clusterGroup, F.cluster)
+      .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
+      .sort(F.clusterIdGroup, F.clusterId)
       .drop(F.addressIdGroup, F.address)
       .as[ClusterAddressTag]
   }
@@ -582,12 +591,12 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
     // check if addresses where used in transactions
     tagsRaw
       .filter(col(F.currency) === currency)
-      .withColumnRenamed("entity", F.cluster)
+      .withColumnRenamed("entity", F.clusterId)
       .join(
         clusterTags
-          .select(col(F.cluster))
+          .select(col(F.clusterId))
           .withColumn(F.active, lit(true)),
-        Seq(F.cluster),
+        Seq(F.clusterId),
         "left"
       )
       .na

@@ -33,7 +33,7 @@ CREATE TABLE address (
     address_id_group int,
     address_id int,
     address text,
-    cluster int,
+    cluster_id int,
     no_incoming_txs int,
     no_outgoing_txs int,
     first_tx FROZEN <tx_id_time>,
@@ -101,8 +101,8 @@ CREATE TABLE address_outgoing_relations (
 );
 
 CREATE TABLE cluster (
-    cluster_group int,
-    cluster int,
+    cluster_id_group int,
+    cluster_id int,
     no_addresses int,
     no_incoming_txs int,
     no_outgoing_txs int,
@@ -112,31 +112,31 @@ CREATE TABLE cluster (
     total_spent FROZEN <currency>,
     in_degree int,
     out_degree int,
-    PRIMARY KEY (cluster_group, cluster)
+    PRIMARY KEY (cluster_id_group, cluster_id)
 );
 
 CREATE TABLE cluster_addresses (
-    cluster_group int,
-    cluster int,
+    cluster_id_group int,
+    cluster_id int,
     address_id int,
-    PRIMARY KEY (cluster_group, cluster, address_id)
+    PRIMARY KEY (cluster_id_group, cluster_id, address_id)
 );
 
 CREATE TABLE cluster_tags (
-    cluster_group int,
-    cluster int,
+    cluster_id_group int,
+    cluster_id int,
     label text,
     source text,
     tagpack_uri text,
     lastmod int,
     category text,
     abuse text,
-    PRIMARY KEY (cluster_group, cluster, label, source, tagpack_uri)
+    PRIMARY KEY (cluster_id_group, cluster_id, label, source, tagpack_uri)
 );
 
 CREATE TABLE cluster_address_tags (
-    cluster_group int,
-    cluster int,
+    cluster_id_group int,
+    cluster_id int,
     address_id int,
     label text,
     source text,
@@ -144,14 +144,14 @@ CREATE TABLE cluster_address_tags (
     lastmod int,
     category text,
     abuse text,
-    PRIMARY KEY (cluster_group, cluster, address_id, label, source, tagpack_uri)
+    PRIMARY KEY (cluster_id_group, cluster_id, address_id, label, source, tagpack_uri)
 );
 
 CREATE TABLE cluster_tag_by_label (
     label_norm_prefix text,
     label_norm text,
     label text,
-    cluster int,
+    cluster_id int,
     source text,
     tagpack_uri text,
     currency text,
@@ -159,28 +159,28 @@ CREATE TABLE cluster_tag_by_label (
     category text,
     abuse text,
     active boolean,
-    PRIMARY KEY (label_norm_prefix, label_norm, label, cluster, currency, source, tagpack_uri)
+    PRIMARY KEY (label_norm_prefix, label_norm, label, cluster_id, currency, source, tagpack_uri)
 );
 
 CREATE TABLE cluster_incoming_relations (
-    dst_cluster_group int,
-    dst_cluster int,
-    src_cluster int,
+    dst_cluster_id_group int,
+    dst_cluster_id int,
+    src_cluster_id int,
     has_src_labels boolean,
     no_transactions int,
-    value FROZEN <currency>,
-    PRIMARY KEY (dst_cluster_group, dst_cluster, src_cluster)
+    estimated_value FROZEN <currency>,
+    PRIMARY KEY (dst_cluster_id_group, dst_cluster_id, src_cluster_id)
 );
 
 CREATE TABLE cluster_outgoing_relations (
-    src_cluster_group int,
-    src_cluster int,
-    dst_cluster int,
+    src_cluster_id_group int,
+    src_cluster_id int,
+    dst_cluster_id int,
     has_dst_labels boolean,
     no_transactions int,
-    value FROZEN <currency>,
+    estimated_value FROZEN <currency>,
     tx_list list<bigint>,
-    PRIMARY KEY (src_cluster_group, src_cluster, dst_cluster)
+    PRIMARY KEY (src_cluster_id_group, src_cluster_id, dst_cluster_id)
 );
 
 CREATE TABLE summary_statistics (

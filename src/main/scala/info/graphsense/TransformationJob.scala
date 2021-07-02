@@ -333,18 +333,18 @@ object TransformationJob {
       conf.targetKeyspace(),
       "cluster_incoming_relations",
       clusterRelations.sort(
-        F.dstClusterGroup,
-        F.dstCluster,
-        F.srcCluster
+        F.dstClusterIdGroup,
+        F.dstClusterId,
+        F.srcClusterId
       )
     )
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_outgoing_relations",
       clusterRelations.sort(
-        F.srcClusterGroup,
-        F.srcCluster,
-        F.dstCluster
+        F.srcClusterIdGroup,
+        F.srcClusterId,
+        F.dstClusterId
       )
     )
 

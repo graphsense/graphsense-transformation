@@ -142,7 +142,7 @@ case class Address(
     addressIdGroup: Int,
     addressId: Int,
     address: String,
-    cluster: Int,
+    clusterId: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
     firstTx: TxIdTime,
@@ -179,16 +179,16 @@ case class AddressTagByLabel(
     active: Boolean
 )
 
-case class AddressCluster(addressId: Int, cluster: Int)
+case class AddressCluster(addressId: Int, clusterId: Int)
 
 case class ClusterAddress(
-    clusterGroup: Int,
-    cluster: Int,
+    clusterIdGroup: Int,
+    clusterId: Int,
     addressId: Int,
 )
 
 case class ClusterTransaction(
-    cluster: Int,
+    clusterId: Int,
     txIndex: Long,
     value: Long,
     height: Int,
@@ -196,7 +196,7 @@ case class ClusterTransaction(
 )
 
 case class BasicCluster(
-    cluster: Int,
+    clusterId: Int,
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
@@ -207,8 +207,8 @@ case class BasicCluster(
 )
 
 case class Cluster(
-    clusterGroup: Int,
-    cluster: Int,
+    clusterIdGroup: Int,
+    clusterId: Int,
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
@@ -221,8 +221,8 @@ case class Cluster(
 )
 
 case class ClusterTag(
-    clusterGroup: Int,
-    cluster: Int,
+    clusterIdGroup: Int,
+    clusterId: Int,
     label: String,
     source: String,
     tagpackUri: String,
@@ -232,8 +232,8 @@ case class ClusterTag(
 )
 
 case class ClusterAddressTag(
-    clusterGroup: Int,
-    cluster: Int,
+    clusterIdGroup: Int,
+    clusterId: Int,
     addressId: Int,
     label: String,
     source: String,
@@ -247,7 +247,7 @@ case class ClusterTagByLabel(
     labelNormPrefix: String,
     labelNorm: String,
     label: String,
-    cluster: Int,
+    clusterId: Int,
     source: String,
     tagpackUri: String,
     currency: String,
@@ -279,21 +279,21 @@ case class AddressRelation(
 
 case class PlainClusterRelation(
     txIndex: Long,
-    srcCluster: Int,
-    dstCluster: Int,
-    value: Long,
+    srcClusterId: Int,
+    dstClusterId: Int,
+    estimatedValue: Long,
     height: Int
 )
 
 case class ClusterRelation(
-    srcClusterGroup: Int,
-    srcCluster: Int,
-    dstClusterGroup: Int,
-    dstCluster: Int,
+    srcClusterIdGroup: Int,
+    srcClusterId: Int,
+    dstClusterIdGroup: Int,
+    dstClusterId: Int,
     hasSrcLabels: Boolean,
     hasDstLabels: Boolean,
     noTransactions: Int,
-    value: Currency,
+    estimatedValue: Currency,
     txList: Seq[Long]
 )
 

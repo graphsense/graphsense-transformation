@@ -163,13 +163,13 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       initialRepresentative
         .withColumnRenamed(F.addressId, "id")
         .join(
-          basicAddressCluster.toDF(reprAddrId, F.cluster),
+          basicAddressCluster.toDF(reprAddrId, F.clusterId),
           Seq(reprAddrId),
           "left_outer"
         )
         .select(
           col("id"),
-          coalesce(col(F.cluster), col(reprAddrId)).as(F.cluster)
+          coalesce(col(F.clusterId), col(reprAddrId)).as(F.clusterId)
         )
         .as[Result[Int]]
 
@@ -197,12 +197,12 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         Seq(F.addressId),
         "left_anti"
       )
-      .withColumn(F.cluster, col(F.addressId))
+      .withColumn(F.clusterId, col(F.addressId))
 
     singleAddressCluster
       .union(addressCluster)
       .join(addressIds, F.addressId)
-      .select(F.addressId, F.cluster)
+      .select(F.addressId, F.clusterId)
       .as[AddressCluster]
   }
 
@@ -251,7 +251,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .join(reducedInputSum, F.txIndex)
       .withColumn(
         F.estimatedValue,
-        round(col("inValue") / col(F.totalInput) * col("outValue")).cast(LongType)
+        round(col("inValue") / col(F.totalInput) * col("outValue"))
+          .cast(LongType)
       )
       .drop(F.totalInput, "inValue", "outValue")
       .as[PlainAddressRelation]
@@ -337,13 +338,13 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       clusterOutputs: Dataset[ClusterTransaction]
   ) = {
     clusterInputs
-      .select(col(F.txIndex), col(F.cluster).as(F.srcCluster))
+      .select(col(F.txIndex), col(F.clusterId).as(F.srcClusterId))
       .join(
         clusterOutputs
           .select(
             col(F.txIndex),
-            col(F.cluster).as(F.dstCluster),
-            col(F.value),
+            col(F.clusterId).as(F.dstClusterId),
+            col(F.value).as(F.estimatedValue),
             col(F.height)
           ),
         Seq(F.txIndex)
@@ -360,66 +361,66 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   ) = {
 
     val clusterLabels = clusterTags
-      .select(F.cluster)
+      .select(F.clusterId)
       .withColumn(F.hasLabels, lit(true))
 
     val fullClusterRelations = plainClusterRelations
       .join(exchangeRates, Seq(F.height), "left")
       .transform(
-        toFiatCurrency(F.value, F.fiatValues, noFiatCurrencies)
+        toFiatCurrency(F.estimatedValue, F.fiatValues, noFiatCurrencies)
       )
       .drop(F.height)
-      .groupBy(F.srcCluster, F.dstCluster)
+      .groupBy(F.srcClusterId, F.dstClusterId)
       .agg(
         count(F.txIndex).cast(IntegerType).as(F.noTransactions),
         struct(
-          sum(col(F.value)).as(F.value),
+          sum(col(F.estimatedValue)).as(F.value),
           array(
             (0 until noFiatCurrencies)
               .map(i => sum(col(F.fiatValues).getItem(i)).cast(FloatType)): _*
           ).as(F.fiatValues)
-        ).as(F.value)
+        ).as(F.estimatedValue)
       )
       // add partitioning columns for outgoing clusters
-      .transform(withIdGroup(F.srcCluster, F.srcClusterGroup))
+      .transform(withIdGroup(F.srcClusterId, F.srcClusterIdGroup))
       // add partitioning columns for incoming clusters
-      .transform(withIdGroup(F.dstCluster, F.dstClusterGroup))
+      .transform(withIdGroup(F.dstClusterId, F.dstClusterIdGroup))
       // flag tagged src clusters
       .join(
         clusterLabels.select(
-          col(F.cluster).as(F.srcCluster),
+          col(F.clusterId).as(F.srcClusterId),
           col(F.hasLabels).as(F.hasSrcLabels)
         ),
-        Seq(F.srcCluster),
+        Seq(F.srcClusterId),
         "left"
       )
       // flag tagged dst clusters
       .join(
         clusterLabels.select(
-          col(F.cluster).as(F.dstCluster),
+          col(F.clusterId).as(F.dstClusterId),
           col(F.hasLabels).as(F.hasDstLabels)
         ),
-        Seq(F.dstCluster),
+        Seq(F.dstClusterId),
         "left"
       )
 
     val txList = plainClusterRelations
     // compute list column of transactions (only if #tx <= txLimit)
-      .select(F.srcCluster, F.dstCluster, F.txIndex)
+      .select(F.srcClusterId, F.dstClusterId, F.txIndex)
       .join(
         fullClusterRelations
-          .select(F.srcCluster, F.dstCluster, F.noTransactions),
-        Seq(F.srcCluster, F.dstCluster),
+          .select(F.srcClusterId, F.dstClusterId, F.noTransactions),
+        Seq(F.srcClusterId, F.dstClusterId),
         "full"
       )
-      .groupBy(F.srcCluster, F.dstCluster)
+      .groupBy(F.srcClusterId, F.dstClusterId)
       .agg(
         collect_set(when(col(F.noTransactions) <= txLimit, col(F.txIndex)))
           .as(F.txList)
       )
 
     fullClusterRelations
-      .join(txList, Seq(F.srcCluster, F.dstCluster), "left")
+      .join(txList, Seq(F.srcClusterId, F.dstClusterId), "left")
       .na
       .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[ClusterRelation]

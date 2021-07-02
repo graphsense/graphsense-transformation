@@ -1,6 +1,6 @@
-{"txHash": "ab20101c4ca509cd1bbb31bef15b96cc5f987e6438f770e105e41d012057930a", "cluster": 0, "value": 2500000, "height": 2, "txIndex": 3, "timestamp": 1231466400}
-{"txHash": "ab30109910f327700e0f199972eed8ea7c6b1920e965f9cb48a92973e7325046", "cluster": 1, "value": 3980000, "height": 3, "txIndex": 5, "timestamp": 1231552800}
-{"txHash": "ab3020c34bed7a86eef78534d72fd38c3c247c25d58be632201cb2027c9d2197", "cluster": 3, "value": 150000, "height": 3, "txIndex": 6, "timestamp": 1231552800}
-{"txHash": "ab40231bd240c232eb8a8ed1b2267fe9f76d46c892415ab74427195cce5c6cff", "cluster": 3, "value": 345000, "height": 4, "txIndex": 9, "timestamp": 1231639200}
-{"txHash": "ab40158fdb719f333927a92f72727b996f1ebf565fce2cc83aea04b0f6902c6f", "cluster": 4, "value": 2995000, "height": 4, "txIndex": 8, "timestamp": 1231639200}
-{"txHash": "ab403d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d", "cluster": 6, "value": 1425000, "height": 4, "txIndex": 10, "timestamp": 1231639200}
+{"txHash": "ab20101c4ca509cd1bbb31bef15b96cc5f987e6438f770e105e41d012057930a", "clusterId": 0, "value": 2500000, "height": 2, "txIndex": 3, "timestamp": 1231466400}
+{"txHash": "ab30109910f327700e0f199972eed8ea7c6b1920e965f9cb48a92973e7325046", "clusterId": 1, "value": 3980000, "height": 3, "txIndex": 5, "timestamp": 1231552800}
+{"txHash": "ab3020c34bed7a86eef78534d72fd38c3c247c25d58be632201cb2027c9d2197", "clusterId": 3, "value": 150000, "height": 3, "txIndex": 6, "timestamp": 1231552800}
+{"txHash": "ab40231bd240c232eb8a8ed1b2267fe9f76d46c892415ab74427195cce5c6cff", "clusterId": 3, "value": 345000, "height": 4, "txIndex": 9, "timestamp": 1231639200}
+{"txHash": "ab40158fdb719f333927a92f72727b996f1ebf565fce2cc83aea04b0f6902c6f", "clusterId": 4, "value": 2995000, "height": 4, "txIndex": 8, "timestamp": 1231639200}
+{"txHash": "ab403d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d", "clusterId": 6, "value": 1425000, "height": 4, "txIndex": 10, "timestamp": 1231639200}

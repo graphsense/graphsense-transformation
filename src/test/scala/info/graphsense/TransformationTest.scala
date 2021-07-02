@@ -184,7 +184,7 @@ class TransformationTest
 
   val clusterAddresses =
     t.computeClusterAddresses(addressClusterCoinjoin)
-      .sort(F.cluster, F.addressId)
+      .sort(F.clusterId, F.addressId)
       .persist()
 
   val clusterTransactions =
@@ -194,7 +194,7 @@ class TransformationTest
         transactions,
         addressClusterCoinjoin
       )
-      .sort(F.cluster, F.height, F.value)
+      .sort(F.clusterId, F.height, F.value)
       .persist()
 
   val (clusterInputs, clusterOutputs) = t.splitTransactions(clusterTransactions)
@@ -210,12 +210,12 @@ class TransformationTest
         clusterOutputs,
         exchangeRates
       )
-      .sort(F.cluster)
+      .sort(F.clusterId)
       .persist()
 
   val clusterTags =
     t.computeClusterTags(clusterTagsRaw, basicCluster, "BTC")
-      .sort(F.cluster)
+      .sort(F.clusterId)
       .persist()
 
   val clusterTagsByLabel =
@@ -223,7 +223,7 @@ class TransformationTest
 
   val clusterAddressTags =
     t.computeClusterAddressTags(addressCluster, addressTags)
-      .sort(F.cluster)
+      .sort(F.clusterId)
       .persist()
 
   val plainClusterRelations =
@@ -248,7 +248,7 @@ class TransformationTest
 
   val cluster =
     t.computeCluster(basicCluster, clusterRelations)
-      .sort(F.cluster)
+      .sort(F.clusterId)
       .persist()
   val noCluster = cluster.count()
 
@@ -387,16 +387,16 @@ class TransformationTest
   test("clusterRelations") {
     val clusterRelationsRef =
       readJson[ClusterRelation](refDir + "cluster_relations.json")
-        .sort(F.srcCluster, F.dstCluster)
-    val sortedRelations = clusterRelations.sort(F.srcCluster, F.dstCluster)
+        .sort(F.srcClusterId, F.dstClusterId)
+    val sortedRelations = clusterRelations.sort(F.srcClusterId, F.dstClusterId)
     assertDataFrameEquality(sortedRelations, clusterRelationsRef)
   }
   test("clusterRelations with txLimit=1") {
     val clusterRelationsLimit1Ref =
       readJson[ClusterRelation](refDir + "cluster_relations_limit1.json")
-        .sort(F.srcCluster, F.dstCluster)
+        .sort(F.srcClusterId, F.dstClusterId)
     val sortedRelations =
-      clusterRelationsLimit1.sort(F.srcCluster, F.dstCluster)
+      clusterRelationsLimit1.sort(F.srcClusterId, F.dstClusterId)
     assertDataFrameEquality(sortedRelations, clusterRelationsLimit1Ref)
   }
   test("clusters") {
