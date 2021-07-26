@@ -31,7 +31,11 @@ import org.apache.spark.sql.types.{FloatType, IntegerType, StringType}
 
 import info.graphsense.{Fields => F}
 
-class Transformation(spark: SparkSession, bucketSize: Int) {
+class Transformation(
+    spark: SparkSession,
+    bucketSize: Int,
+    addressPrefixLength: Int
+) {
 
   import spark.implicits._
 
@@ -42,7 +46,9 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
   def configuration(
       keyspaceName: String,
       bucketSize: Int,
+      addressPrefixLength: Int,
       bech32Prefix: String,
+      labelPrefixLength: Int,
       coinjoinFiltering: Boolean,
       fiatCurrencies: Seq[String]
   ) = {
@@ -50,7 +56,9 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
       Configuration(
         keyspaceName,
         bucketSize,
+        addressPrefixLength,
         bech32Prefix,
+        labelPrefixLength,
         coinjoinFiltering,
         fiatCurrencies
       )
@@ -178,6 +186,7 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
 
   def computeAddressByAddressPrefix(
       addressIds: Dataset[AddressId],
+      prefixLength: Int = addressPrefixLength,
       bech32Prefix: String = ""
   ): Dataset[AddressByAddressPrefix] = {
     addressIds
@@ -186,7 +195,8 @@ class Transformation(spark: SparkSession, bucketSize: Int) {
         t.withAddressPrefix(
           F.address,
           F.addressPrefix,
-          bech32Prefix = bech32Prefix
+          prefixLength,
+          bech32Prefix
         )
       )
       .as[AddressByAddressPrefix]

@@ -71,6 +71,7 @@ class TransformationTest
   val refDir = "src/test/resources/reference/"
 
   val bucketSize: Int = 2
+  val addressPrefixLength: Int = 5
 
   // input data
   val blocks = readJson[Block](inputDir + "/test_blocks.json")
@@ -91,7 +92,7 @@ class TransformationTest
   val noTransactions = transactions.count()
 
   // transformation pipeline
-  val t = new Transformation(spark, bucketSize)
+  val t = new Transformation(spark, bucketSize, addressPrefixLength)
 
   val exchangeRates =
     t.computeExchangeRates(blocks, exchangeRatesRaw)

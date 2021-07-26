@@ -13,8 +13,8 @@ import org.apache.spark.sql.functions.{
   lit,
   round,
   row_number,
-  substring,
   struct,
+  substring,
   sum,
   when
 }

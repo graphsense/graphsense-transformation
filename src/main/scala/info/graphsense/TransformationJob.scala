@@ -41,6 +41,20 @@ object TransformationJob {
       noshort = true,
       descr = "Bucket size for Cassandra partitions"
     )
+    val addressPrefixLength: ScallopOption[Int] = opt[Int](
+      "address-prefix-length",
+      required = false,
+      default = Some(4),
+      noshort = true,
+      descr = "Prefix length of address hashes for Cassandra partitioning keys"
+    )
+    val labelPrefixLength: ScallopOption[Int] = opt[Int](
+      "label-prefix-length",
+      required = false,
+      default = Some(3),
+      noshort = true,
+      descr = "Prefix length of tag labels for Cassandra partitioning keys"
+    )
     val coinjoinFilter: ScallopOption[Boolean] = toggle(
       "coinjoin-filtering",
       default = Some(true),
@@ -74,6 +88,8 @@ object TransformationJob {
     println("Tag keyspace:                  " + conf.tagKeyspace())
     println("Target keyspace:               " + conf.targetKeyspace())
     println("Bucket size:                   " + conf.bucketSize())
+    println("Address prefix length:         " + conf.addressPrefixLength())
+    println("Label prefix length:           " + conf.labelPrefixLength())
     println("CoinJoin Filtering enabled:    " + conf.coinjoinFilter())
     if (conf.bech32Prefix().length > 0) {
       println("Bech32 address prefix:         " + conf.bech32Prefix())
@@ -102,14 +118,17 @@ object TransformationJob {
     val noTransactions =
       summaryStatisticsRaw.select(col("noTxs")).first.getLong(0)
 
-    val transformation = new Transformation(spark, conf.bucketSize())
+    val transformation =
+      new Transformation(spark, conf.bucketSize(), conf.addressPrefixLength())
 
     println("Store configuration")
     val configuration =
       transformation.configuration(
         conf.targetKeyspace(),
         conf.bucketSize(),
+        conf.addressPrefixLength(),
         conf.bech32Prefix(),
+        conf.labelPrefixLength(),
         conf.coinjoinFilter(),
         transformation.getFiatCurrencies(exchangeRatesRaw)
       )
@@ -194,7 +213,8 @@ object TransformationJob {
       transformation.computeAddressTagsByLabel(
         addressTagsRaw,
         addressTags,
-        conf.currency()
+        conf.currency(),
+        conf.labelPrefixLength()
       )
     cassandra.store(
       conf.targetKeyspace(),
@@ -300,7 +320,8 @@ object TransformationJob {
       transformation.computeClusterTagsByLabel(
         clusterTagsRaw,
         clusterTags,
-        conf.currency()
+        conf.currency(),
+        conf.labelPrefixLength()
       )
     cassandra.store(
       conf.targetKeyspace(),

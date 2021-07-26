@@ -310,7 +310,9 @@ case class SummaryStatistics(
 case class Configuration(
     keyspaceName: String,
     bucketSize: Int,
+    addressPrefixLength: Int,
     bech32Prefix: String,
+    labelPrefixLength: Int,
     coinjoinFiltering: Boolean,
     fiatCurrencies: Seq[String]
 )
