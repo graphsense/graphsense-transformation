@@ -1,14 +1,16 @@
-DROP KEYSPACE IF EXISTS btc_raw;
-CREATE KEYSPACE btc_raw WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+CREATE KEYSPACE IF NOT EXISTS btc_raw
+    WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
 USE btc_raw;
 
 CREATE TABLE block (
-    height int PRIMARY KEY,
+    block_id_group int,
+    block_id int,
     block_hash blob,
     timestamp int,
-    no_transactions int
-);
+    no_transactions int,
+    PRIMARY KEY(block_id_group, block_id)
+) WITH CLUSTERING ORDER BY (block_id DESC);
 
 CREATE TYPE tx_input_output (
     address list<text>,
@@ -17,10 +19,10 @@ CREATE TYPE tx_input_output (
 );
 
 CREATE TABLE transaction (
-    tx_prefix text,
+    tx_id_group int,
+    tx_id bigint,
     tx_hash blob,
-    tx_index bigint,
-    height int,
+    block_id int,
     timestamp int,
     coinbase boolean,
     total_input bigint,
@@ -28,11 +30,18 @@ CREATE TABLE transaction (
     inputs list<FROZEN<tx_input_output>>,
     outputs list<FROZEN<tx_input_output>>,
     coinjoin boolean,
+    PRIMARY KEY (tx_id_group, tx_id)
+);
+
+CREATE TABLE transaction_by_tx_prefix (
+    tx_prefix text,
+    tx_hash blob,
+    tx_id bigint,
     PRIMARY KEY (tx_prefix, tx_hash)
 );
 
 CREATE TYPE tx_summary (
-    tx_hash blob,
+    tx_id bigint,
     no_inputs int,
     no_outputs int,
     total_input bigint,
@@ -40,9 +49,11 @@ CREATE TYPE tx_summary (
 );
 
 CREATE TABLE block_transactions (
-    height int PRIMARY KEY,
-    txs list<FROZEN<tx_summary>>
-);
+    block_id_group int,
+    block_id int,
+    txs list<FROZEN<tx_summary>>,
+    PRIMARY KEY (block_id_group, block_id)
+) WITH CLUSTERING ORDER BY (block_id DESC);
 
 CREATE TABLE exchange_rates (
     date text PRIMARY KEY,
@@ -56,8 +67,15 @@ CREATE TABLE summary_statistics (
     timestamp int
 );
 
-DROP KEYSPACE IF EXISTS tagpacks;
-CREATE KEYSPACE tagpacks WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+CREATE TABLE configuration (
+    id text PRIMARY KEY,
+    block_bucket_size int,
+    tx_prefix_length int,
+    tx_bucket_size int
+);
+
+CREATE KEYSPACE IF NOT EXISTS tagpacks
+    WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
 USE tagpacks;
 

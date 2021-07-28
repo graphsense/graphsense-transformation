@@ -16,7 +16,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
     val tx = Seq(
       (666L, 1, false),
       (888L, 4, false))
-      .toDF("txIndex", "addressId", "coinJoin")
+      .toDF("txId", "addressId", "coinJoin")
 
     val clusters = t.plainAddressCluster(tx, removeCoinJoin = true)
     assert(clusters.isEmpty)
@@ -28,7 +28,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
         (100L, 1, false),
         (100L, 2, false),
         (404L, 3, false)) // adr 3 will not be clustered because it's not multiple-input
-      .toDF("txIndex", "addressId", "coinJoin")
+      .toDF("txId", "addressId", "coinJoin")
 
     val expected = Seq(
       (1, 1),
@@ -47,7 +47,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
 
       (404L, 2, false),
       (404L, 3, false))
-      .toDF("txIndex", "addressId", "coinJoin")
+      .toDF("txId", "addressId", "coinJoin")
 
     val expected = Seq(
       // addressId, clusterId
@@ -70,7 +70,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
       (404L, 2, false),
       (404L, 3, false),
       (404L, 4, false))
-      .toDF("txIndex", "addressId", "coinJoin")
+      .toDF("txId", "addressId", "coinJoin")
 
     val expected = Seq(
       // addressId, clusterId
@@ -95,7 +95,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
 
       (770L, 10, false), // separate cluster with id = min(10, 11)
       (770L, 11, false))
-      .toDF("txIndex", "addressId", "coinJoin")
+      .toDF("txId", "addressId", "coinJoin")
 
     val expected = Seq(
       (1, 2),
@@ -120,7 +120,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
 
       (770L, 3, false),
       (770L, 4, false))
-      .toDF("txIndex", "addressId", "coinJoin")
+      .toDF("txId", "addressId", "coinJoin")
 
     val expected = Seq(
       (1, 2),
@@ -145,7 +145,7 @@ class PlainAddressClusteringTest extends AnyFunSuite
       (770L, 1, false),
       (770L, 2, false),
       (770L, 4, false))
-     .toDF("txIndex", "addressId", "coinJoin")
+     .toDF("txId", "addressId", "coinJoin")
     tx.show()
     val expected = Seq(
       (1, 2),

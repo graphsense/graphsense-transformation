@@ -85,7 +85,7 @@ class TransformationTest
 
   val noBlocks = blocks.count.toInt
   val lastBlockTimestamp = blocks
-    .filter(col(F.height) === noBlocks - 1)
+    .filter(col(F.blockId) === noBlocks - 1)
     .select(col(F.timestamp))
     .first()
     .getInt(0)
@@ -111,7 +111,7 @@ class TransformationTest
         regOutputs,
         addressIds
       )
-      .sort(F.addressId, F.height, F.value)
+      .sort(F.addressId, F.blockId, F.value)
       .persist()
 
   val (inputs, outputs) = t.splitTransactions(addressTransactions)
@@ -195,7 +195,7 @@ class TransformationTest
         transactions,
         addressClusterCoinjoin
       )
-      .sort(F.clusterId, F.height, F.value)
+      .sort(F.clusterId, F.blockId, F.value)
       .persist()
 
   val (clusterInputs, clusterOutputs) = t.splitTransactions(clusterTransactions)
@@ -281,14 +281,14 @@ class TransformationTest
 
   test("regularInputs") {
     val regInputsRef = readJson[RegularInput](refDir + "regular_inputs.json")
-      .sort(F.txHash, F.address)
-    val sortedInputs = regInputs.sort(F.txHash, F.address)
+      .sort(F.txId, F.address)
+    val sortedInputs = regInputs.sort(F.txId, F.address)
     assertDataFrameEquality(sortedInputs, regInputsRef)
   }
   test("regularOutputs") {
     val regOutputsRef = readJson[RegularOutput](refDir + "regular_outputs.json")
-      .sort(F.txHash, F.address)
-    val sortedOutput = regOutputs.sort(F.txHash, F.address)
+      .sort(F.txId, F.address)
+    val sortedOutput = regOutputs.sort(F.txId, F.address)
     assertDataFrameEquality(sortedOutput, regOutputsRef)
   }
   test("addressTransactions") {
@@ -381,8 +381,8 @@ class TransformationTest
   test("plainClusterRelations") {
     val plainClusterRelationsRef =
       readJson[PlainClusterRelation](refDir + "plain_cluster_relations.json")
-        .sort(F.txIndex)
-    val sortedRels = plainClusterRelations.sort(F.txIndex)
+        .sort(F.txId)
+    val sortedRels = plainClusterRelations.sort(F.txId)
     assertDataFrameEquality(sortedRels, plainClusterRelationsRef)
   }
   test("clusterRelations") {

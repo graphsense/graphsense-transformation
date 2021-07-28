@@ -1,11 +1,11 @@
 package info.graphsense
 
 object Fields {
-  val height = "height"
+  val blockId = "blockId"
   val timestamp = "timestamp"
   val date = "date"
   val txHash = "txHash"
-  val txIndex = "txIndex"
+  val txId = "txId"
   val txPrefix = "txPrefix"
   val txList = "txList"
   val value = "value"

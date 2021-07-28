@@ -4,8 +4,8 @@ CREATE KEYSPACE IF NOT EXISTS btc_transformed
 USE btc_transformed;
 
 CREATE TYPE tx_id_time (
-    height int,
-    tx_index bigint,
+    block_id int,
+    tx_id bigint,
     timestamp int
 );
 
@@ -15,18 +15,18 @@ CREATE TYPE currency (
 );
 
 CREATE TABLE exchange_rates (
-    height int PRIMARY KEY,
+    block_id int PRIMARY KEY,
     fiat_values list<float>
 );
 
 CREATE TABLE address_transactions (
     address_id_group int,
     address_id int,
-    tx_index bigint,
+    tx_id bigint,
     value bigint,
-    height int,
+    block_id int,
     timestamp int,
-    PRIMARY KEY (address_id_group, address_id, tx_index)
+    PRIMARY KEY (address_id_group, address_id, tx_id)
 );
 
 CREATE TABLE address (

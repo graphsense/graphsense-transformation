@@ -4,20 +4,18 @@ import java.sql.Date
 
 case class RegularInput(
     address: String,
-    txHash: Array[Byte],
+    txId: Long,
     value: Long,
-    height: Int,
-    txIndex: Long,
+    blockId: Int,
     timestamp: Int,
     coinJoin: Boolean
 )
 
 case class RegularOutput(
     address: String,
-    txHash: Array[Byte],
+    txId: Long,
     value: Long,
-    height: Int,
-    txIndex: Long,
+    blockId: Int,
     timestamp: Int,
     coinJoin: Boolean,
     n: Int
@@ -52,34 +50,35 @@ case class TxSummary(
     totalOutput: Long
 )
 
-case class TxIdTime(height: Int, txIndex: Long, timestamp: Int)
+case class TxIdTime(blockId: Int, txId: Long, timestamp: Int)
 
 case class Currency(value: Long, fiatValues: Seq[Float])
 
 // raw schema tables
 
 case class Block(
-    height: Int,
+    blockIdGroup: Int,
+    blockId: Int,
     blockHash: Array[Byte],
     timestamp: Int,
     noTransactions: Int
 )
 
 case class Transaction(
-    txPrefix: String,
+    txIdGroup: Long,
+    txId: Long,
     txHash: Array[Byte],
-    height: Int,
+    blockId: Int,
     timestamp: Int,
     coinbase: Boolean,
     coinjoin: Boolean,
     totalInput: Long,
     totalOutput: Long,
     inputs: Seq[TxInputOutput],
-    outputs: Seq[TxInputOutput],
-    txIndex: Long
+    outputs: Seq[TxInputOutput]
 )
 
-case class BlockTransactions(height: Int, txs: Seq[TxSummary])
+case class BlockTransactions(blockId: Int, txs: Seq[TxSummary])
 
 case class ExchangeRatesRaw(
     date: String,
@@ -117,14 +116,14 @@ case class SummaryStatisticsRaw(
 
 // transformed schema tables
 
-case class ExchangeRates(height: Int, fiatValues: Seq[Float])
+case class ExchangeRates(blockId: Int, fiatValues: Seq[Float])
 
 case class AddressTransaction(
     addressIdGroup: Int,
     addressId: Int,
-    txIndex: Long,
+    txId: Long,
     value: Long,
-    height: Int,
+    blockId: Int,
     timestamp: Int
 )
 
@@ -189,9 +188,9 @@ case class ClusterAddress(
 
 case class ClusterTransaction(
     clusterId: Int,
-    txIndex: Long,
+    txId: Long,
     value: Long,
-    height: Int,
+    blockId: Int,
     timestamp: Int
 )
 
@@ -258,10 +257,10 @@ case class ClusterTagByLabel(
 )
 
 case class PlainAddressRelation(
-    txIndex: Long,
+    txId: Long,
     srcAddressId: Int,
     dstAddressId: Int,
-    height: Int,
+    blockId: Int,
     estimatedValue: Long
 )
 
@@ -278,11 +277,11 @@ case class AddressRelation(
 )
 
 case class PlainClusterRelation(
-    txIndex: Long,
+    txId: Long,
     srcClusterId: Int,
     dstClusterId: Int,
     estimatedValue: Long,
-    height: Int
+    blockId: Int
 )
 
 case class ClusterRelation(

@@ -87,7 +87,7 @@ class Transformation(
           "yyyy-MM-dd"
         )
       )
-      .select(F.height, F.date)
+      .select(F.blockId, F.date)
 
     val lastDateExchangeRates =
       exchangeRates.select(max(F.date)).first.getString(0)
@@ -113,7 +113,7 @@ class Transformation(
         )
       )
       .drop(F.date)
-      .sort(F.height)
+      .sort(F.blockId)
       .as[ExchangeRates]
   }
 
@@ -123,19 +123,18 @@ class Transformation(
       .select(
         explode(col("input.address")).as(F.address),
         col("input.value").as(F.value),
-        col(F.txHash)
+        col(F.txId)
       )
-      .groupBy(F.txHash, F.address)
+      .groupBy(F.txId, F.address)
       .agg(sum(F.value).as(F.value))
       .join(
         tx.select(
-          col(F.txHash),
-          col(F.height),
-          col(F.txIndex),
+          col(F.txId),
+          col(F.blockId),
           col(F.timestamp),
           col(F.coinjoin)
         ),
-        Seq(F.txHash)
+        Seq(F.txId)
       )
       .as[RegularInput]
   }
@@ -145,19 +144,17 @@ class Transformation(
   ): Dataset[RegularOutput] = {
     tx.select(
         posexplode(col("outputs")).as(Seq(F.n, "output")),
-        col(F.txHash),
-        col(F.height),
-        col(F.txIndex),
+        col(F.txId),
+        col(F.blockId),
         col(F.timestamp),
         col(F.coinjoin)
       )
       .filter(size(col("output.address")) === 1)
       .select(
-        col(F.txHash),
+        col(F.txId),
         explode(col("output.address")).as(F.address),
         col("output.value").as(F.value),
-        col(F.height),
-        col(F.txIndex),
+        col(F.blockId),
         col(F.n),
         col(F.timestamp),
         col(F.coinjoin)
@@ -171,11 +168,11 @@ class Transformation(
     // assign integer IDs to addresses
     // .withColumn("id", monotonically_increasing_id) could be used instead of zipWithIndex,
     // (assigns Long values instead of Int)
-    val orderWindow = Window.partitionBy(F.address).orderBy(F.txIndex, F.n)
+    val orderWindow = Window.partitionBy(F.address).orderBy(F.txId, F.n)
     regularOutputs
       .withColumn("rowNumber", row_number().over(orderWindow))
       .filter(col("rowNumber") === 1)
-      .sort(F.txIndex, F.n)
+      .sort(F.txId, F.n)
       .select(F.address)
       .map(_.getString(0))
       .rdd
@@ -242,13 +239,13 @@ class Transformation(
         length: Int
     ) = {
       inOrOut
-        .join(exchangeRates, Seq(F.height), "left")
+        .join(exchangeRates, Seq(F.blockId), "left")
         .transform(
           t.toFiatCurrency(F.value, F.fiatValues, noFiatCurrencies.get)
         )
         .groupBy(idColumn)
         .agg(
-          count(F.txIndex).cast(IntegerType),
+          count(F.txId).cast(IntegerType),
           struct(
             sum(col(F.value)).as(F.value),
             array(
@@ -263,15 +260,15 @@ class Transformation(
     val outStats = statsPart(in, exchangeRates, noFiatCurrencies.get)
       .toDF(idColumn, F.noOutgoingTxs, F.totalSpent)
     val txTimes = transactions.select(
-      col(F.txIndex),
-      struct(F.height, F.txIndex, F.timestamp)
+      col(F.txId),
+      struct(F.blockId, F.txId, F.timestamp)
     )
 
     all
       .groupBy(idColumn)
       .agg(
-        min(F.txIndex).as("firstTxNumber"),
-        max(F.txIndex).as("lastTxNumber")
+        min(F.txId).as("firstTxNumber"),
+        max(F.txId).as("lastTxNumber")
       )
       .join(txTimes.toDF("firstTxNumber", F.firstTx), "firstTxNumber")
       .join(txTimes.toDF("lastTxNumber", F.lastTx), "lastTxNumber")
@@ -315,11 +312,11 @@ class Transformation(
     regInputs
       .withColumn(F.value, -col(F.value))
       .union(regOutputs.drop(F.n))
-      .groupBy(F.txIndex, F.address)
+      .groupBy(F.txId, F.address)
       .agg(sum(F.value).as(F.value))
       .join(
-        tx.select(F.txIndex, F.height, F.timestamp).distinct(),
-        F.txIndex
+        tx.select(F.txId, F.blockId, F.timestamp).distinct(),
+        F.txId
       )
       .join(addressIds, Seq(F.address))
       .drop(F.addressPrefix, F.address)
@@ -442,11 +439,11 @@ class Transformation(
     clusteredInputs
       .withColumn(F.value, -col(F.value))
       .union(clusteredOutputs)
-      .groupBy(F.txIndex, F.clusterId)
+      .groupBy(F.txId, F.clusterId)
       .agg(sum(F.value).as(F.value))
       .join(
-        transactions.select(F.txIndex, F.height, F.txIndex, F.timestamp),
-        F.txIndex
+        transactions.select(F.txId, F.blockId, F.txId, F.timestamp),
+        F.txId
       )
       .as[ClusterTransaction]
   }
