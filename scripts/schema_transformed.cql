@@ -24,8 +24,6 @@ CREATE TABLE address_transactions (
     address_id int,
     tx_id bigint,
     value bigint,
-    block_id int,
-    timestamp int,
     PRIMARY KEY (address_id_group, address_id, tx_id)
 );
 
