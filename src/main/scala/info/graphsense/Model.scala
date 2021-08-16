@@ -121,8 +121,7 @@ case class AddressTransaction(
     addressId: Int,
     txId: Long,
     value: Long,
-    blockId: Int,
-    timestamp: Int
+    blockId: Int
 )
 
 case class BasicAddress(

@@ -106,7 +106,6 @@ class TransformationTest
 
   val addressTransactions =
     t.computeAddressTransactions(
-        transactions,
         regInputs,
         regOutputs,
         addressIds

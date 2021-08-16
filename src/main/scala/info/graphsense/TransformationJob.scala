@@ -169,7 +169,6 @@ object TransformationJob {
     val addressTransactions =
       transformation
         .computeAddressTransactions(
-          transactions,
           regInputs,
           regOutputs,
           addressIds

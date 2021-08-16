@@ -296,7 +296,6 @@ class Transformation(
   }
 
   def computeAddressTransactions(
-      tx: Dataset[Transaction],
       regInputs: Dataset[RegularInput],
       regOutputs: Dataset[RegularOutput],
       addressIds: Dataset[AddressId]
@@ -305,11 +304,8 @@ class Transformation(
       .withColumn(F.value, -col(F.value))
       .union(regOutputs.drop(F.n))
       .groupBy(F.txId, F.address)
-      .agg(sum(F.value).as(F.value))
-      .join(
-        tx.select(F.txId, F.blockId, F.timestamp).distinct(),
-        F.txId
-      )
+      // blockId is constant in each group, get single value with min
+      .agg(sum(F.value).as(F.value), min(F.blockId).as(F.blockId))
       .join(addressIds, Seq(F.address))
       .drop(F.addressPrefix, F.address)
       .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
