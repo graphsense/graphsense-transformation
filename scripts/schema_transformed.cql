@@ -3,12 +3,6 @@ CREATE KEYSPACE IF NOT EXISTS btc_transformed
 
 USE btc_transformed;
 
-CREATE TYPE tx_id_time (
-    block_id int,
-    tx_id bigint,
-    timestamp int
-);
-
 CREATE TYPE currency (
     value bigint,
     fiat_values list<float>
@@ -34,8 +28,8 @@ CREATE TABLE address (
     cluster_id int,
     no_incoming_txs int,
     no_outgoing_txs int,
-    first_tx FROZEN <tx_id_time>,
-    last_tx FROZEN <tx_id_time>,
+    first_tx_id bigint,
+    last_tx_id bigint,
     total_received FROZEN <currency>,
     total_spent FROZEN <currency>,
     in_degree int,
@@ -104,8 +98,8 @@ CREATE TABLE cluster (
     no_addresses int,
     no_incoming_txs int,
     no_outgoing_txs int,
-    first_tx FROZEN <tx_id_time>,
-    last_tx FROZEN <tx_id_time>,
+    first_tx_id bigint,
+    last_tx_id bigint,
     total_received FROZEN <currency>,
     total_spent FROZEN <currency>,
     in_degree int,

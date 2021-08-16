@@ -190,7 +190,6 @@ object TransformationJob {
     val basicAddresses =
       transformation
         .computeBasicAddresses(
-          transactions,
           addressTransactions,
           inputs,
           outputs,
@@ -301,7 +300,6 @@ object TransformationJob {
     val basicCluster =
       transformation
         .computeBasicCluster(
-          transactions,
           clusterAddresses,
           clusterTransactions,
           clusterInputs,

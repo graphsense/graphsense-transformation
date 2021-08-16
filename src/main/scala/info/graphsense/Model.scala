@@ -50,8 +50,6 @@ case class TxSummary(
     totalOutput: Long
 )
 
-case class TxIdTime(blockId: Int, txId: Long, timestamp: Int)
-
 case class Currency(value: Long, fiatValues: Seq[Float])
 
 // raw schema tables
@@ -131,8 +129,8 @@ case class BasicAddress(
     addressId: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
+    firstTxId: Long,
+    lastTxId: Long,
     totalReceived: Currency,
     totalSpent: Currency
 )
@@ -144,8 +142,8 @@ case class Address(
     clusterId: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
+    firstTxId: Long,
+    lastTxId: Long,
     totalReceived: Currency,
     totalSpent: Currency,
     inDegree: Int,
@@ -199,8 +197,8 @@ case class BasicCluster(
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
+    firstTxId: Long,
+    lastTxId: Long,
     totalReceived: Currency,
     totalSpent: Currency
 )
@@ -211,8 +209,8 @@ case class Cluster(
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
+    firstTxId: Long,
+    lastTxId: Long,
     totalReceived: Currency,
     totalSpent: Currency,
     inDegree: Int,

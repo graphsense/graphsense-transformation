@@ -211,7 +211,6 @@ class Transformation(
     )
 
   def computeStatistics[A](
-      transactions: Dataset[Transaction],
       all: Dataset[A],
       in: Dataset[A],
       out: Dataset[A],
@@ -259,20 +258,13 @@ class Transformation(
       .toDF(idColumn, F.noIncomingTxs, F.totalReceived)
     val outStats = statsPart(in, exchangeRates, noFiatCurrencies.get)
       .toDF(idColumn, F.noOutgoingTxs, F.totalSpent)
-    val txTimes = transactions.select(
-      col(F.txId),
-      struct(F.blockId, F.txId, F.timestamp)
-    )
 
     all
       .groupBy(idColumn)
       .agg(
-        min(F.txId).as("firstTxNumber"),
-        max(F.txId).as("lastTxNumber")
+        min(F.txId).as(F.firstTxId),
+        max(F.txId).as(F.lastTxId)
       )
-      .join(txTimes.toDF("firstTxNumber", F.firstTx), "firstTxNumber")
-      .join(txTimes.toDF("lastTxNumber", F.lastTx), "lastTxNumber")
-      .drop("firstTxNumber", "lastTxNumber")
       .join(inStats, idColumn)
       .join(outStats, Seq(idColumn), "left_outer")
       .na
@@ -326,14 +318,12 @@ class Transformation(
   }
 
   def computeBasicAddresses(
-      transactions: Dataset[Transaction],
       addressTransactions: Dataset[AddressTransaction],
       inputs: Dataset[AddressTransaction],
       outputs: Dataset[AddressTransaction],
       exchangeRates: Dataset[ExchangeRates]
   ): Dataset[BasicAddress] = {
     computeStatistics(
-      transactions,
       addressTransactions,
       inputs,
       outputs,
@@ -449,7 +439,6 @@ class Transformation(
   }
 
   def computeBasicCluster(
-      transactions: Dataset[Transaction],
       clusterAddresses: Dataset[ClusterAddress],
       clusterTransactions: Dataset[ClusterTransaction],
       clusterInputs: Dataset[ClusterTransaction],
@@ -461,7 +450,6 @@ class Transformation(
         .groupBy(F.clusterId)
         .agg(count("*").cast(IntegerType).as(F.noAddresses))
     computeStatistics(
-      transactions,
       clusterTransactions,
       clusterInputs,
       clusterOutputs,

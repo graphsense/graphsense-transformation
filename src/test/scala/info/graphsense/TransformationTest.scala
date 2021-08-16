@@ -120,7 +120,6 @@ class TransformationTest
 
   val basicAddresses =
     t.computeBasicAddresses(
-        transactions,
         addressTransactions,
         inputs,
         outputs,
@@ -204,7 +203,6 @@ class TransformationTest
 
   val basicCluster =
     t.computeBasicCluster(
-        transactions,
         clusterAddresses,
         clusterTransactions,
         clusterInputs,
