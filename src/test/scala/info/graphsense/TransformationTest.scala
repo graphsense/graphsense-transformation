@@ -1,11 +1,15 @@
 package info.graphsense
 
 import com.github.mrpowers.spark.fast.tests.DataFrameComparer
-import org.apache.spark.sql.{DataFrame, Dataset, Encoder, SparkSession}
-import org.apache.spark.sql.catalyst.ScalaReflection
+import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, SparkSession}
 import org.apache.spark.sql.catalyst.ScalaReflection.universe.TypeTag
-import org.apache.spark.sql.functions.{col, lower}
-import org.apache.spark.sql.types.{DataType, StructType}
+import org.apache.spark.sql.functions.{col, length, lit, lower, udf, when}
+import org.apache.spark.sql.types.{
+  ArrayType,
+  StringType,
+  StructField,
+  StructType
+}
 import org.scalatest.funsuite._
 
 import info.graphsense.{Fields => F}
@@ -28,28 +32,65 @@ class TransformationTest
     with SparkSessionTestWrapper
     with DataFrameComparer {
 
-  def readJson[A: Encoder: TypeTag](file: String): Dataset[A] = {
-    // https://docs.databricks.com/spark/latest/faq/schema-from-case-class.html
-    val schema = ScalaReflection.schemaFor[A].dataType.asInstanceOf[StructType]
-    val newSchema = DataType
-      .fromJson(
-        schema.json
-          .replace("\"type\":\"binary\"", "\"type\":\"string\"")
-          .replace("\"elementType\":\"binary\"", "\"elementType\":\"string\"")
+  def readJson[T <: Product: Encoder: TypeTag](
+      file: String
+  ): Dataset[T] = {
+    val schema = Encoders.product[T].schema
+    // read BinaryType as StringType from JSON/CSV file and cast to ByteArray
+    val newSchema = StructType(
+      schema.map(
+        x =>
+          if (x.dataType.toString == "BinaryType")
+            StructField(x.name, StringType, true)
+          else StructField(x.name, x.dataType, true)
       )
-      .asInstanceOf[StructType]
-    spark.read.schema(newSchema).json(file).as[A]
+    )
+
+    val binaryColumns = schema.collect {
+      case x if x.dataType.toString == "BinaryType" => x.name
+    }
+
+    val hexStringToByteArray = udf(
+      (x: String) => x.grouped(2).toArray map { Integer.parseInt(_, 16).toByte }
+    )
+
+    val fileSuffix = file.toUpperCase.split("\\.").last
+    val df =
+      if (fileSuffix == "JSON") spark.read.schema(newSchema).json(file)
+      else spark.read.schema(newSchema).option("header", true).csv(file)
+
+    binaryColumns
+      .foldLeft(df) { (curDF, colName) =>
+        curDF.withColumn(
+          colName,
+          when(
+            col(colName).isNotNull,
+            hexStringToByteArray(
+              col(colName).substr(lit(3), length(col(colName)) - 2)
+            )
+          )
+        )
+      }
+      .as[T]
   }
 
-  def setNullableStateForAllColumns[A](ds: Dataset[A]): DataFrame = {
-    val df = ds.toDF()
-    val schema =
-      DataType
-        .fromJson(
-          df.schema.json.replace("\"nullable\":false", "\"nullable\":true")
-        )
-        .asInstanceOf[StructType]
-    df.sqlContext.createDataFrame(df.rdd, schema)
+  def setNullableStateForAllColumns[T](
+      ds: Dataset[T],
+      nullable: Boolean = true,
+      containsNull: Boolean = true
+  ): DataFrame = {
+    def set(st: StructType): StructType = {
+      StructType(st.map {
+        case StructField(name, dataType, _, metadata) =>
+          val newDataType = dataType match {
+            case t: StructType          => set(t)
+            case ArrayType(dataType, _) => ArrayType(dataType, containsNull)
+            case _                      => dataType
+          }
+          StructField(name, newDataType, nullable = nullable, metadata)
+      })
+    }
+    ds.sqlContext.createDataFrame(ds.toDF.rdd, set(ds.schema))
   }
 
   def assertDataFrameEquality[A](

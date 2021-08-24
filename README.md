@@ -26,7 +26,7 @@ Make sure [Java 8][java] and [sbt >= 1.0][scala-sbt] is installed:
     java -version
     sbt about
 
-Download, install, and run [Apache Spark][apache-spark] (version 2.4.7)
+Download, install, and run [Apache Spark][apache-spark] (version 3.1.2)
 in `$SPARK_HOME`:
 
     $SPARK_HOME/sbin/start-master.sh
