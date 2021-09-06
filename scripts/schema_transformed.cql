@@ -45,7 +45,7 @@ CREATE TABLE address_by_address_prefix (
 );
 
 CREATE TABLE address_tags (
-    address text,
+    address_id_group int,
     address_id int,
     label text,
     source text,
@@ -53,7 +53,7 @@ CREATE TABLE address_tags (
     lastmod int,
     category text,
     abuse text,
-    PRIMARY KEY (address, label, source, tagpack_uri)
+    PRIMARY KEY (address_id_group, address_id, label, source, tagpack_uri)
 );
 
 CREATE TABLE address_tag_by_label (
