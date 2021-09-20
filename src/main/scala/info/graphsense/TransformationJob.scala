@@ -289,6 +289,11 @@ object TransformationJob {
           addressCluster
         )
         .persist()
+    cassandra.store(
+      conf.targetKeyspace(),
+      "cluster_transactions",
+      clusterTransactions
+    )
 
     val (clusterInputs, clusterOutputs) =
       transformation.splitTransactions(clusterTransactions)

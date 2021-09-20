@@ -428,9 +428,11 @@ class Transformation(
       .groupBy(F.txId, F.clusterId)
       .agg(sum(F.value).as(F.value))
       .join(
-        transactions.select(F.txId, F.blockId, F.txId, F.timestamp),
+        transactions.select(F.txId, F.blockId, F.txId),
         F.txId
       )
+      .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
+      .sort(F.clusterIdGroup, F.clusterId)
       .as[ClusterTransaction]
   }
 

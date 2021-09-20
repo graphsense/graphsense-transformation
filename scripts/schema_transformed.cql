@@ -92,6 +92,14 @@ CREATE TABLE address_outgoing_relations (
     PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
 );
 
+CREATE TABLE cluster_transactions (
+    cluster_id_group int,
+    cluster_id int,
+    tx_id bigint,
+    value bigint,
+    PRIMARY KEY (cluster_id_group, cluster_id, tx_id)
+);
+
 CREATE TABLE cluster (
     cluster_id_group int,
     cluster_id int,

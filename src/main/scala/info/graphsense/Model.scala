@@ -184,11 +184,11 @@ case class ClusterAddress(
 )
 
 case class ClusterTransaction(
+    clusterIdGroup: Int,
     clusterId: Int,
     txId: Long,
     value: Long,
-    blockId: Int,
-    timestamp: Int
+    blockId: Int
 )
 
 case class BasicCluster(
