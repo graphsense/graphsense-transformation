@@ -269,8 +269,7 @@ case class AddressRelation(
     hasSrcLabels: Boolean,
     hasDstLabels: Boolean,
     noTransactions: Int,
-    estimatedValue: Currency,
-    txList: Seq[Long]
+    estimatedValue: Currency
 )
 
 case class PlainClusterRelation(
@@ -289,8 +288,7 @@ case class ClusterRelation(
     hasSrcLabels: Boolean,
     hasDstLabels: Boolean,
     noTransactions: Int,
-    estimatedValue: Currency,
-    txList: Seq[Long]
+    estimatedValue: Currency
 )
 
 case class SummaryStatistics(

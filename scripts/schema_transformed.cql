@@ -88,7 +88,6 @@ CREATE TABLE address_outgoing_relations (
     has_dst_labels boolean,
     no_transactions int,
     estimated_value FROZEN <currency>,
-    tx_list list<bigint>,
     PRIMARY KEY (src_address_id_group, src_address_id, dst_address_id)
 );
 
@@ -179,7 +178,6 @@ CREATE TABLE cluster_outgoing_relations (
     has_dst_labels boolean,
     no_transactions int,
     estimated_value FROZEN <currency>,
-    tx_list list<bigint>,
     PRIMARY KEY (src_cluster_id_group, src_cluster_id, dst_cluster_id)
 );
 

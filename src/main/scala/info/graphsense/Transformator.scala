@@ -262,8 +262,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       plainAddressRelations: Dataset[PlainAddressRelation],
       exchangeRates: Dataset[ExchangeRates],
       addressTags: Dataset[AddressTag],
-      noFiatCurrencies: Int,
-      txLimit: Int
+      noFiatCurrencies: Int
   ): Dataset[AddressRelation] = {
 
     val addressLabels = addressTags
@@ -311,23 +310,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         "left"
       )
 
-    val txList = plainAddressRelations
-    // compute list column of transactions (only if #tx <= txLimit)
-      .select(F.srcAddressId, F.dstAddressId, F.txId)
-      .join(
-        fullAddressRelations
-          .select(F.srcAddressId, F.dstAddressId, F.noTransactions),
-        Seq(F.srcAddressId, F.dstAddressId),
-        "full"
-      )
-      .groupBy(F.srcAddressId, F.dstAddressId)
-      .agg(
-        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txId)))
-          .as(F.txList)
-      )
-
     fullAddressRelations
-      .join(txList, Seq(F.srcAddressId, F.dstAddressId), "left")
       .na
       .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[AddressRelation]
@@ -356,8 +339,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       plainClusterRelations: Dataset[PlainClusterRelation],
       exchangeRates: Dataset[ExchangeRates],
       clusterTags: Dataset[ClusterTag],
-      noFiatCurrencies: Int,
-      txLimit: Int
+      noFiatCurrencies: Int
   ) = {
 
     val clusterLabels = clusterTags
@@ -404,23 +386,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         "left"
       )
 
-    val txList = plainClusterRelations
-    // compute list column of transactions (only if #tx <= txLimit)
-      .select(F.srcClusterId, F.dstClusterId, F.txId)
-      .join(
-        fullClusterRelations
-          .select(F.srcClusterId, F.dstClusterId, F.noTransactions),
-        Seq(F.srcClusterId, F.dstClusterId),
-        "full"
-      )
-      .groupBy(F.srcClusterId, F.dstClusterId)
-      .agg(
-        collect_set(when(col(F.noTransactions) <= txLimit, col(F.txId)))
-          .as(F.txList)
-      )
-
     fullClusterRelations
-      .join(txList, Seq(F.srcClusterId, F.dstClusterId), "left")
       .na
       .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[ClusterRelation]

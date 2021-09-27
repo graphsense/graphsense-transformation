@@ -345,15 +345,13 @@ class Transformation(
   def computeAddressRelations(
       plainAddressRelations: Dataset[PlainAddressRelation],
       exchangeRates: Dataset[ExchangeRates],
-      addressTags: Dataset[AddressTag],
-      txLimit: Int = 100
+      addressTags: Dataset[AddressTag]
   ): Dataset[AddressRelation] = {
     t.addressRelations(
       plainAddressRelations,
       exchangeRates,
       addressTags,
-      noFiatCurrencies.get,
-      txLimit
+      noFiatCurrencies.get
     )
   }
 
@@ -470,15 +468,13 @@ class Transformation(
   def computeClusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelation],
       exchangeRates: Dataset[ExchangeRates],
-      clusterTags: Dataset[ClusterTag],
-      txLimit: Int = 100
+      clusterTags: Dataset[ClusterTag]
   ): Dataset[ClusterRelation] = {
     t.clusterRelations(
       plainClusterRelations,
       exchangeRates,
       clusterTags,
-      noFiatCurrencies.get,
-      txLimit
+      noFiatCurrencies.get
     )
   }
 

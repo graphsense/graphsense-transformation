@@ -187,16 +187,6 @@ class TransformationTest
   val plainAddressRelations =
     t.computePlainAddressRelations(inputs, outputs, regInputs, transactions)
 
-  val addressRelationsLimit1 =
-    t.computeAddressRelations(
-        plainAddressRelations,
-        exchangeRates,
-        addressTags,
-        1
-      )
-      .sort(F.dstAddressId, F.srcAddressId)
-      .persist()
-
   val addressRelations =
     t.computeAddressRelations(
         plainAddressRelations,
@@ -273,15 +263,6 @@ class TransformationTest
 
   val plainClusterRelations =
     t.computePlainClusterRelations(clusterInputs, clusterOutputs).persist()
-
-  val clusterRelationsLimit1 =
-    t.computeClusterRelations(
-        plainClusterRelations,
-        exchangeRates,
-        clusterTags,
-        1
-      )
-      .persist()
 
   val clusterRelations =
     t.computeClusterRelations(
@@ -371,11 +352,6 @@ class TransformationTest
       readTestData[AddressRelation](refDir + "address_relations.json")
     assertDataFrameEquality(addressRelations, addressRelationsRef)
   }
-  test("addressRelations with txLimit=1") {
-    val addressRelationsLimit1Ref =
-      readTestData[AddressRelation](refDir + "address_relations_limit1.json")
-    assertDataFrameEquality(addressRelationsLimit1, addressRelationsLimit1Ref)
-  }
   test("addresses") {
     val addressesRef = readTestData[Address](refDir + "addresses.json")
     assertDataFrameEquality(addresses, addressesRef)
@@ -443,14 +419,6 @@ class TransformationTest
         .sort(F.srcClusterId, F.dstClusterId)
     val sortedRelations = clusterRelations.sort(F.srcClusterId, F.dstClusterId)
     assertDataFrameEquality(sortedRelations, clusterRelationsRef)
-  }
-  test("clusterRelations with txLimit=1") {
-    val clusterRelationsLimit1Ref =
-      readTestData[ClusterRelation](refDir + "cluster_relations_limit1.json")
-        .sort(F.srcClusterId, F.dstClusterId)
-    val sortedRelations =
-      clusterRelationsLimit1.sort(F.srcClusterId, F.dstClusterId)
-    assertDataFrameEquality(sortedRelations, clusterRelationsLimit1Ref)
   }
   test("clusters") {
     val clusterRef = readTestData[Cluster](refDir + "cluster.json")
