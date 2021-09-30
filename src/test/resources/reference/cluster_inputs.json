@@ -1,6 +1,6 @@
-{"clusterIdGroup": 0, "clusterId": 0, "value": 2500000, "blockId": 2, "txId": 3}
-{"clusterIdGroup": 0, "clusterId": 1, "value": 3980000, "blockId": 3, "txId": 5}
-{"clusterIdGroup": 1, "clusterId": 3, "value": 150000, "blockId": 3, "txId": 6}
-{"clusterIdGroup": 1, "clusterId": 3, "value": 345000, "blockId": 4, "txId": 9}
-{"clusterIdGroup": 2, "clusterId": 4, "value": 2995000, "blockId": 4, "txId": 8}
-{"clusterIdGroup": 3, "clusterId": 6, "value": 1425000, "blockId": 4, "txId": 10}
+{"clusterIdGroup": 0, "clusterId": 0, "value": 2500000, "blockId": 2, "txId": 3, "isOutgoing": true}
+{"clusterIdGroup": 0, "clusterId": 1, "value": 3980000, "blockId": 3, "txId": 5, "isOutgoing": true}
+{"clusterIdGroup": 1, "clusterId": 3, "value": 150000, "blockId": 3, "txId": 6, "isOutgoing": true}
+{"clusterIdGroup": 1, "clusterId": 3, "value": 345000, "blockId": 4, "txId": 9, "isOutgoing": true}
+{"clusterIdGroup": 2, "clusterId": 4, "value": 2995000, "blockId": 4, "txId": 8, "isOutgoing": true}
+{"clusterIdGroup": 3, "clusterId": 6, "value": 1425000, "blockId": 4, "txId": 10, "isOutgoing": true}

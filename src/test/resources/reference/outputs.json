@@ -1,15 +1,15 @@
-{"value": 2500000, "blockId": 1, "txId": 1, "timestamp": 1230948000, "addressIdGroup": 0, "addressId": 0}
-{"value": 2500000, "blockId": 2, "txId": 2, "timestamp": 1231466400, "addressIdGroup": 0, "addressId": 1}
-{"value": 1480000, "blockId": 2, "txId": 3, "timestamp": 1231466400, "addressIdGroup": 1, "addressId": 2}
-{"value": 495000, "blockId": 2, "txId": 3, "timestamp": 1231466400, "addressIdGroup": 1, "addressId": 3}
-{"value": 495000, "blockId": 2, "txId": 3, "timestamp": 1231466400, "addressIdGroup": 2, "addressId": 4}
-{"value": 2500000, "blockId": 3, "txId": 4, "timestamp": 1231552800, "addressIdGroup": 2, "addressId": 5}
-{"value": 1325000, "blockId": 3, "txId": 5, "timestamp": 1231552800, "addressIdGroup": 3, "addressId": 6}
-{"value": 100000, "blockId": 3, "txId": 5, "timestamp": 1231552800, "addressIdGroup": 3, "addressId": 7}
-{"value": 2350000, "blockId": 3, "txId": 5, "timestamp": 1231552800, "addressIdGroup": 4, "addressId": 8}
-{"value": 140000, "blockId": 3, "txId": 6, "timestamp": 1231552800, "addressIdGroup": 4, "addressId": 9}
-{"value": 340000, "blockId": 4, "txId": 9, "timestamp": 1231639200, "addressIdGroup": 4, "addressId": 9}
-{"value": 2500000, "blockId": 4, "txId": 7, "timestamp": 1231639200, "addressIdGroup": 5, "addressId": 10}
-{"value": 4300000, "blockId": 4, "txId": 8, "timestamp": 1231639200, "addressIdGroup": 5, "addressId": 11}
-{"value": 149000, "blockId": 4, "txId": 8, "timestamp": 1231639200, "addressIdGroup": 6, "addressId": 12}
-{"value": 1400000, "blockId": 4, "txId": 10, "timestamp": 1231639200, "addressIdGroup": 6, "addressId": 13}
+{"value": 2500000, "blockId": 1, "txId": 1, "timestamp": 1230948000, "addressIdGroup": 0, "addressId": 0, "isOutgoing": false}
+{"value": 2500000, "blockId": 2, "txId": 2, "timestamp": 1231466400, "addressIdGroup": 0, "addressId": 1, "isOutgoing": false}
+{"value": 1480000, "blockId": 2, "txId": 3, "timestamp": 1231466400, "addressIdGroup": 1, "addressId": 2, "isOutgoing": false}
+{"value": 495000, "blockId": 2, "txId": 3, "timestamp": 1231466400, "addressIdGroup": 1, "addressId": 3, "isOutgoing": false}
+{"value": 495000, "blockId": 2, "txId": 3, "timestamp": 1231466400, "addressIdGroup": 2, "addressId": 4, "isOutgoing": false}
+{"value": 2500000, "blockId": 3, "txId": 4, "timestamp": 1231552800, "addressIdGroup": 2, "addressId": 5, "isOutgoing": false}
+{"value": 1325000, "blockId": 3, "txId": 5, "timestamp": 1231552800, "addressIdGroup": 3, "addressId": 6, "isOutgoing": false}
+{"value": 100000, "blockId": 3, "txId": 5, "timestamp": 1231552800, "addressIdGroup": 3, "addressId": 7, "isOutgoing": false}
+{"value": 2350000, "blockId": 3, "txId": 5, "timestamp": 1231552800, "addressIdGroup": 4, "addressId": 8, "isOutgoing": false}
+{"value": 140000, "blockId": 3, "txId": 6, "timestamp": 1231552800, "addressIdGroup": 4, "addressId": 9, "isOutgoing": false}
+{"value": 340000, "blockId": 4, "txId": 9, "timestamp": 1231639200, "addressIdGroup": 4, "addressId": 9, "isOutgoing": false}
+{"value": 2500000, "blockId": 4, "txId": 7, "timestamp": 1231639200, "addressIdGroup": 5, "addressId": 10, "isOutgoing": false}
+{"value": 4300000, "blockId": 4, "txId": 8, "timestamp": 1231639200, "addressIdGroup": 5, "addressId": 11, "isOutgoing": false}
+{"value": 149000, "blockId": 4, "txId": 8, "timestamp": 1231639200, "addressIdGroup": 6, "addressId": 12, "isOutgoing": false}
+{"value": 1400000, "blockId": 4, "txId": 10, "timestamp": 1231639200, "addressIdGroup": 6, "addressId": 13, "isOutgoing": false}

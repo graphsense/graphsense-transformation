@@ -18,7 +18,8 @@ CREATE TABLE address_transactions (
     address_id int,
     tx_id bigint,
     value bigint,
-    PRIMARY KEY (address_id_group, address_id, tx_id)
+    is_outgoing boolean,
+    PRIMARY KEY (address_id_group, address_id, is_outgoing, tx_id)
 );
 
 CREATE TABLE address (
@@ -96,7 +97,8 @@ CREATE TABLE cluster_transactions (
     cluster_id int,
     tx_id bigint,
     value bigint,
-    PRIMARY KEY (cluster_id_group, cluster_id, tx_id)
+    is_outgoing boolean,
+    PRIMARY KEY (cluster_id_group, cluster_id, is_outgoing, tx_id)
 );
 
 CREATE TABLE cluster (

@@ -25,7 +25,8 @@ import org.apache.spark.sql.functions.{
   sum,
   to_date,
   typedLit,
-  unix_timestamp
+  unix_timestamp,
+  when
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType, StringType}
 
@@ -308,6 +309,10 @@ class Transformation(
       .agg(sum(F.value).as(F.value), min(F.blockId).as(F.blockId))
       .join(addressIds, Seq(F.address))
       .drop(F.addressPrefix, F.address)
+      .withColumn(
+        F.isOutgoing,
+        when(col(F.value) < 0, lit(true)).otherwise(lit(false))
+      )
       .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
       .sort(F.addressIdGroup, F.addressId)
       .as[AddressTransaction]
@@ -428,6 +433,10 @@ class Transformation(
       .join(
         transactions.select(F.txId, F.blockId, F.txId),
         F.txId
+      )
+      .withColumn(
+        F.isOutgoing,
+        when(col(F.value) < 0, lit(true)).otherwise(lit(false))
       )
       .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
       .sort(F.clusterIdGroup, F.clusterId)

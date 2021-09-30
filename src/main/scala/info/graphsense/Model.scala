@@ -121,7 +121,8 @@ case class AddressTransaction(
     addressId: Int,
     txId: Long,
     value: Long,
-    blockId: Int
+    blockId: Int,
+    isOutgoing: Boolean
 )
 
 case class BasicAddress(
@@ -188,7 +189,8 @@ case class ClusterTransaction(
     clusterId: Int,
     txId: Long,
     value: Long,
-    blockId: Int
+    blockId: Int,
+    isOutgoing: Boolean
 )
 
 case class BasicCluster(

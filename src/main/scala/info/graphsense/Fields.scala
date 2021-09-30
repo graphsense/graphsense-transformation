@@ -17,6 +17,7 @@ object Fields {
   val n = "n"
   val noIncomingTxs = "noIncomingTxs"
   val noOutgoingTxs = "noOutgoingTxs"
+  val isOutgoing = "isOutgoing"
   val firstTxId = "firstTxId"
   val lastTxId = "lastTxId"
   val totalReceived = "totalReceived"
