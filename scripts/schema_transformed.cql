@@ -38,7 +38,7 @@ CREATE TABLE address (
     PRIMARY KEY (address_id_group, address_id)
 );
 
-CREATE TABLE address_by_address_prefix (
+CREATE TABLE address_ids_by_address_prefix (
     address_prefix text,
     address text,
     address_id int,

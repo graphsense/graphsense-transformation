@@ -161,7 +161,7 @@ object TransformationJob {
     )
     cassandra.store(
       conf.targetKeyspace(),
-      "address_by_address_prefix",
+      "address_ids_by_address_prefix",
       addressByAddressPrefix
     )
 
