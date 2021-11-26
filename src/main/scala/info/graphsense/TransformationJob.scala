@@ -153,7 +153,7 @@ object TransformationJob {
 
     println("Computing address IDs")
     val addressIds =
-      transformation.computeAddressIds(regOutputs)
+      transformation.computeAddressIds(regOutputs).persist()
 
     val addressByAddressPrefix = transformation.computeAddressByAddressPrefix(
       addressIds,
