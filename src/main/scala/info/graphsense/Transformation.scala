@@ -492,8 +492,6 @@ class Transformation(
       clusterRelations: Dataset[ClusterRelation]
   ): Dataset[Cluster] = {
     // compute in/out degrees for cluster graph
-    // basicCluster contains only clusters of size > 1 with an integer ID
-    // clusterRelations includes also cluster of size 1 (using the address string as ID)
     computeNodeDegrees(
       basicCluster.withColumn(F.clusterId, col(F.clusterId).cast(StringType)),
       clusterRelations.select(col(F.srcClusterId), col(F.dstClusterId)),
