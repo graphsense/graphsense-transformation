@@ -97,13 +97,14 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
 
 
 "$SPARK_HOME"/bin/spark-submit \
-  --class "at.ac.ait.TransformationJob" \
+  --class "info.graphsense.TransformationJob" \
   --master "$SPARK_MASTER" \
   --conf spark.executor.memory="$MEMORY" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
   --conf spark.sql.session.timeZone=UTC \
-  --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:4.0.2 \
-  target/scala-2.12/graphsense-transformation_2.12-0.5.0.jar \
+  --conf spark.sql.extensions=com.datastax.spark.connector.CassandraSparkExtensions \
+  --packages com.datastax.spark:spark-cassandra-connector_2.12:3.1.0,org.rogach:scallop_2.12:4.0.2,joda-time:joda-time:2.10.10 \
+  target/scala-2.12/graphsense-transformation_2.12-0.5.1.jar \
   --currency "$CURRENCY" \
   --raw-keyspace "$RAW_KEYSPACE" \
   --tag-keyspace "$TAG_KEYSPACE" \

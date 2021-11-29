@@ -1,13 +1,15 @@
-package at.ac.ait.clustering
+package info.graphsense
 
+import info.graphsense.clustering.MultipleInputClustering
 import org.scalatest.flatspec.AnyFlatSpec
+
 import scala.collection.Seq
 
 class MultipleInputClusteringTestSpec extends AnyFlatSpec {
 
   def computeClusters(inputs: Iterable[Iterable[Int]]) = {
     val results = MultipleInputClustering.getClustersMutable(inputs.toIterator).toSet
-    (inputs.flatten.toSet, results.map(_.id).toSet, results.map(_.cluster).toSet)
+    (inputs.flatten.toSet, results.map(_.id).toSet, results.map(_.clusterId).toSet)
   }
 
   "Disjoint input sets" should "yield one cluster for each set" in {
@@ -44,8 +46,8 @@ class MultipleInputClusteringTestSpec extends AnyFlatSpec {
     val results = MultipleInputClustering.getClustersImmutable(input_sets.toIterator).toSet
     val clusters = results
       // group by cluster identifier
-      .groupBy(_.cluster)
-      // map from Map[cluster -> List[Result(id,cluster)]] to Map[cluster -> List[id]]
+      .groupBy(_.clusterId)
+      // map from Map[cluster -> List[Result(id,clusterId)]] to Map[cluster -> List[id]]
       .mapValues(_.map(_.id))
     val clusterSizes = clusters
       .mapValues(_.size).values.toList
@@ -85,14 +87,14 @@ class MultipleInputClusteringTestSpec extends AnyFlatSpec {
     val (t_mutable, result_mutable) = time("mutable") {
       val result_iterator = MultipleInputClustering.getClustersMutable(data.toIterator)
       val clusters = result_iterator.toList
-        .groupBy(_.cluster)
+        .groupBy(_.clusterId)
         .mapValues(_.map(_.id).sorted)
       clusters.values
     }
     val (t_immutable, result_immutable) = time("immutable") {
       val result_iterator = MultipleInputClustering.getClustersImmutable(data.toIterator)
       val clusters = result_iterator.toList
-        .groupBy(_.cluster)
+        .groupBy(_.clusterId)
         .mapValues(_.map(_.id).sorted)
       clusters.values
     }

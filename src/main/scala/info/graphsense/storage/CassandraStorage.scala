@@ -1,4 +1,4 @@
-package at.ac.ait.storage
+package info.graphsense.storage
 
 import com.datastax.spark.connector.rdd.ValidRDDType
 import com.datastax.spark.connector.rdd.reader.RowReaderFactory
@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter
 import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
 import scala.reflect.ClassTag
 
-import at.ac.ait.Util._
+import info.graphsense.Util._
 
 class CassandraStorage(spark: SparkSession) {
 

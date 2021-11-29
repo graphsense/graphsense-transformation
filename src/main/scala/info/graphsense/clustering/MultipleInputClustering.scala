@@ -1,4 +1,4 @@
-package at.ac.ait.clustering
+package info.graphsense.clustering
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -33,7 +33,7 @@ case object MultipleInputClustering {
 
   // Naming is maybe a little suboptimal, as the return value is not really
   // an iterator over the clusters (in the example above: [1,2,3],[4,5])
-  // but an iteratover over the representatives of each node, i.e.
+  // but an iterator over the representatives of each node, i.e.
   // something similar to [1->1, 2->1, 3->1, 4->4, 5->4]
 
   @tailrec
@@ -48,10 +48,10 @@ case object MultipleInputClustering {
 }
 
 // For each node fed into the algorithm, one of these is returned.
-//   id:      Address of node
-//   cluster: Address of representative of this node
-case class Result[A](id: A, cluster: A) {
-  override def toString(): String = s"$id -> $cluster"
+//   id:        Address of node
+//   clusterId: Address of representative of this node
+case class Result[A](id: A, clusterId: A) {
+  override def toString(): String = s"$id -> $clusterId"
 }
 
 // For each element in UF-DS an instance of Representative is stored that

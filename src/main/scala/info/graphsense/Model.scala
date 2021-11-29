@@ -1,23 +1,21 @@
-package at.ac.ait
+package info.graphsense
 
 import java.sql.Date
 
 case class RegularInput(
     address: String,
-    txHash: Array[Byte],
+    txId: Long,
     value: Long,
-    height: Int,
-    txIndex: Long,
+    blockId: Int,
     timestamp: Int,
     coinJoin: Boolean
 )
 
 case class RegularOutput(
     address: String,
-    txHash: Array[Byte],
+    txId: Long,
     value: Long,
-    height: Int,
-    txIndex: Long,
+    blockId: Int,
     timestamp: Int,
     coinJoin: Boolean,
     n: Int
@@ -28,16 +26,10 @@ case class AddressId(
     addressId: Int
 )
 
-case class AddressIdByAddress(
+case class AddressByAddressPrefix(
     addressPrefix: String,
     address: String,
     addressId: Int
-)
-
-case class AddressByIdGroup(
-    addressIdGroup: Int,
-    addressId: Int,
-    address: String
 )
 
 case class InputIdSet(inputs: Seq[Int]) extends Iterable[Int] {
@@ -58,44 +50,38 @@ case class TxSummary(
     totalOutput: Long
 )
 
-case class TxIdTime(height: Int, txHash: Array[Byte], timestamp: Int)
-
-case class Currency(value: Long, eur: Float, usd: Float)
-
-case class AddressSummary(totalReceived: Currency, totalSpent: Currency)
-
-case class ClusterSummary(
-    noAddresses: Int,
-    totalReceived: Currency,
-    totalSpent: Currency
-)
+case class Currency(value: Long, fiatValues: Seq[Float])
 
 // raw schema tables
 
 case class Block(
-    height: Int,
+    blockIdGroup: Int,
+    blockId: Int,
     blockHash: Array[Byte],
     timestamp: Int,
     noTransactions: Int
 )
 
 case class Transaction(
-    txPrefix: String,
+    txIdGroup: Long,
+    txId: Long,
     txHash: Array[Byte],
-    height: Int,
+    blockId: Int,
     timestamp: Int,
     coinbase: Boolean,
     coinjoin: Boolean,
     totalInput: Long,
     totalOutput: Long,
     inputs: Seq[TxInputOutput],
-    outputs: Seq[TxInputOutput],
-    txIndex: Long
+    outputs: Seq[TxInputOutput]
 )
 
-case class BlockTransactions(height: Int, txs: Seq[TxSummary])
+case class BlockTransactions(blockId: Int, txs: Seq[TxSummary])
 
-case class ExchangeRatesRaw(date: String, eur: Float, usd: Float)
+case class ExchangeRatesRaw(
+    date: String,
+    fiatValues: Option[Map[String, Float]]
+  )
 
 case class AddressTagRaw(
     address: String,
@@ -128,36 +114,36 @@ case class SummaryStatisticsRaw(
 
 // transformed schema tables
 
-case class ExchangeRates(height: Int, eur: Float, usd: Float)
+case class ExchangeRates(blockId: Int, fiatValues: Seq[Float])
 
 case class AddressTransaction(
     addressIdGroup: Int,
     addressId: Int,
-    txHash: Array[Byte],
+    txId: Long,
     value: Long,
-    height: Int,
-    txIndex: Long,
-    timestamp: Int
+    blockId: Int,
+    isOutgoing: Boolean
 )
 
 case class BasicAddress(
     addressId: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
+    firstTxId: Long,
+    lastTxId: Long,
     totalReceived: Currency,
     totalSpent: Currency
 )
 
 case class Address(
-    addressPrefix: String,
-    address: String,
+    addressIdGroup: Int,
     addressId: Int,
+    address: String,
+    clusterId: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
+    firstTxId: Long,
+    lastTxId: Long,
     totalReceived: Currency,
     totalSpent: Currency,
     inDegree: Int,
@@ -190,61 +176,42 @@ case class AddressTagByLabel(
     active: Boolean
 )
 
-case class AddressCluster(addressIdGroup: Int, addressId: Int, cluster: Int)
+case class AddressCluster(addressId: Int, clusterId: Int)
 
 case class ClusterAddress(
-    clusterGroup: Int,
-    cluster: Int,
+    clusterIdGroup: Int,
+    clusterId: Int,
     addressId: Int,
-    noIncomingTxs: Int,
-    noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
-    totalReceived: Currency,
-    totalSpent: Currency,
-    inDegree: Int,
-    outDegree: Int
 )
 
 case class ClusterTransaction(
-    cluster: Int,
-    txHash: Array[Byte],
+    clusterIdGroup: Int,
+    clusterId: Int,
+    txId: Long,
     value: Long,
-    height: Int,
-    txIndex: Long,
-    timestamp: Int
+    blockId: Int,
+    isOutgoing: Boolean
 )
 
 case class BasicCluster(
-    cluster: Int,
+    clusterId: Int,
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
-    totalReceived: Currency,
-    totalSpent: Currency
-)
-
-case class BasicClusterAddress(
-    cluster: Int,
-    addressId: Int,
-    noIncomingTxs: Int,
-    noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
+    firstTxId: Long,
+    lastTxId: Long,
     totalReceived: Currency,
     totalSpent: Currency
 )
 
 case class Cluster(
-    clusterGroup: Int,
-    cluster: Int,
+    clusterIdGroup: Int,
+    clusterId: Int,
     noAddresses: Int,
     noIncomingTxs: Int,
     noOutgoingTxs: Int,
-    firstTx: TxIdTime,
-    lastTx: TxIdTime,
+    firstTxId: Long,
+    lastTxId: Long,
     totalReceived: Currency,
     totalSpent: Currency,
     inDegree: Int,
@@ -252,8 +219,8 @@ case class Cluster(
 )
 
 case class ClusterTag(
-    clusterGroup: Int,
-    cluster: Int,
+    clusterIdGroup: Int,
+    clusterId: Int,
     label: String,
     source: String,
     tagpackUri: String,
@@ -263,8 +230,8 @@ case class ClusterTag(
 )
 
 case class ClusterAddressTag(
-    clusterGroup: Int,
-    cluster: Int,
+    clusterIdGroup: Int,
+    clusterId: Int,
     addressId: Int,
     label: String,
     source: String,
@@ -278,7 +245,7 @@ case class ClusterTagByLabel(
     labelNormPrefix: String,
     labelNorm: String,
     label: String,
-    cluster: Int,
+    clusterId: Int,
     source: String,
     tagpackUri: String,
     currency: String,
@@ -289,10 +256,10 @@ case class ClusterTagByLabel(
 )
 
 case class PlainAddressRelation(
-    txHash: Array[Byte],
+    txId: Long,
     srcAddressId: Int,
     dstAddressId: Int,
-    height: Int,
+    blockId: Int,
     estimatedValue: Long
 )
 
@@ -301,35 +268,29 @@ case class AddressRelation(
     srcAddressId: Int,
     dstAddressIdGroup: Int,
     dstAddressId: Int,
-    srcProperties: AddressSummary,
-    dstProperties: AddressSummary,
     hasSrcLabels: Boolean,
     hasDstLabels: Boolean,
     noTransactions: Int,
-    estimatedValue: Currency,
-    txList: Seq[Array[Byte]]
+    estimatedValue: Currency
 )
 
 case class PlainClusterRelation(
-    txHash: Array[Byte],
-    srcCluster: Int,
-    dstCluster: Int,
-    value: Long,
-    height: Int
+    txId: Long,
+    srcClusterId: Int,
+    dstClusterId: Int,
+    estimatedValue: Long,
+    blockId: Int
 )
 
 case class ClusterRelation(
-    srcClusterGroup: Int,
-    srcCluster: Int,
-    dstClusterGroup: Int,
-    dstCluster: Int,
-    srcProperties: ClusterSummary,
-    dstProperties: ClusterSummary,
+    srcClusterIdGroup: Int,
+    srcClusterId: Int,
+    dstClusterIdGroup: Int,
+    dstClusterId: Int,
     hasSrcLabels: Boolean,
     hasDstLabels: Boolean,
     noTransactions: Int,
-    value: Currency,
-    txList: Seq[Array[Byte]]
+    estimatedValue: Currency
 )
 
 case class SummaryStatistics(
@@ -345,6 +306,9 @@ case class SummaryStatistics(
 case class Configuration(
     keyspaceName: String,
     bucketSize: Int,
+    addressPrefixLength: Int,
     bech32Prefix: String,
-    coinjoinFiltering: Boolean
+    labelPrefixLength: Int,
+    coinjoinFiltering: Boolean,
+    fiatCurrencies: Seq[String]
 )

@@ -14,7 +14,7 @@ echo -en "Starting Spark job ...\n" \
          "- Target keyspace: $TGT_KEYSPACE\n"
 
 "$SPARK_HOME"/bin/spark-submit \
-  --class "at.ac.ait.TransformationJob" \
+  --class "info.graphsense.TransformationJob" \
   --master "$SPARK_MASTER" \
   --conf spark.driver.bindAddress="0.0.0.0" \
   --conf spark.driver.host="$SPARK_DRIVER_HOST" \
@@ -29,7 +29,7 @@ echo -en "Starting Spark job ...\n" \
   --conf spark.sql.session.timeZone=UTC \
   --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:4.0.2 \
-  target/scala-2.12/graphsense-transformation_2.12-0.5.0.jar \
+  target/scala-2.12/graphsense-transformation_2.12-0.5.1-SNAPSHOT.jar \
   --currency "$CURRENCY" \
   --raw-keyspace "$RAW_KEYSPACE" \
   --tag-keyspace "$TAG_KEYSPACE" \
