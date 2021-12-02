@@ -620,6 +620,7 @@ class Transformation(
       noAddresses: Long,
       noAddressRelations: Long,
       noCluster: Long,
+      noClusterRelations: Long,
       noTags: Long
   ) = {
     Seq(
@@ -630,6 +631,7 @@ class Transformation(
         noAddresses,
         noAddressRelations,
         noCluster,
+        noClusterRelations,
         noTags
       )
     ).toDS()

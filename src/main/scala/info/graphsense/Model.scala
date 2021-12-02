@@ -300,6 +300,7 @@ case class SummaryStatistics(
     noAddresses: Long,
     noAddressRelations: Long,
     noClusters: Long,
+    noClusterRelations: Long,
     noTags: Long
 )
 

@@ -190,6 +190,7 @@ CREATE TABLE summary_statistics (
     no_addresses bigint,
     no_address_relations bigint,
     no_clusters bigint,
+    no_cluster_relations bigint,
     no_tags bigint
 );
 

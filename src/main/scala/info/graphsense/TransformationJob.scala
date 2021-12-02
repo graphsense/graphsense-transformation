@@ -352,6 +352,7 @@ object TransformationJob {
           clusterTags
         )
         .persist()
+    val noClusterRelations = clusterRelations.count()
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_incoming_relations",
@@ -388,6 +389,7 @@ object TransformationJob {
         noAddresses,
         noAddressRelations,
         noCluster,
+        noClusterRelations,
         noAddressTags
       )
     summaryStatistics.show()

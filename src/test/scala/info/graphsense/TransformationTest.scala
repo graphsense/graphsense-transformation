@@ -271,6 +271,7 @@ class TransformationTest
         clusterTags
       )
       .persist()
+  val noClusterRelations = clusterRelations.count()
 
   val cluster =
     t.computeCluster(basicCluster, clusterRelations)
@@ -289,6 +290,7 @@ class TransformationTest
       noAddresses,
       noAddressRelations,
       noCluster,
+      noClusterRelations,
       noAddressTags
     )
 
