@@ -20,7 +20,7 @@ CREATE TABLE address_transactions (
     value bigint,
     is_outgoing boolean,
     PRIMARY KEY (address_id_group, address_id, is_outgoing, tx_id)
-);
+) WITH CLUSTERING ORDER BY (address_id DESC, is_outgoing DESC, tx_id DESC);
 
 CREATE TABLE address (
     address_id_group int,
@@ -99,7 +99,7 @@ CREATE TABLE cluster_transactions (
     value bigint,
     is_outgoing boolean,
     PRIMARY KEY (cluster_id_group, cluster_id, is_outgoing, tx_id)
-);
+) WITH CLUSTERING ORDER BY (cluster_id DESC, is_outgoing DESC, tx_id DESC);
 
 CREATE TABLE cluster (
     cluster_id_group int,
