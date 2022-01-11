@@ -240,9 +240,7 @@ class Transformation(
     ) = {
       inOrOut
         .join(exchangeRates, Seq(F.blockId), "left")
-        .transform(
-          t.toFiatCurrency(F.value, F.fiatValues, noFiatCurrencies.get)
-        )
+        .transform(t.toFiatCurrency(F.value, F.fiatValues))
         .groupBy(idColumn)
         .agg(
           count(F.txId).cast(IntegerType),

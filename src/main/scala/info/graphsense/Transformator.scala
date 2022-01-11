@@ -1,6 +1,6 @@
 package info.graphsense
 
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   array,
@@ -16,6 +16,7 @@ import org.apache.spark.sql.functions.{
   struct,
   substring,
   sum,
+  transform,
   when
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType, LongType}
@@ -58,20 +59,16 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     ds.withColumn(idGroupColum, floor(col(idColumn) / size).cast(IntegerType))
   }
 
-  def toFiatCurrency(valueColumn: String, fiatValueColumn: String, length: Int)(
+  def toFiatCurrency(valueColumn: String, fiatValueColumn: String)(
       df: DataFrame
   ) = {
-    // see `transform_values` in Spark 3
     df.withColumn(
       fiatValueColumn,
-      array(
-        (0 until length)
-          .map(
-            i =>
-              ((col(valueColumn) * col(fiatValueColumn)
-                .getItem(i) / 1e6 + 0.5).cast(LongType) / 100.0)
-                .cast(FloatType)
-          ): _*
+      transform(
+        col(fiatValueColumn),
+        (x: Column) =>
+          ((col(valueColumn) * x / 1e6 + 0.5).cast(LongType) / 100.0)
+            .cast(FloatType)
       )
     )
   }
@@ -273,7 +270,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     val fullAddressRelations = plainAddressRelations
       .join(exchangeRates, Seq(F.blockId), "left")
       .transform(
-        toFiatCurrency(F.estimatedValue, F.fiatValues, noFiatCurrencies)
+        toFiatCurrency(F.estimatedValue, F.fiatValues)
       )
       .drop(F.blockId)
       .groupBy(F.srcAddressId, F.dstAddressId)
@@ -310,8 +307,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         "left"
       )
 
-    fullAddressRelations
-      .na
+    fullAddressRelations.na
       .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[AddressRelation]
   }
@@ -349,7 +345,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     val fullClusterRelations = plainClusterRelations
       .join(exchangeRates, Seq(F.blockId), "left")
       .transform(
-        toFiatCurrency(F.estimatedValue, F.fiatValues, noFiatCurrencies)
+        toFiatCurrency(F.estimatedValue, F.fiatValues)
       )
       .drop(F.blockId)
       .groupBy(F.srcClusterId, F.dstClusterId)
@@ -386,8 +382,7 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
         "left"
       )
 
-    fullClusterRelations
-      .na
+    fullClusterRelations.na
       .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[ClusterRelation]
   }
