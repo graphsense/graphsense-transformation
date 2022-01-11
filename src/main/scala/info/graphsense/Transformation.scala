@@ -28,7 +28,7 @@ import org.apache.spark.sql.functions.{
   unix_timestamp,
   when
 }
-import org.apache.spark.sql.types.{FloatType, IntegerType, StringType}
+import org.apache.spark.sql.types.{FloatType, IntegerType}
 
 import info.graphsense.{Fields => F}
 
@@ -493,17 +493,16 @@ class Transformation(
   ): Dataset[Cluster] = {
     // compute in/out degrees for cluster graph
     computeNodeDegrees(
-      basicCluster.withColumn(F.clusterId, col(F.clusterId).cast(StringType)),
-      clusterRelations.select(col(F.srcClusterId), col(F.dstClusterId)),
+      basicCluster,
+      clusterRelations.select(F.srcClusterId, F.dstClusterId),
       F.srcClusterId,
       F.dstClusterId,
       F.clusterId
     ).join(
-        basicCluster.select(col(F.clusterId).cast(StringType)),
+        basicCluster.select(F.clusterId),
         Seq(F.clusterId),
         "right"
       )
-      .withColumn(F.clusterId, col(F.clusterId).cast(IntegerType))
       .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
       .sort(F.clusterIdGroup, F.clusterId)
       .as[Cluster]
