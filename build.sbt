@@ -23,10 +23,13 @@ lazy val root = (project in file(".")).
       "-Ywarn-unused",
       "-Ywarn-unused-import",
       "-Ywarn-value-discard"),
+    resolvers += "SparkPackages" at "https://repos.spark-packages.org/",
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % "3.2.7" % Test,
-      "com.github.mrpowers" % "spark-fast-tests_2.12" % "0.23.0" % Test,
+      "com.github.mrpowers" %% "spark-fast-tests" % "0.23.0" % Test,
+      "graphframes" % "graphframes" % "0.8.1-spark3.0-s_2.12" % Provided,
       "org.rogach" %% "scallop" % "4.0.2" % Provided,
       "org.apache.spark" %% "spark-sql" % "3.1.2" % Provided,
+      "org.apache.spark" %% "spark-graphx" % "3.1.2" % Provided,
       "com.datastax.spark" %% "spark-cassandra-connector" % "3.1.0" % Provided)
   )
