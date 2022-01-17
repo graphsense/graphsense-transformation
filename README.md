@@ -5,7 +5,7 @@
 
 The GraphSense Transformation Pipeline reads raw block data, which is
 ingested into [Apache Cassandra][apache-cassandra]
-by the [graphsense-blocksci][graphsense-blocksci]/
+by the [graphsense-blocksci][graphsense-blocksci] /
 [graphsense-bitcoin-etl][graphsense-bitcoin-etl] component.
 The transformation pipeline computes de-normalized views using
 [Apache Spark][apache-spark], which are again stored in Cassandra.
