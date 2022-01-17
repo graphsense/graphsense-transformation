@@ -26,6 +26,8 @@ class TransformationTest
   }
 
   spark.sparkContext.setLogLevel("WARN")
+  spark.sparkContext.setCheckpointDir("file:///tmp/spark-checkpoint")
+
   import spark.implicits._
 
   val inputDir = "src/test/resources/"

@@ -28,6 +28,7 @@ class PlainAddressClusteringTest
   val t = new Transformator(spark, bucketSize)
 
   spark.sparkContext.setLogLevel("ERROR")
+  spark.sparkContext.setCheckpointDir("file:///tmp/spark-checkpoint")
 
   test(
     "addresses that appear in only one transaction are not clustered"

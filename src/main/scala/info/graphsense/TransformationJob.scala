@@ -71,6 +71,12 @@ object TransformationJob {
         descr =
           "Bech32 address prefix (e.g. 'bc1' for Bitcoin or 'ltc1' for Litecoin)"
       )
+    val checkpointDir: ScallopOption[String] = opt[String](
+      "checkpoint-dir",
+      default = Some("file:///tmp/spark-checkpoint"),
+      noshort = true,
+      descr = "Spark checkpoint directory (HFDS in non-local mode)"
+    )
     verify()
   }
 
@@ -82,6 +88,7 @@ object TransformationJob {
       .appName("GraphSense Transformation [%s]".format(conf.targetKeyspace()))
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
+    spark.sparkContext.setCheckpointDir(conf.checkpointDir())
 
     println("Currency:                      " + conf.currency())
     println("Raw keyspace:                  " + conf.rawKeyspace())
@@ -94,6 +101,7 @@ object TransformationJob {
     if (conf.bech32Prefix().length > 0) {
       println("Bech32 address prefix:         " + conf.bech32Prefix())
     }
+    println("Spark checkpoint directory:    " + conf.checkpointDir())
 
     import spark.implicits._
 
@@ -311,6 +319,7 @@ object TransformationJob {
           exchangeRates
         )
         .persist()
+    val noCluster = basicCluster.count()
 
     println("Computing cluster tags")
     val clusterTags =
@@ -376,8 +385,6 @@ object TransformationJob {
     val cluster =
       transformation
         .computeCluster(basicCluster, clusterRelations)
-        .persist()
-    val noCluster = cluster.count()
     cassandra.store(conf.targetKeyspace(), "cluster", cluster)
 
     println("Computing summary statistics")
