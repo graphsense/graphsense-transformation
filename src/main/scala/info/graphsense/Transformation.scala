@@ -11,21 +11,17 @@ import org.apache.spark.sql.functions.{
   explode,
   from_unixtime,
   lit,
-  lower,
   map_keys,
   map_values,
   max,
   min,
   posexplode,
-  regexp_replace,
   row_number,
   size,
   struct,
-  substring,
   sum,
   to_date,
   typedLit,
-  unix_timestamp,
   when
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType}
@@ -49,7 +45,6 @@ class Transformation(
       bucketSize: Int,
       addressPrefixLength: Int,
       bech32Prefix: String,
-      labelPrefixLength: Int,
       coinjoinFiltering: Boolean,
       fiatCurrencies: Seq[String]
   ) = {
@@ -59,7 +54,6 @@ class Transformation(
         bucketSize,
         addressPrefixLength,
         bech32Prefix,
-        labelPrefixLength,
         coinjoinFiltering,
         fiatCurrencies
       )
@@ -347,13 +341,11 @@ class Transformation(
 
   def computeAddressRelations(
       plainAddressRelations: Dataset[PlainAddressRelation],
-      exchangeRates: Dataset[ExchangeRates],
-      addressTags: Dataset[AddressTag]
+      exchangeRates: Dataset[ExchangeRates]
   ): Dataset[AddressRelation] = {
     t.addressRelations(
       plainAddressRelations,
       exchangeRates,
-      addressTags,
       noFiatCurrencies.get
     )
   }
@@ -376,26 +368,6 @@ class Transformation(
       .join(addressCluster, Seq(F.addressId), "left")
       .sort(F.addressId)
       .as[Address]
-  }
-
-  def computeAddressTags(
-      tags: Dataset[AddressTagRaw],
-      addresses: Dataset[BasicAddress],
-      addressIds: Dataset[AddressId],
-      currency: String
-  ): Dataset[AddressTag] = {
-    tags
-      .filter(col(F.currency) === currency)
-      .drop(col(F.currency))
-      .join(addressIds.drop(F.addressPrefix), Seq(F.address))
-      .join(addresses, Seq(F.addressId), joinType = "left_semi")
-      .withColumn(
-        "lastmod",
-        unix_timestamp(col("lastmod"), "yyyy-dd-MM").cast(IntegerType)
-      )
-      .transform(t.withIdGroup(F.addressId, F.addressIdGroup))
-      .sort(F.addressIdGroup, F.addressId)
-      .as[AddressTag]
   }
 
   def computeAddressCluster(
@@ -474,13 +446,11 @@ class Transformation(
 
   def computeClusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelation],
-      exchangeRates: Dataset[ExchangeRates],
-      clusterTags: Dataset[ClusterTag]
+      exchangeRates: Dataset[ExchangeRates]
   ): Dataset[ClusterRelation] = {
     t.clusterRelations(
       plainClusterRelations,
       exchangeRates,
-      clusterTags,
       noFiatCurrencies.get
     )
   }
@@ -506,110 +476,6 @@ class Transformation(
       .as[Cluster]
   }
 
-  def computeClusterTags(
-      tags: Dataset[ClusterTagRaw],
-      cluster: Dataset[BasicCluster],
-      currency: String
-  ): Dataset[ClusterTag] = {
-    tags
-      .filter(col(F.currency) === currency)
-      .withColumnRenamed("entity", F.clusterId)
-      .drop(col(F.currency))
-      .join(
-        cluster,
-        Seq(F.clusterId),
-        joinType = "left_semi"
-      )
-      .withColumn(
-        "lastmod",
-        unix_timestamp(col("lastmod"), "yyyy-dd-MM").cast(IntegerType)
-      )
-      .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
-      .sort(F.clusterIdGroup, F.clusterId)
-      .as[ClusterTag]
-  }
-
-  def computeClusterAddressTags(
-      addressCluster: Dataset[AddressCluster],
-      tags: Dataset[AddressTag]
-  ): Dataset[ClusterAddressTag] = {
-    addressCluster
-      .join(tags, F.addressId)
-      .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
-      .sort(F.clusterIdGroup, F.clusterId)
-      .drop(F.addressIdGroup, F.address)
-      .as[ClusterAddressTag]
-  }
-
-  def computeAddressTagsByLabel(
-      tagsRaw: Dataset[AddressTagRaw],
-      addressTags: Dataset[AddressTag],
-      currency: String,
-      prefixLength: Int = 3
-  ): Dataset[AddressTagByLabel] = {
-    // check if addresses where used in transactions
-    tagsRaw
-      .filter(col(F.currency) === currency)
-      .join(
-        addressTags
-          .select(col(F.address))
-          .withColumn(F.active, lit(true)),
-        Seq(F.address),
-        "left"
-      )
-      .na
-      .fill(false, Seq(F.active))
-      // normalize labels
-      .withColumn(
-        F.labelNorm,
-        lower(regexp_replace(col(F.label), "[\\W_]+", ""))
-      )
-      .withColumn(
-        F.labelNormPrefix,
-        substring(col(F.labelNorm), 0, prefixLength)
-      )
-      .withColumn(
-        "lastmod",
-        unix_timestamp(col("lastmod"), "yyyy-dd-MM").cast(IntegerType)
-      )
-      .as[AddressTagByLabel]
-  }
-
-  def computeClusterTagsByLabel(
-      tagsRaw: Dataset[ClusterTagRaw],
-      clusterTags: Dataset[ClusterTag],
-      currency: String,
-      prefixLength: Int = 3
-  ): Dataset[ClusterTagByLabel] = {
-    // check if addresses where used in transactions
-    tagsRaw
-      .filter(col(F.currency) === currency)
-      .withColumnRenamed("entity", F.clusterId)
-      .join(
-        clusterTags
-          .select(col(F.clusterId))
-          .withColumn(F.active, lit(true)),
-        Seq(F.clusterId),
-        "left"
-      )
-      .na
-      .fill(false, Seq(F.active))
-      // normalize labels
-      .withColumn(
-        F.labelNorm,
-        lower(regexp_replace(col(F.label), "[\\W_]+", ""))
-      )
-      .withColumn(
-        F.labelNormPrefix,
-        substring(col(F.labelNorm), 0, prefixLength)
-      )
-      .withColumn(
-        "lastmod",
-        unix_timestamp(col("lastmod"), "yyyy-dd-MM").cast(IntegerType)
-      )
-      .as[ClusterTagByLabel]
-  }
-
   def summaryStatistics(
       lastBlockTimestamp: Int,
       noBlocks: Int,
@@ -617,8 +483,7 @@ class Transformation(
       noAddresses: Long,
       noAddressRelations: Long,
       noCluster: Long,
-      noClusterRelations: Long,
-      noTags: Long
+      noClusterRelations: Long
   ) = {
     Seq(
       SummaryStatistics(
@@ -628,8 +493,7 @@ class Transformation(
         noAddresses,
         noAddressRelations,
         noCluster,
-        noClusterRelations,
-        noTags
+        noClusterRelations
       )
     ).toDS()
   }

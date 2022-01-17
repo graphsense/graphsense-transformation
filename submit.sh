@@ -7,7 +7,6 @@ CASSANDRA_HOST="localhost"
 
 CURRENCY="BTC"
 RAW_KEYSPACE="btc_raw"
-TAG_KEYSPACE="tagpacks"
 TGT_KEYSPACE="btc_transformed"
 BUCKET_SIZE=25000
 BECH32_PREFIX=""
@@ -20,10 +19,10 @@ if [ -z "$SPARK_HOME" ] ; then
 fi
 
 EXEC=$(basename "$0")
-USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--currency CURRENCY] [--raw_keyspace RAW_KEYSPACE] [--tag_keyspace TAG_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE] [--bucket_size BUCKET_SIZE] [--bech32-prefix BECH32_PREFIX] [--checkpoint-dir CHECKPOINT_DIR] [--coinjoin-filtering]"
+USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--currency CURRENCY] [--raw_keyspace RAW_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE] [--bucket_size BUCKET_SIZE] [--bech32-prefix BECH32_PREFIX] [--checkpoint-dir CHECKPOINT_DIR] [--coinjoin-filtering]"
 
 # parse command line options
-args=$(getopt -o hc:m:s: --long raw_keyspace:,tag_keyspace:,tgt_keyspace:,bucket_size:,currency:,bech32_prefix:,checkpoint_dir,coinjoin_filtering: -- "$@")
+args=$(getopt -o hc:m:s: --long raw_keyspace:,tgt_keyspace:,bucket_size:,currency:,bech32_prefix:,checkpoint_dir,coinjoin_filtering: -- "$@")
 eval set -- "$args"
 
 while true; do
@@ -50,10 +49,6 @@ while true; do
         ;;
         --raw_keyspace)
             RAW_KEYSPACE="$2"
-            shift 2
-        ;;
-        --tag_keyspace)
-            TAG_KEYSPACE="$2"
             shift 2
         ;;
         --tgt_keyspace)
@@ -95,7 +90,6 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
          "and $MEMORY memory ...\n" \
          "- currency:        $CURRENCY\n" \
          "- raw keyspace:    $RAW_KEYSPACE\n" \
-         "- tag keyspace:    $TAG_KEYSPACE\n" \
          "- target keyspace: $TGT_KEYSPACE\n" \
          "- bucket size:     $BUCKET_SIZE\n" \
          "- BECH32 prefix:   $BECH32_PREFIX\n" \
@@ -113,7 +107,6 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   target/scala-2.12/graphsense-transformation_2.12-0.5.2-SNAPSHOT.jar \
   --currency "$CURRENCY" \
   --raw-keyspace "$RAW_KEYSPACE" \
-  --tag-keyspace "$TAG_KEYSPACE" \
   --target-keyspace "$TGT_KEYSPACE" \
   --bucket-size "$BUCKET_SIZE" \
   --coinjoin-filtering \

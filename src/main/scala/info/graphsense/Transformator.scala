@@ -10,7 +10,6 @@ import org.apache.spark.sql.functions.{
   explode,
   floor,
   lead,
-  lit,
   round,
   row_number,
   struct,
@@ -254,16 +253,10 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   def addressRelations(
       plainAddressRelations: Dataset[PlainAddressRelation],
       exchangeRates: Dataset[ExchangeRates],
-      addressTags: Dataset[AddressTag],
       noFiatCurrencies: Int
   ): Dataset[AddressRelation] = {
 
-    val addressLabels = addressTags
-      .select(F.addressId)
-      .distinct
-      .withColumn(F.hasLabels, lit(true))
-
-    val fullAddressRelations = plainAddressRelations
+    plainAddressRelations
       .join(exchangeRates, Seq(F.blockId), "left")
       .transform(
         toFiatCurrency(F.estimatedValue, F.fiatValues)
@@ -284,27 +277,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .transform(withIdGroup(F.srcAddressId, F.srcAddressIdGroup))
       // add partitioning columns for incoming addresses
       .transform(withIdGroup(F.dstAddressId, F.dstAddressIdGroup))
-      // flag tagged src addresses
-      .join(
-        addressLabels.select(
-          col(F.addressId).as(F.srcAddressId),
-          col(F.hasLabels).as(F.hasSrcLabels)
-        ),
-        Seq(F.srcAddressId),
-        "left"
-      )
-      // flag tagged dst addresses
-      .join(
-        addressLabels.select(
-          col(F.addressId).as(F.dstAddressId),
-          col(F.hasLabels).as(F.hasDstLabels)
-        ),
-        Seq(F.dstAddressId),
-        "left"
-      )
-
-    fullAddressRelations.na
-      .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[AddressRelation]
   }
 
@@ -330,15 +302,10 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   def clusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelation],
       exchangeRates: Dataset[ExchangeRates],
-      clusterTags: Dataset[ClusterTag],
       noFiatCurrencies: Int
   ) = {
 
-    val clusterLabels = clusterTags
-      .select(F.clusterId)
-      .withColumn(F.hasLabels, lit(true))
-
-    val fullClusterRelations = plainClusterRelations
+    plainClusterRelations
       .join(exchangeRates, Seq(F.blockId), "left")
       .transform(
         toFiatCurrency(F.estimatedValue, F.fiatValues)
@@ -359,27 +326,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .transform(withIdGroup(F.srcClusterId, F.srcClusterIdGroup))
       // add partitioning columns for incoming clusters
       .transform(withIdGroup(F.dstClusterId, F.dstClusterIdGroup))
-      // flag tagged src clusters
-      .join(
-        clusterLabels.select(
-          col(F.clusterId).as(F.srcClusterId),
-          col(F.hasLabels).as(F.hasSrcLabels)
-        ),
-        Seq(F.srcClusterId),
-        "left"
-      )
-      // flag tagged dst clusters
-      .join(
-        clusterLabels.select(
-          col(F.clusterId).as(F.dstClusterId),
-          col(F.hasLabels).as(F.hasDstLabels)
-        ),
-        Seq(F.dstClusterId),
-        "left"
-      )
-
-    fullClusterRelations.na
-      .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[ClusterRelation]
   }
 }

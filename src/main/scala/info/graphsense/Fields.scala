@@ -41,12 +41,6 @@ object Fields {
   val noTransactions = "noTransactions"
   val estimatedValue = "estimatedValue"
   val fiatValues = "fiatValues"
-  val label = "label"
-  val hasLabels = "hasLabels"
-  val labelNorm = "labelNorm"
-  val labelNormPrefix = "labelNormPrefix"
   val category = "category"
   val abuse = "abuse"
-  val hasSrcLabels = "hasSrcLabels"
-  val hasDstLabels = "hasDstLabels"
 }

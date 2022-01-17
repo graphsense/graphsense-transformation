@@ -2,7 +2,7 @@ package info.graphsense
 
 import com.github.mrpowers.spark.fast.tests.DataFrameComparer
 import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.functions.{col, lower}
+import org.apache.spark.sql.functions.col
 import org.scalatest.funsuite._
 
 import Helpers.{readTestData, setNullableStateForAllColumns}
@@ -42,10 +42,6 @@ class TransformationTest
     readTestData[Transaction](spark, inputDir + "test_txs.json")
   val exchangeRatesRaw =
     readTestData[ExchangeRatesRaw](spark, inputDir + "test_exchange_rates.json")
-  val addressTagsRaw =
-    readTestData[AddressTagRaw](spark, inputDir + "test_address_tags.json")
-  val clusterTagsRaw =
-    readTestData[ClusterTagRaw](spark, inputDir + "test_cluster_tags.json")
 
   val noBlocks = blocks.count.toInt
   val lastBlockTimestamp = blocks
@@ -91,25 +87,11 @@ class TransformationTest
       .sort(F.addressId)
       .persist()
 
-  val addressTags =
-    t.computeAddressTags(addressTagsRaw, basicAddresses, addressIds, "BTC")
-      .sort(F.addressId)
-      .persist()
-  val noAddressTags = addressTags
-    .select(col("label"))
-    .withColumn("label", lower(col("label")))
-    .distinct()
-    .count()
-
   val plainAddressRelations =
     t.computePlainAddressRelations(inputs, outputs, regInputs, transactions)
 
   val addressRelations =
-    t.computeAddressRelations(
-        plainAddressRelations,
-        exchangeRates,
-        addressTags
-      )
+    t.computeAddressRelations(plainAddressRelations, exchangeRates)
       .sort(F.dstAddressId, F.srcAddressId)
       .persist()
   val noAddressRelations = addressRelations.count()
@@ -165,29 +147,11 @@ class TransformationTest
       .sort(F.clusterId)
       .persist()
 
-  val clusterTags =
-    t.computeClusterTags(clusterTagsRaw, basicCluster, "BTC")
-      .sort(F.clusterId)
-      .persist()
-
-  val clusterTagsByLabel =
-    t.computeClusterTagsByLabel(clusterTagsRaw, clusterTags, "BTC").persist()
-
-  val clusterAddressTags =
-    t.computeClusterAddressTags(addressCluster, addressTags)
-      .sort(F.clusterId)
-      .persist()
-
   val plainClusterRelations =
     t.computePlainClusterRelations(clusterInputs, clusterOutputs).persist()
 
   val clusterRelations =
-    t.computeClusterRelations(
-        plainClusterRelations,
-        exchangeRates,
-        clusterTags
-      )
-      .persist()
+    t.computeClusterRelations(plainClusterRelations, exchangeRates).persist()
   val noClusterRelations = clusterRelations.count()
 
   val cluster =
@@ -195,9 +159,6 @@ class TransformationTest
       .sort(F.clusterId)
       .persist()
   val noCluster = cluster.count()
-
-  val addressTagsByLabel =
-    t.computeAddressTagsByLabel(addressTagsRaw, addressTags, "BTC").persist()
 
   val summaryStatistics =
     t.summaryStatistics(
@@ -207,8 +168,7 @@ class TransformationTest
       noAddresses,
       noAddressRelations,
       noCluster,
-      noClusterRelations,
-      noAddressTags
+      noClusterRelations
     )
 
   note("test address graph")
@@ -261,19 +221,6 @@ class TransformationTest
       readTestData[BasicAddress](spark, refDir + "basic_addresses.json")
     assertDataFrameEquality(basicAddresses, basicAddressesRef)
   }
-  test("addressTags") {
-    val addressTagsRef =
-      readTestData[AddressTag](spark, refDir + "address_tags.json")
-    assertDataFrameEquality(addressTags, addressTagsRef)
-  }
-  test("addressTagsByLabel") {
-    val addressTagsByLabelRef =
-      readTestData[AddressTagByLabel](
-        spark,
-        refDir + "address_tags_by_label.json"
-      )
-    assertDataFrameEquality(addressTagsByLabel, addressTagsByLabelRef)
-  }
   test("addressRelations") {
     val addressRelationsRef =
       readTestData[AddressRelation](spark, refDir + "address_relations.json")
@@ -318,27 +265,6 @@ class TransformationTest
     val basicClusterRef =
       readTestData[BasicCluster](spark, refDir + "basic_cluster.json")
     assertDataFrameEquality(basicCluster, basicClusterRef)
-  }
-  test("clusterTags") {
-    val clusterTagsRef =
-      readTestData[ClusterTag](spark, refDir + "cluster_tags.json")
-    assertDataFrameEquality(clusterTags, clusterTagsRef)
-  }
-  test("clusterTagsByLabel") {
-    val clusterTagsByLabelRef =
-      readTestData[ClusterTagByLabel](
-        spark,
-        refDir + "cluster_tags_by_label.json"
-      )
-    assertDataFrameEquality(clusterTagsByLabel, clusterTagsByLabelRef)
-  }
-  test("clusterAddressTags") {
-    val clusterAddressTagsRef =
-      readTestData[ClusterAddressTag](
-        spark,
-        refDir + "cluster_address_tags.json"
-      )
-    assertDataFrameEquality(clusterAddressTags, clusterAddressTagsRef)
   }
   test("plainClusterRelations") {
     val plainClusterRelationsRef =
