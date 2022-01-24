@@ -2,16 +2,16 @@
 
 echo -en "Starting Spark job ...\n" \
          "Config:\n" \
-         "- Spark master: $SPARK_MASTER\n" \
-         "- Spark driver: $SPARK_DRIVER_HOST\n" \
-         "- Spark local dir: $SPARK_LOCAL_DIR\n" \
-         "- Cassandra host: $CASSANDRA_HOST\n" \
-         "- Executor memory: $SPARK_EXECUTOR_MEMORY\n" \
+         "- Spark master:        $SPARK_MASTER\n" \
+         "- Spark driver:        $SPARK_DRIVER_HOST\n" \
+         "- Spark local dir:     $SPARK_LOCAL_DIR\n" \
+         "- Cassandra host:      $CASSANDRA_HOST\n" \
+         "- Executor memory:     $SPARK_EXECUTOR_MEMORY\n" \
          "Arguments:\n" \
-         "- Currency:        $CURRENCY\n" \
-         "- Raw keyspace:    $RAW_KEYSPACE\n" \
-         "- Target keyspace: $TGT_KEYSPACE\n"
-         "- Target keyspace: $CHECKPOINT_DIR\n"
+         "- Currency:            $CURRENCY\n" \
+         "- Raw keyspace:        $RAW_KEYSPACE\n" \
+         "- Target keyspace:     $TGT_KEYSPACE\n"
+         "- HDFS Checkpoint dir: $CHECKPOINT_DIR\n"
 
 "$SPARK_HOME"/bin/spark-submit \
   --class "info.graphsense.TransformationJob" \
