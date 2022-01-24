@@ -7,7 +7,7 @@ lazy val root = (project in file(".")).
   settings(
     name := "graphsense-transformation",
     fork := true,
-    testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
+    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
     scalacOptions ++= List(
       "-deprecation",
       "-feature",
