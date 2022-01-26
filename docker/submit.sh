@@ -10,7 +10,7 @@ echo -en "Starting Spark job ...\n" \
          "Arguments:\n" \
          "- Currency:            $CURRENCY\n" \
          "- Raw keyspace:        $RAW_KEYSPACE\n" \
-         "- Target keyspace:     $TGT_KEYSPACE\n"
+         "- Target keyspace:     $TGT_KEYSPACE\n" \
          "- HDFS Checkpoint dir: $CHECKPOINT_DIR\n"
 
 "$SPARK_HOME"/bin/spark-submit \
