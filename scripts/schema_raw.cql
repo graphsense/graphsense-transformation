@@ -73,35 +73,3 @@ CREATE TABLE configuration (
     tx_prefix_length int,
     tx_bucket_size int
 );
-
-CREATE KEYSPACE IF NOT EXISTS tagpacks
-    WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
-
-USE tagpacks;
-
-CREATE TABLE address_tag_by_address (
-    address text,
-    currency text,
-    label text,
-    source text,
-    tagpack_uri text,
-    confidence int,
-    is_cluster_definer boolean,
-    created date,
-    lastmod date,
-    category text,
-    abuse text,
-    PRIMARY KEY (address, currency, label, source, tagpack_uri)
-);
-
-CREATE TABLE entity_tag_by_id (
-    entity int,
-    currency text,
-    label text,
-    source text,
-    tagpack_uri text,
-    lastmod date,
-    category text,
-    abuse text,
-    PRIMARY KEY (entity, currency, label, source, tagpack_uri)
-);

@@ -7,10 +7,10 @@ CASSANDRA_HOST="localhost"
 
 CURRENCY="BTC"
 RAW_KEYSPACE="btc_raw"
-TAG_KEYSPACE="tagpacks"
 TGT_KEYSPACE="btc_transformed"
 BUCKET_SIZE=25000
 BECH32_PREFIX=""
+CHECKPOINT_DIR="file:///tmp/spark-checkpoint"  # hdfs:// in cluster mode
 
 
 if [ -z "$SPARK_HOME" ] ; then
@@ -19,10 +19,10 @@ if [ -z "$SPARK_HOME" ] ; then
 fi
 
 EXEC=$(basename "$0")
-USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--currency CURRENCY] [--src_keyspace RAW_KEYSPACE] [--tag_keyspace TAG_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE] [--bucket_size BUCKET_SIZE] [--bech32-prefix BECH32_PREFIX]"
+USAGE="Usage: $EXEC [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER] [--currency CURRENCY] [--raw_keyspace RAW_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE] [--bucket_size BUCKET_SIZE] [--bech32-prefix BECH32_PREFIX] [--checkpoint-dir CHECKPOINT_DIR] [--coinjoin-filtering]"
 
 # parse command line options
-args=$(getopt -o hc:m:s: --long raw_keyspace:,tag_keyspace:,tgt_keyspace:,bucket_size:,currency: -- "$@")
+args=$(getopt -o hc:m:s: --long raw_keyspace:,tgt_keyspace:,bucket_size:,currency:,bech32_prefix:,checkpoint_dir,coinjoin_filtering: -- "$@")
 eval set -- "$args"
 
 while true; do
@@ -51,10 +51,6 @@ while true; do
             RAW_KEYSPACE="$2"
             shift 2
         ;;
-        --tag_keyspace)
-            TAG_KEYSPACE="$2"
-            shift 2
-        ;;
         --tgt_keyspace)
             TGT_KEYSPACE="$2"
             shift 2
@@ -63,8 +59,12 @@ while true; do
             BUCKET_SIZE="$2"
             shift 2
         ;;
-        --bech32-prefix)
+        --bech32_prefix)
             BECH32_PREFIX="$2"
+            shift 2
+        ;;
+        --checkpoint_dir)
+            CHECKPOINT_DIR="$2"
             shift 2
         ;;
         --) # end of all options
@@ -90,10 +90,10 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
          "and $MEMORY memory ...\n" \
          "- currency:        $CURRENCY\n" \
          "- raw keyspace:    $RAW_KEYSPACE\n" \
-         "- tag keyspace:    $TAG_KEYSPACE\n" \
          "- target keyspace: $TGT_KEYSPACE\n" \
          "- bucket size:     $BUCKET_SIZE\n" \
-         "- BECH32 prefix:   $BECH32_PREFIX\n"
+         "- BECH32 prefix:   $BECH32_PREFIX\n" \
+         "- checkpoint dir:  $CHECKPOINT_DIR\n"
 
 
 "$SPARK_HOME"/bin/spark-submit \
@@ -103,14 +103,14 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
   --conf spark.sql.session.timeZone=UTC \
   --conf spark.sql.extensions=com.datastax.spark.connector.CassandraSparkExtensions \
-  --packages com.datastax.spark:spark-cassandra-connector_2.12:3.1.0,org.rogach:scallop_2.12:4.0.2,joda-time:joda-time:2.10.10 \
-  target/scala-2.12/graphsense-transformation_2.12-0.5.1.jar \
+  --packages com.datastax.spark:spark-cassandra-connector_2.12:3.1.0,graphframes:graphframes:0.8.1-spark3.0-s_2.12,org.rogach:scallop_2.12:4.1.0,joda-time:joda-time:2.10.10 \
+  target/scala-2.12/graphsense-transformation_2.12-0.5.2.jar \
   --currency "$CURRENCY" \
   --raw-keyspace "$RAW_KEYSPACE" \
-  --tag-keyspace "$TAG_KEYSPACE" \
   --target-keyspace "$TGT_KEYSPACE" \
   --bucket-size "$BUCKET_SIZE" \
   --coinjoin-filtering \
-  --bech32-prefix "$BECH32_PREFIX"
+  --bech32-prefix "$BECH32_PREFIX" \
+  --checkpoint-dir "$CHECKPOINT_DIR"
 
 exit $?

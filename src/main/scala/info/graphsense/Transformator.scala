@@ -1,27 +1,27 @@
 package info.graphsense
 
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{
   array,
   coalesce,
   col,
-  collect_set,
   count,
   explode,
   floor,
-  lit,
+  lead,
   round,
   row_number,
   struct,
   substring,
   sum,
+  transform,
   when
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType, LongType}
+import org.graphframes.GraphFrame
 
 import info.graphsense.{Fields => F}
-import info.graphsense.clustering._
 
 class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 
@@ -58,20 +58,16 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
     ds.withColumn(idGroupColum, floor(col(idColumn) / size).cast(IntegerType))
   }
 
-  def toFiatCurrency(valueColumn: String, fiatValueColumn: String, length: Int)(
+  def toFiatCurrency(valueColumn: String, fiatValueColumn: String)(
       df: DataFrame
   ) = {
-    // see `transform_values` in Spark 3
     df.withColumn(
       fiatValueColumn,
-      array(
-        (0 until length)
-          .map(
-            i =>
-              ((col(valueColumn) * col(fiatValueColumn)
-                .getItem(i) / 1e6 + 0.5).cast(LongType) / 100.0)
-                .cast(FloatType)
-          ): _*
+      transform(
+        col(fiatValueColumn),
+        (x: Column) =>
+          ((col(valueColumn) * x / 1e6 + 0.5).cast(LongType) / 100.0)
+            .cast(FloatType)
       )
     )
   }
@@ -106,26 +102,23 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       collectiveInputAddresses.groupBy(F.addressId).count()
 
     val basicAddressCluster = {
-      // input for clustering algorithm
-      // to optimize performance use only nontrivial addresses,
-      // i.e., addresses which occur in multiple txes
-      // (Spark errors were observed for BTC >= 480000 blocks)
+      val txWindow = Window.partitionBy(F.txId).orderBy("src")
       val inputGroups = transactionCount
         .filter(col("count") > 1)
         .select(F.addressId)
         .join(collectiveInputAddresses, F.addressId)
-        .groupBy(col(F.txId))
-        .agg(collect_set(F.addressId).as("inputs"))
-        .select(col("inputs"))
-        .as[InputIdSet]
-        .rdd
-        .toLocalIterator
-
-      spark.sparkContext
-        .parallelize(
-          MultipleInputClustering.getClustersMutable(inputGroups).toSeq
-        )
-        .toDS()
+      val inputNodes = inputGroups.select(col(F.addressId).as("id")).distinct
+      val inputEdges = inputGroups
+        .withColumnRenamed(F.addressId, "src")
+        .withColumn("dst", lead("src", 1).over(txWindow))
+        .select(col("src"), col("dst"), col("txId").as("id"))
+        .filter(col("dst").isNotNull)
+      val inputGraph = GraphFrame(inputNodes, inputEdges)
+      val connComp = inputGraph.connectedComponents.run()
+      connComp.select(
+        col("id"),
+        col("component").as(F.clusterId).cast(IntegerType)
+      )
     }
 
     val reprAddrId = "reprAddrId"
@@ -171,9 +164,8 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
           col("id"),
           coalesce(col(F.clusterId), col(reprAddrId)).as(F.clusterId)
         )
-        .as[Result[Int]]
 
-    basicAddressCluster.union(addressClusterRemainder).toDF()
+    basicAddressCluster.union(addressClusterRemainder)
   }
 
   def addressCluster(
@@ -261,19 +253,13 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   def addressRelations(
       plainAddressRelations: Dataset[PlainAddressRelation],
       exchangeRates: Dataset[ExchangeRates],
-      addressTags: Dataset[AddressTag],
       noFiatCurrencies: Int
   ): Dataset[AddressRelation] = {
 
-    val addressLabels = addressTags
-      .select(F.addressId)
-      .distinct
-      .withColumn(F.hasLabels, lit(true))
-
-    val fullAddressRelations = plainAddressRelations
+    plainAddressRelations
       .join(exchangeRates, Seq(F.blockId), "left")
       .transform(
-        toFiatCurrency(F.estimatedValue, F.fiatValues, noFiatCurrencies)
+        toFiatCurrency(F.estimatedValue, F.fiatValues)
       )
       .drop(F.blockId)
       .groupBy(F.srcAddressId, F.dstAddressId)
@@ -291,28 +277,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .transform(withIdGroup(F.srcAddressId, F.srcAddressIdGroup))
       // add partitioning columns for incoming addresses
       .transform(withIdGroup(F.dstAddressId, F.dstAddressIdGroup))
-      // flag tagged src addresses
-      .join(
-        addressLabels.select(
-          col(F.addressId).as(F.srcAddressId),
-          col(F.hasLabels).as(F.hasSrcLabels)
-        ),
-        Seq(F.srcAddressId),
-        "left"
-      )
-      // flag tagged dst addresses
-      .join(
-        addressLabels.select(
-          col(F.addressId).as(F.dstAddressId),
-          col(F.hasLabels).as(F.hasDstLabels)
-        ),
-        Seq(F.dstAddressId),
-        "left"
-      )
-
-    fullAddressRelations
-      .na
-      .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[AddressRelation]
   }
 
@@ -338,18 +302,13 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   def clusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelation],
       exchangeRates: Dataset[ExchangeRates],
-      clusterTags: Dataset[ClusterTag],
       noFiatCurrencies: Int
   ) = {
 
-    val clusterLabels = clusterTags
-      .select(F.clusterId)
-      .withColumn(F.hasLabels, lit(true))
-
-    val fullClusterRelations = plainClusterRelations
+    plainClusterRelations
       .join(exchangeRates, Seq(F.blockId), "left")
       .transform(
-        toFiatCurrency(F.estimatedValue, F.fiatValues, noFiatCurrencies)
+        toFiatCurrency(F.estimatedValue, F.fiatValues)
       )
       .drop(F.blockId)
       .groupBy(F.srcClusterId, F.dstClusterId)
@@ -367,28 +326,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .transform(withIdGroup(F.srcClusterId, F.srcClusterIdGroup))
       // add partitioning columns for incoming clusters
       .transform(withIdGroup(F.dstClusterId, F.dstClusterIdGroup))
-      // flag tagged src clusters
-      .join(
-        clusterLabels.select(
-          col(F.clusterId).as(F.srcClusterId),
-          col(F.hasLabels).as(F.hasSrcLabels)
-        ),
-        Seq(F.srcClusterId),
-        "left"
-      )
-      // flag tagged dst clusters
-      .join(
-        clusterLabels.select(
-          col(F.clusterId).as(F.dstClusterId),
-          col(F.hasLabels).as(F.hasDstLabels)
-        ),
-        Seq(F.dstClusterId),
-        "left"
-      )
-
-    fullClusterRelations
-      .na
-      .fill(false, Seq(F.hasSrcLabels, F.hasDstLabels))
       .as[ClusterRelation]
   }
 }

@@ -5,8 +5,8 @@
 
 The GraphSense Transformation Pipeline reads raw block data, which is
 ingested into [Apache Cassandra][apache-cassandra]
-by the [graphsense-blocksci][graphsense-blocksci] component, and
-attribution tags provided by [graphsense-tagpacks][graphsense-tagpacks].
+by the [graphsense-blocksci][graphsense-blocksci] /
+[graphsense-bitcoin-etl][graphsense-bitcoin-etl] component.
 The transformation pipeline computes de-normalized views using
 [Apache Spark][apache-spark], which are again stored in Cassandra.
 
@@ -43,14 +43,11 @@ Run the following script for ingesting raw block test data
     ./scripts/ingest_test_data.sh
 
 This should create a keyspace `btc_raw` (tables `exchange_rates`,
-`transaction`, `block`, `block_transactions`) and `tagpacks`
-(tables `address_tag_by_address` and `entity_tag_by_id`). Check as follows
+`transaction`, `block`, `block_transactions`). Check as follows
 
     cqlsh localhost
     cqlsh> USE btc_raw;
     cqlsh:btc_raw> DESCRIBE tables;
-    cqlsh:btc_raw> USE tagpacks;
-    cqlsh:tagpacks> DESCRIBE tables;
 
 ## Execute Transformation Locally
 
@@ -82,9 +79,13 @@ Use the `submit.sh` script and specify the Spark master node
 ```
 ./submit.sh -h
 Usage: submit.sh [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER]
-                 [--currency CURRENCY] [--src_keyspace RAW_KEYSPACE]
-                 [--tag_keyspace TAG_KEYSPACE] [--tgt_keyspace TGT_KEYSPACE]
+                 [--currency CURRENCY]
+                 [--raw_keyspace RAW_KEYSPACE]
+                 [--tgt_keyspace TGT_KEYSPACE]
                  [--bucket_size BUCKET_SIZE]
+                 [--bech32-prefix BECH32_PREFIX]
+                 [--checkpoint-dir CHECKPOINT_DIR]
+                 [--coinjoin-filtering]
 ```
 
 # Submit to an external standalone Spark Cluster using Docker
@@ -94,7 +95,7 @@ file and the `transformation` subdirectory.
 
 
 [graphsense-blocksci]: https://github.com/graphsense/graphsense-blocksci
-[graphsense-tagpacks]: https://github.com/graphsense/graphsense-tagpacks
+[graphsense-bitcoin-etl]: https://github.com/graphsense/graphsense-bitcoin-etl
 [graphsense-dashboard]: https://github.com/graphsense/graphsense-dashboard
 [graphsense-rest]: https://github.com/graphsense/graphsense-rest
 [graphsense-setup]: https://github.com/graphsense/graphsense-setup

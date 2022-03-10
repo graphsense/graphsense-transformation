@@ -1,7 +1,5 @@
 package info.graphsense
 
-import java.sql.Date
-
 case class RegularInput(
     address: String,
     txId: Long,
@@ -83,28 +81,6 @@ case class ExchangeRatesRaw(
     fiatValues: Option[Map[String, Float]]
   )
 
-case class AddressTagRaw(
-    address: String,
-    currency: String,
-    label: String,
-    source: String,
-    tagpackUri: String,
-    lastmod: Date,
-    category: Option[String],
-    abuse: Option[String]
-)
-
-case class ClusterTagRaw(
-    entity: Int,
-    currency: String,
-    label: String,
-    source: String,
-    tagpackUri: String,
-    lastmod: Date,
-    category: Option[String],
-    abuse: Option[String]
-)
-
 case class SummaryStatisticsRaw(
     id: String,
     timestamp: Int,
@@ -150,32 +126,6 @@ case class Address(
     outDegree: Int
 )
 
-case class AddressTag(
-    addressIdGroup: Int,
-    addressId: Int,
-    address: String,
-    label: String,
-    source: String,
-    tagpackUri: String,
-    lastmod: Int,
-    category: String,
-    abuse: String
-)
-
-case class AddressTagByLabel(
-    labelNormPrefix: String,
-    labelNorm: String,
-    label: String,
-    address: String,
-    source: String,
-    tagpackUri: String,
-    currency: String,
-    lastmod: Int,
-    category: Option[String],
-    abuse: Option[String],
-    active: Boolean
-)
-
 case class AddressCluster(addressId: Int, clusterId: Int)
 
 case class ClusterAddress(
@@ -218,43 +168,6 @@ case class Cluster(
     outDegree: Int
 )
 
-case class ClusterTag(
-    clusterIdGroup: Int,
-    clusterId: Int,
-    label: String,
-    source: String,
-    tagpackUri: String,
-    lastmod: Int,
-    category: String,
-    abuse: String
-)
-
-case class ClusterAddressTag(
-    clusterIdGroup: Int,
-    clusterId: Int,
-    addressId: Int,
-    label: String,
-    source: String,
-    tagpackUri: String,
-    lastmod: Int,
-    category: String,
-    abuse: String
-)
-
-case class ClusterTagByLabel(
-    labelNormPrefix: String,
-    labelNorm: String,
-    label: String,
-    clusterId: Int,
-    source: String,
-    tagpackUri: String,
-    currency: String,
-    lastmod: Int,
-    category: Option[String],
-    abuse: Option[String],
-    active: Boolean
-)
-
 case class PlainAddressRelation(
     txId: Long,
     srcAddressId: Int,
@@ -268,8 +181,6 @@ case class AddressRelation(
     srcAddressId: Int,
     dstAddressIdGroup: Int,
     dstAddressId: Int,
-    hasSrcLabels: Boolean,
-    hasDstLabels: Boolean,
     noTransactions: Int,
     estimatedValue: Currency
 )
@@ -287,8 +198,6 @@ case class ClusterRelation(
     srcClusterId: Int,
     dstClusterIdGroup: Int,
     dstClusterId: Int,
-    hasSrcLabels: Boolean,
-    hasDstLabels: Boolean,
     noTransactions: Int,
     estimatedValue: Currency
 )
@@ -300,7 +209,7 @@ case class SummaryStatistics(
     noAddresses: Long,
     noAddressRelations: Long,
     noClusters: Long,
-    noTags: Long
+    noClusterRelations: Long
 )
 
 case class Configuration(
@@ -308,7 +217,6 @@ case class Configuration(
     bucketSize: Int,
     addressPrefixLength: Int,
     bech32Prefix: String,
-    labelPrefixLength: Int,
     coinjoinFiltering: Boolean,
     fiatCurrencies: Seq[String]
 )

@@ -2,16 +2,16 @@
 
 echo -en "Starting Spark job ...\n" \
          "Config:\n" \
-         "- Spark master: $SPARK_MASTER\n" \
-         "- Spark driver: $SPARK_DRIVER_HOST\n" \
-         "- Spark local dir: $SPARK_LOCAL_DIR\n" \
-         "- Cassandra host: $CASSANDRA_HOST\n" \
-         "- Executor memory: $SPARK_EXECUTOR_MEMORY\n" \
+         "- Spark master:        $SPARK_MASTER\n" \
+         "- Spark driver:        $SPARK_DRIVER_HOST\n" \
+         "- Spark local dir:     $SPARK_LOCAL_DIR\n" \
+         "- Cassandra host:      $CASSANDRA_HOST\n" \
+         "- Executor memory:     $SPARK_EXECUTOR_MEMORY\n" \
          "Arguments:\n" \
-         "- Currency:        $CURRENCY\n" \
-         "- Raw keyspace:    $RAW_KEYSPACE\n" \
-         "- Tag keyspace:    $TAG_KEYSPACE\n" \
-         "- Target keyspace: $TGT_KEYSPACE\n"
+         "- Currency:            $CURRENCY\n" \
+         "- Raw keyspace:        $RAW_KEYSPACE\n" \
+         "- Target keyspace:     $TGT_KEYSPACE\n" \
+         "- HDFS Checkpoint dir: $CHECKPOINT_DIR\n"
 
 "$SPARK_HOME"/bin/spark-submit \
   --class "info.graphsense.TransformationJob" \
@@ -28,14 +28,15 @@ echo -en "Starting Spark job ...\n" \
   --conf spark.driver.memory="92G" \
   --conf spark.sql.session.timeZone=UTC \
   --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" \
-  --packages com.datastax.spark:spark-cassandra-connector_2.12:2.4.2,org.rogach:scallop_2.12:4.0.2 \
-  target/scala-2.12/graphsense-transformation_2.12-0.5.1-SNAPSHOT.jar \
+  --conf spark.sql.extensions=com.datastax.spark.connector.CassandraSparkExtensions \
+  --packages com.datastax.spark:spark-cassandra-connector_2.12:3.1.0,graphframes:graphframes:0.8.1-spark3.0-s_2.12,org.rogach:scallop_2.12:4.1.0,joda-time:joda-time:2.10.10 \
+  target/scala-2.12/graphsense-transformation_2.12-0.5.2.jar \
   --currency "$CURRENCY" \
   --raw-keyspace "$RAW_KEYSPACE" \
-  --tag-keyspace "$TAG_KEYSPACE" \
   --target-keyspace "$TGT_KEYSPACE" \
   --bucket-size 25000 \
   --coinjoin-filtering \
-  --bech32-prefix "$BECH32_PREFIX"
+  --bech32-prefix "$BECH32_PREFIX" \
+  --checkpoint-dir "$CHECKPOINT_DIR"
 
 exit $?
