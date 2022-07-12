@@ -22,4 +22,5 @@ jobs:
         java-version: ${{ matrix.java }}
     - name: Test with SBT
       run: |
+        export SBT_OPTS="-Xmx1G -XX:+CMSClassUnloadingEnabled -Xss2M -Duser.timezone=UTC
         sbt test
