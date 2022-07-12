@@ -1,6 +1,6 @@
 ThisBuild / scalaVersion := "2.12.10"
 ThisBuild / organization := "info.graphsense"
-ThisBuild / version      := "1.0.0"
+ThisBuild / version      := "1.1.0-SNAPSHOT"
 
 
 lazy val root = (project in file(".")).
@@ -29,7 +29,7 @@ lazy val root = (project in file(".")).
       "com.github.mrpowers" %% "spark-fast-tests" % "1.0.0" % Test,
       "graphframes" % "graphframes" % "0.8.1-spark3.0-s_2.12" % Provided,
       "org.rogach" %% "scallop" % "4.1.0" % Provided,
-      "org.apache.spark" %% "spark-sql" % "3.1.2" % Provided,
-      "org.apache.spark" %% "spark-graphx" % "3.1.2" % Provided,
-      "com.datastax.spark" %% "spark-cassandra-connector" % "3.1.0" % Provided)
+      "org.apache.spark" %% "spark-sql" % "3.2.1" % Provided,
+      "org.apache.spark" %% "spark-graphx" % "3.2.1" % Provided,
+      "com.datastax.spark" %% "spark-cassandra-connector" % "3.2.0" % Provided)
   )
