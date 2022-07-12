@@ -103,7 +103,7 @@ echo -en "Starting on $CASSANDRA_HOST with master $SPARK_MASTER" \
   --conf spark.cassandra.connection.host="$CASSANDRA_HOST" \
   --conf spark.sql.session.timeZone=UTC \
   --conf spark.sql.extensions=com.datastax.spark.connector.CassandraSparkExtensions \
-  --packages com.datastax.spark:spark-cassandra-connector_2.12:3.2.0,graphframes:graphframes:0.8.1-spark3.0-s_2.12,org.rogach:scallop_2.12:4.1.0,joda-time:joda-time:2.10.10 \
+  --packages com.datastax.spark:spark-cassandra-connector_2.12:3.2.0,graphframes:graphframes:0.8.2-spark3.2-s_2.12,org.rogach:scallop_2.12:4.1.0,joda-time:joda-time:2.10.10 \
   target/scala-2.12/graphsense-transformation_2.12-1.1.0-SNAPSHOT.jar \
   --currency "$CURRENCY" \
   --raw-keyspace "$RAW_KEYSPACE" \
