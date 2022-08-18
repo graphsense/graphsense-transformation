@@ -9,11 +9,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-20.04
+    env:
+      JAVA_OPTS: -Xmx4G
     strategy:
       matrix:
         java:
           - 8
-
+    
     steps:
     - uses: actions/checkout@master
     - name: Set up JDK ${{ matrix.java }}
