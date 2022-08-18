@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-20.04
+    env:
+      # define Java options for official sbt
+      JAVA_OPTS: -Xmx4G
     strategy:
       matrix:
         java:
