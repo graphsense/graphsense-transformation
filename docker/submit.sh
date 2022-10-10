@@ -30,7 +30,7 @@ echo -en "Starting Spark job ...\n" \
   --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" \
   --conf spark.sql.extensions=com.datastax.spark.connector.CassandraSparkExtensions \
   --packages com.datastax.spark:spark-cassandra-connector_2.12:3.2.0,graphframes:graphframes:0.8.2-spark3.2-s_2.12,org.rogach:scallop_2.12:4.1.0,joda-time:joda-time:2.10.10 \
-  target/scala-2.12/graphsense-transformation_2.12-1.1.0-SNAPSHOT.jar \
+  target/scala-2.12/graphsense-transformation_2.12-1.0.2.jar \
   --currency "$CURRENCY" \
   --raw-keyspace "$RAW_KEYSPACE" \
   --target-keyspace "$TGT_KEYSPACE" \
