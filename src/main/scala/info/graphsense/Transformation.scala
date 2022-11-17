@@ -488,6 +488,8 @@ class Transformation(
     Seq(
       SummaryStatistics(
         lastBlockTimestamp,
+        lastBlockTimestamp,
+        noBlocks,
         noBlocks,
         noTransactions,
         noAddresses,

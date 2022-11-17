@@ -204,7 +204,9 @@ case class ClusterRelation(
 
 case class SummaryStatistics(
     timestamp: Int,
+    timestampTransform: Int,
     noBlocks: Int,
+    noBlocksTransform: Int,
     noTransactions: Long,
     noAddresses: Long,
     noAddressRelations: Long,
