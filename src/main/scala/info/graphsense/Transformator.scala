@@ -39,7 +39,11 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       ds.withColumn(
         prefixColumn,
         when(
-          substring(col(addressColumn), 0, bech32Prefix.length) === bech32Prefix,
+          substring(
+            col(addressColumn),
+            0,
+            bech32Prefix.length
+          ) === bech32Prefix,
           substring(
             col(addressColumn),
             bech32Prefix.length + 1,

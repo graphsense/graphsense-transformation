@@ -138,13 +138,12 @@ class Transformation(
       tx: Dataset[Transaction]
   ): Dataset[RegularOutput] = {
     tx.select(
-        posexplode(col("outputs")).as(Seq(F.n, "output")),
-        col(F.txId),
-        col(F.blockId),
-        col(F.timestamp),
-        col(F.coinjoin)
-      )
-      .filter(size(col("output.address")) === 1)
+      posexplode(col("outputs")).as(Seq(F.n, "output")),
+      col(F.txId),
+      col(F.blockId),
+      col(F.timestamp),
+      col(F.coinjoin)
+    ).filter(size(col("output.address")) === 1)
       .select(
         col(F.txId),
         explode(col("output.address")).as(F.address),
@@ -467,11 +466,10 @@ class Transformation(
       F.dstClusterId,
       F.clusterId
     ).join(
-        basicCluster.select(F.clusterId),
-        Seq(F.clusterId),
-        "right"
-      )
-      .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
+      basicCluster.select(F.clusterId),
+      Seq(F.clusterId),
+      "right"
+    ).transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
       .sort(F.clusterIdGroup, F.clusterId)
       .as[Cluster]
   }

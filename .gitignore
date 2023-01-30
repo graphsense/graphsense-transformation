@@ -10,3 +10,11 @@ target/
 /.cache-tests
 /.classpath
 /.project
+
+# sbt
+target/
+.metals/
+.bloop/
+.ammonite/
+.bsp/
+metals.sbt

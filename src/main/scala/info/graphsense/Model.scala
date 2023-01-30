@@ -79,7 +79,7 @@ case class BlockTransactions(blockId: Int, txs: Seq[TxSummary])
 case class ExchangeRatesRaw(
     date: String,
     fiatValues: Option[Map[String, Float]]
-  )
+)
 
 case class SummaryStatisticsRaw(
     id: String,
@@ -131,7 +131,7 @@ case class AddressCluster(addressId: Int, clusterId: Int)
 case class ClusterAddress(
     clusterIdGroup: Int,
     clusterId: Int,
-    addressId: Int,
+    addressId: Int
 )
 
 case class ClusterTransaction(
