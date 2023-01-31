@@ -11,6 +11,7 @@ format:
 
 lint:
 	sbt compile
+	sbt scalastyle
 
 build:
 	sbt package
