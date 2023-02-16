@@ -3,10 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [23.01/1.3.0] - 2023-01-30
+## Unreleased
+### Changed
+- Upgrade to Spark 3.2.3
+- Changed computation of `plainClusterRelations`
+
+## [23.01/1.3.0] 2023-01-30
 ### Added
-- Sbt scalafmt and scala style plugin
-- standardized dev-makefile
+- sbt scalafmt and scala style plugin
+- Standardized dev-makefile
 
 ## [22.11] 2022-11-24
 ### Added

@@ -285,21 +285,28 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
   }
 
   def plainClusterRelations(
-      clusterInputs: Dataset[ClusterTransaction],
-      clusterOutputs: Dataset[ClusterTransaction]
+      plainAddressRelations: Dataset[PlainAddressRelation],
+      addressCluster: Dataset[AddressCluster]
   ) = {
-    clusterInputs
-      .select(col(F.txId), col(F.clusterId).as(F.srcClusterId))
+    plainAddressRelations
       .join(
-        clusterOutputs
-          .select(
-            col(F.txId),
-            col(F.clusterId).as(F.dstClusterId),
-            col(F.value).as(F.estimatedValue),
-            col(F.blockId)
-          ),
-        Seq(F.txId)
+        addressCluster.select(
+          col(F.addressId).as(F.srcAddressId),
+          col(F.clusterId).as(F.srcClusterId)
+        ),
+        Seq(F.srcAddressId),
+        "left"
       )
+      .join(
+        addressCluster.select(
+          col(F.addressId).as(F.dstAddressId),
+          col(F.clusterId).as(F.dstClusterId)
+        ),
+        Seq(F.dstAddressId),
+        "left"
+      )
+      .groupBy(F.blockId, F.txId, F.srcClusterId, F.dstClusterId)
+      .agg(sum(col(F.estimatedValue)).as(F.estimatedValue))
       .as[PlainClusterRelation]
   }
 

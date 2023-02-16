@@ -434,12 +434,12 @@ class Transformation(
   }
 
   def computePlainClusterRelations(
-      clusterInputs: Dataset[ClusterTransaction],
-      clusterOutputs: Dataset[ClusterTransaction]
+      plainAddressRelations: Dataset[PlainAddressRelation],
+      addressCluster: Dataset[AddressCluster]
   ): Dataset[PlainClusterRelation] = {
     t.plainClusterRelations(
-      clusterInputs,
-      clusterOutputs
+      plainAddressRelations,
+      addressCluster
     )
   }
 

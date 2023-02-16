@@ -273,7 +273,7 @@ object TransformationJob {
     println("Computing plain cluster relations")
     val plainClusterRelations =
       transformation
-        .computePlainClusterRelations(clusterInputs, clusterOutputs)
+        .computePlainClusterRelations(plainAddressRelations, addressCluster)
 
     println("Computing cluster relations")
     val clusterRelations =
