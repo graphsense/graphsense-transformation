@@ -1,7 +1,7 @@
 package info.graphsense
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, from_unixtime, max}
 import org.rogach.scallop._
 
 import info.graphsense.{Fields => F}
@@ -91,20 +91,12 @@ object TransformationJob {
 
     val cassandra = new CassandraStorage(spark)
 
-    val summaryStatisticsRaw = cassandra
-      .load[SummaryStatisticsRaw](conf.rawKeyspace(), "summary_statistics")
     val exchangeRatesRaw =
       cassandra.load[ExchangeRatesRaw](conf.rawKeyspace(), "exchange_rates")
     val blocks =
-      cassandra.load[Block](conf.rawKeyspace(), "block")
+      cassandra.load[Block](conf.rawKeyspace(), "block").persist()
     val transactions =
       cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
-
-    val noBlocks = summaryStatisticsRaw.select(col("noBlocks")).first.getInt(0)
-    val lastBlockTimestamp =
-      summaryStatisticsRaw.select(col("timestamp")).first.getInt(0)
-    val noTransactions =
-      summaryStatisticsRaw.select(col("noTxs")).first.getLong(0)
 
     val transformation =
       new Transformation(spark, conf.bucketSize(), conf.addressPrefixLength())
@@ -131,12 +123,38 @@ object TransformationJob {
         .persist()
     cassandra.store(conf.targetKeyspace(), "exchange_rates", exchangeRates)
 
+    val maxBlockExchangeRates =
+      exchangeRates.select(max(col(F.blockId))).first.getInt(0)
+    val transactionsFiltered =
+      transactions.filter(col(F.blockId) <= maxBlockExchangeRates).persist()
+
+    val maxBlock = blocks
+      .filter(col(F.blockId) <= maxBlockExchangeRates)
+      .select(
+        max(col(F.blockId)).as("maxBlockId"),
+        max(col(F.timestamp)).as("maxBlockTimestamp")
+      )
+      .withColumn("maxBlockDatetime", from_unixtime(col("maxBlockTimestamp")))
+    val maxBlockTimestamp =
+      maxBlock.select(col("maxBlockTimestamp")).first.getInt(0)
+    val maxBlockDatetime =
+      maxBlock.select(col("maxBlockDatetime")).first.getString(0)
+    val maxTransactionId =
+      transactionsFiltered.select(max(F.txId)).first.getLong(0)
+    val noBlocks = maxBlockExchangeRates + 1
+    val noTransactions = maxTransactionId + 1
+
+    println(s"Max block timestamp: ${maxBlockDatetime}")
+    println(s"Max block ID: ${maxBlockExchangeRates}")
+    println(s"Max transaction ID: ${maxTransactionId}")
+
     println("Extracting transaction inputs")
-    val regInputs = transformation.computeRegularInputs(transactions).persist()
+    val regInputs =
+      transformation.computeRegularInputs(transactionsFiltered).persist()
 
     println("Extracting transaction outputs")
     val regOutputs =
-      transformation.computeRegularOutputs(transactions).persist()
+      transformation.computeRegularOutputs(transactionsFiltered).persist()
 
     println("Computing address IDs")
     val addressIds =
@@ -186,7 +204,12 @@ object TransformationJob {
     println("Computing plain address relations")
     val plainAddressRelations =
       transformation
-        .computePlainAddressRelations(inputs, outputs, regInputs, transactions)
+        .computePlainAddressRelations(
+          inputs,
+          outputs,
+          regInputs,
+          transactionsFiltered
+        )
 
     println("Computing address relations")
     val addressRelations =
@@ -242,7 +265,7 @@ object TransformationJob {
         .computeClusterTransactions(
           inputs,
           outputs,
-          transactions,
+          transactionsFiltered,
           addressCluster
         )
         .persist()
@@ -312,7 +335,7 @@ object TransformationJob {
     println("Computing summary statistics")
     val summaryStatistics =
       transformation.summaryStatistics(
-        lastBlockTimestamp,
+        maxBlockTimestamp,
         noBlocks,
         noTransactions,
         noAddresses,

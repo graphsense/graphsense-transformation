@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - Upgrade to Spark 3.2.3
 - Changed computation of `plainClusterRelations`
+- Changed handling of missing exchange rates values; don't fill with zeros,
+  remove blocks/txs instead.
 
 ## [23.01/1.3.0] 2023-01-30
 ### Added

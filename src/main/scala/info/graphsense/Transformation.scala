@@ -84,22 +84,26 @@ class Transformation(
       )
       .select(F.blockId, F.date)
 
-    val lastDateExchangeRates =
+    val maxDateExchangeRates =
       exchangeRates.select(max(F.date)).first.getString(0)
-    val lastDateBlocks = blocksDate.select(max(F.date)).first.getString(0)
-    if (lastDateExchangeRates < lastDateBlocks)
+    val maxDateBlocks = blocksDate.select(max(F.date)).first.getString(0)
+    if (maxDateExchangeRates < maxDateBlocks) {
+      val noBlocksRemove =
+        blocksDate.filter(col(F.date) > maxDateExchangeRates).count()
       println(
-        "WARNING: exchange rates not available for all blocks, filling missing values with 0"
+        s"WARNING: exchange rates not available for all blocks, removing ${noBlocksRemove} blocks"
       )
-
+    }
     noFiatCurrencies = Some(
       exchangeRates.select(size(col(F.fiatValues))).distinct.first.getInt(0)
     )
 
     blocksDate
       .join(exchangeRates, Seq(F.date), "left")
-      // replace null values in column fiatValues
+      // remove blocks with missing exchange rate values at the end
+      .filter(col(F.date) <= maxDateExchangeRates)
       .withColumn(F.fiatValues, map_values(col(F.fiatValues)))
+      // fill remaining missing values in column fiatValue with zeros
       .withColumn(
         F.fiatValues,
         coalesce(
