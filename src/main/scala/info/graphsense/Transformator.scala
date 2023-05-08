@@ -16,7 +16,8 @@ import org.apache.spark.sql.functions.{
   substring,
   sum,
   transform,
-  when
+  when,
+  lit
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType, LongType}
 import org.graphframes.GraphFrame
@@ -247,7 +248,12 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .join(reducedInputSum, F.txId)
       .withColumn(
         F.estimatedValue,
-        round(col("inValue") / col(F.totalInput) * col("outValue"))
+        round(
+          when(
+            col(F.totalInput) =!= 0,
+            col("inValue") / col(F.totalInput) * col("outValue")
+          ).otherwise(lit(0))
+        )
           .cast(LongType)
       )
       .drop(F.totalInput, "inValue", "outValue")
