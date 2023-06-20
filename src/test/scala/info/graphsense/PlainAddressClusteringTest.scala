@@ -31,7 +31,7 @@ class PlainAddressClusteringTest
   spark.sparkContext.setCheckpointDir("file:///tmp/spark-checkpoint")
 
   test(
-    "addresses that appear in only one transaction are not clustered"
+    "single-input addresses that appear in only one transaction are not clustered"
   ) {
     import spark.implicits._
     val tx = Seq((666L, 1, false), (888L, 4, false))
@@ -46,10 +46,16 @@ class PlainAddressClusteringTest
   ) {
     import spark.implicits._
     val tx =
-      Seq((100L, 1, false), (100L, 2, false), (404L, 3, false)) // addr 3 will not be clustered because it's not multiple-input
+      Seq(
+        (100L, 1, false), // lowest id, will become clusterId
+        (100L, 2, false),
+        (404L, 3, false)) // addr 3 will not be clustered because it's not multiple-input
         .toDF("txId", "addressId", "coinJoin")
 
-    val expected = Seq((1, 1), (2, 1)).toDF("id", "clusterId")
+    val expected = Seq(
+      (1, 1),
+      (2, 1)
+    ).toDF("id", "clusterId")
 
     val clusters = t.plainAddressCluster(tx, removeCoinJoin = true).sort("id")
     assertDataFrameEquality(clusters, expected)
