@@ -10,14 +10,14 @@ import org.apache.spark.sql.functions.{
   explode,
   floor,
   lead,
+  lit,
   round,
   row_number,
   struct,
   substring,
   sum,
   transform,
-  when,
-  lit
+  when
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType, LongType}
 import org.graphframes.GraphFrame
@@ -331,6 +331,24 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .groupBy(F.srcClusterId, F.dstClusterId)
       .agg(
         count(F.txId).cast(IntegerType).as(F.noTransactions),
+        struct(
+          sum(
+            when(
+              col(F.srcClusterId) =!= col(F.dstClusterId),
+              col(F.estimatedValue)
+            )
+          ).as(F.value),
+          array(
+            (0 until noFiatCurrencies)
+              .map(i =>
+                sum(
+                  when(
+                    col(F.srcClusterId) =!= col(F.dstClusterId),
+                    col(F.fiatValues).getItem(i)
+                  )).cast(FloatType)
+              ): _*
+          ).as(F.fiatValues)
+        ).as(F.estimatedValueAdj),
         struct(
           sum(col(F.estimatedValue)).as(F.value),
           array(

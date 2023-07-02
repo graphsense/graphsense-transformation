@@ -197,6 +197,20 @@ class Transformation(
       .as[AddressByAddressPrefix]
   }
 
+  def zeroValueIfNull(columnName: String)(df: DataFrame): DataFrame = {
+    df.withColumn(
+      columnName,
+      coalesce(
+        col(columnName),
+        struct(
+          lit(0).as(F.value),
+          typedLit(Array.fill[Float](noFiatCurrencies.get)(0))
+            .as(F.fiatValues)
+        )
+      )
+    )
+  }
+
   def splitTransactions[A](
       transactions: Dataset[A]
   )(implicit evidence: Encoder[A]) =
@@ -215,20 +229,6 @@ class Transformation(
       idColumn: String,
       exchangeRates: Dataset[ExchangeRates]
   ) = {
-
-    def zeroValueIfNull(columnName: String)(df: DataFrame): DataFrame = {
-      df.withColumn(
-        columnName,
-        coalesce(
-          col(columnName),
-          struct(
-            lit(0).as(F.value),
-            typedLit(Array.fill[Float](noFiatCurrencies.get)(0))
-              .as(F.fiatValues)
-          )
-        )
-      )
-    }
 
     def statsPart(
         inOrOut: Dataset[_],
@@ -265,8 +265,8 @@ class Transformation(
       .join(outStats, Seq(idColumn), "left_outer")
       .na
       .fill(0)
-      .transform(zeroValueIfNull("totalReceived"))
-      .transform(zeroValueIfNull("totalSpent"))
+      .transform(zeroValueIfNull(F.totalReceived))
+      .transform(zeroValueIfNull(F.totalSpent))
   }
 
   def computeNodeDegrees(
@@ -462,6 +462,38 @@ class Transformation(
       basicCluster: Dataset[BasicCluster],
       clusterRelations: Dataset[ClusterRelation]
   ): Dataset[Cluster] = {
+    val clusterRelationsFiltered =
+      clusterRelations.filter(col(F.srcClusterId) =!= col(F.dstClusterId))
+    val totalSpentAdj = clusterRelationsFiltered
+      .groupBy(F.srcClusterId)
+      .agg(
+        struct(
+          sum(col(F.estimatedValueAdj + ".value")).as(F.value),
+          array(
+            (0 until noFiatCurrencies.get)
+              .map(i =>
+                sum(col(F.estimatedValueAdj + ".fiatValues").getItem(i))
+                  .cast(FloatType)
+              ): _*
+          ).as(F.fiatValues)
+        ).as(F.totalSpent + "Adj")
+      )
+      .withColumnRenamed("srcClusterId", "clusterId")
+    val totalReceivedAdj = clusterRelationsFiltered
+      .groupBy(F.dstClusterId)
+      .agg(
+        struct(
+          sum(col(F.estimatedValueAdj + ".value")).as(F.value),
+          array(
+            (0 until noFiatCurrencies.get)
+              .map(i =>
+                sum(col(F.estimatedValueAdj + ".fiatValues").getItem(i))
+                  .cast(FloatType)
+              ): _*
+          ).as(F.fiatValues)
+        ).as(F.totalReceived + "Adj")
+      )
+      .withColumnRenamed("dstClusterId", "clusterId")
     // compute in/out degrees for cluster graph
     computeNodeDegrees(
       basicCluster,
@@ -473,7 +505,11 @@ class Transformation(
       basicCluster.select(F.clusterId),
       Seq(F.clusterId),
       "right"
-    ).transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
+    ).join(totalReceivedAdj, Seq("clusterId"), "left")
+      .join(totalSpentAdj, Seq("clusterId"), "left")
+      .transform(zeroValueIfNull(F.totalReceivedAdj))
+      .transform(zeroValueIfNull(F.totalSpentAdj))
+      .transform(t.withIdGroup(F.clusterId, F.clusterIdGroup))
       .sort(F.clusterIdGroup, F.clusterId)
       .as[Cluster]
   }
