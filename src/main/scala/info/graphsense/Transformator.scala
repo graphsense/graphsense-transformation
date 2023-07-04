@@ -361,6 +361,6 @@ class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
       .transform(withIdGroup(F.srcClusterId, F.srcClusterIdGroup))
       // add partitioning columns for incoming clusters
       .transform(withIdGroup(F.dstClusterId, F.dstClusterIdGroup))
-      .as[ClusterRelation]
+      .as[ClusterRelationAdj]
   }
 }

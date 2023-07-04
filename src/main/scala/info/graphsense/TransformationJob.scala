@@ -310,20 +310,26 @@ object TransformationJob {
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_incoming_relations",
-      clusterRelations.sort(
-        F.dstClusterIdGroup,
-        F.dstClusterId,
-        F.srcClusterId
-      )
+      clusterRelations
+        .drop(F.estimatedValueAdj)
+        .as[ClusterRelation]
+        .sort(
+          F.dstClusterIdGroup,
+          F.dstClusterId,
+          F.srcClusterId
+        )
     )
     cassandra.store(
       conf.targetKeyspace(),
       "cluster_outgoing_relations",
-      clusterRelations.sort(
-        F.srcClusterIdGroup,
-        F.srcClusterId,
-        F.dstClusterId
-      )
+      clusterRelations
+        .drop(F.estimatedValueAdj)
+        .as[ClusterRelation]
+        .sort(
+          F.srcClusterIdGroup,
+          F.srcClusterId,
+          F.dstClusterId
+        )
     )
 
     println("Computing cluster")

@@ -201,6 +201,15 @@ case class ClusterRelation(
     dstClusterIdGroup: Int,
     dstClusterId: Int,
     noTransactions: Int,
+    estimatedValue: Currency
+)
+
+case class ClusterRelationAdj(
+    srcClusterIdGroup: Int,
+    srcClusterId: Int,
+    dstClusterIdGroup: Int,
+    dstClusterId: Int,
+    noTransactions: Int,
     estimatedValue: Currency,
     estimatedValueAdj: Currency
 )

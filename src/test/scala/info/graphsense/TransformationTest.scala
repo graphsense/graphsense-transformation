@@ -274,9 +274,10 @@ class TransformationTest
   }
   test("clusterRelations") {
     val clusterRelationsRef =
-      readTestData[ClusterRelation](spark, refDir + "cluster_relations.json")
+      readTestData[ClusterRelationAdj](spark, refDir + "cluster_relations.json")
         .sort(F.srcClusterId, F.dstClusterId)
-    val sortedRelations = clusterRelations.sort(F.srcClusterId, F.dstClusterId)
+    val sortedRelations =
+      clusterRelations.sort(F.srcClusterId, F.dstClusterId)
     assertDataFrameEquality(sortedRelations, clusterRelationsRef)
   }
   test("clusters") {

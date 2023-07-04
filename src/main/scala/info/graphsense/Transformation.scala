@@ -450,7 +450,7 @@ class Transformation(
   def computeClusterRelations(
       plainClusterRelations: Dataset[PlainClusterRelation],
       exchangeRates: Dataset[ExchangeRates]
-  ): Dataset[ClusterRelation] = {
+  ): Dataset[ClusterRelationAdj] = {
     t.clusterRelations(
       plainClusterRelations,
       exchangeRates,
@@ -460,7 +460,7 @@ class Transformation(
 
   def computeCluster(
       basicCluster: Dataset[BasicCluster],
-      clusterRelations: Dataset[ClusterRelation]
+      clusterRelations: Dataset[ClusterRelationAdj]
   ): Dataset[Cluster] = {
     val clusterRelationsFiltered =
       clusterRelations.filter(col(F.srcClusterId) =!= col(F.dstClusterId))
