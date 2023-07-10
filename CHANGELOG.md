@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+### Added
+- Added new columns (`total_received_adj`, `total_spent_adj`) to `cluster`
+  table (see graphsense/graphsense-transformation#34)
+
 ## [23.06/1.4.1] 2023-06-12
 ### Fixed
 - Fix division by zero on zero fee and value txs
