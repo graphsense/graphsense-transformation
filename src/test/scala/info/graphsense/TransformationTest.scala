@@ -36,10 +36,14 @@ class TransformationTest
   val bucketSize: Int = 2
   val addressPrefixLength: Int = 5
 
+  // transformation pipeline
+  val t = new Transformation(spark, bucketSize, addressPrefixLength)
+
   // input data
   val blocks = readTestData[Block](spark, inputDir + "test_blocks.json")
-  val transactions =
+  val transactions = t.addCoinbaseAddress(
     readTestData[Transaction](spark, inputDir + "test_txs.json")
+  )
   val exchangeRatesRaw =
     readTestData[ExchangeRatesRaw](spark, inputDir + "test_exchange_rates.json")
 
@@ -50,9 +54,6 @@ class TransformationTest
     .first()
     .getInt(0)
   val noTransactions = transactions.count()
-
-  // transformation pipeline
-  val t = new Transformation(spark, bucketSize, addressPrefixLength)
 
   val exchangeRates =
     t.computeExchangeRates(blocks, exchangeRatesRaw)

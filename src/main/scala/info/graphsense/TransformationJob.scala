@@ -90,16 +90,17 @@ object TransformationJob {
     import spark.implicits._
 
     val cassandra = new CassandraStorage(spark)
+    val transformation =
+      new Transformation(spark, conf.bucketSize(), conf.addressPrefixLength())
 
     val exchangeRatesRaw =
       cassandra.load[ExchangeRatesRaw](conf.rawKeyspace(), "exchange_rates")
     val blocks =
       cassandra.load[Block](conf.rawKeyspace(), "block").persist()
     val transactions =
-      cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
-
-    val transformation =
-      new Transformation(spark, conf.bucketSize(), conf.addressPrefixLength())
+      transformation.addCoinbaseAddress(
+        cassandra.load[Transaction](conf.rawKeyspace(), "transaction")
+      )
 
     println("Store configuration")
     val configuration =

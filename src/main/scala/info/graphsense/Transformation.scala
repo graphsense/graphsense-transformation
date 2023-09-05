@@ -24,7 +24,7 @@ import org.apache.spark.sql.functions.{
   typedLit,
   when
 }
-import org.apache.spark.sql.types.{FloatType, IntegerType}
+import org.apache.spark.sql.types.{ByteType, FloatType, IntegerType}
 
 import info.graphsense.{Fields => F}
 
@@ -116,6 +116,23 @@ class Transformation(
       .as[ExchangeRates]
   }
 
+  def addCoinbaseAddress(tx: Dataset[Transaction]): Dataset[Transaction] = {
+    tx.withColumn(
+      "inputs",
+      when(
+        col("coinbase") === true,
+        array(
+          struct(
+            array(lit("coinbase")).alias(F.address),
+            col(F.totalOutput).alias(F.value),
+            lit(0).cast(ByteType).alias("addressType")
+          )
+        )
+      )
+        .otherwise(col("inputs"))
+    ).as[Transaction]
+  }
+
   def computeRegularInputs(tx: Dataset[Transaction]): Dataset[RegularInput] = {
     tx.withColumn("input", explode(col("inputs")))
       .filter(size(col("input.address")) === 1)
@@ -175,8 +192,9 @@ class Transformation(
       .map(_.getString(0))
       .rdd
       .zipWithIndex()
-      .map { case ((a, id)) => AddressId(a, id.toInt) }
+      .map { case ((a, id)) => AddressId(a, id.toInt + 1) }
       .toDS()
+      .union(Seq(AddressId("coinbase", 0)).toDF().as[AddressId])
   }
 
   def computeAddressByAddressPrefix(
@@ -261,7 +279,7 @@ class Transformation(
         min(F.txId).as(F.firstTxId),
         max(F.txId).as(F.lastTxId)
       )
-      .join(inStats, idColumn)
+      .join(inStats, Seq(idColumn), "left")
       .join(outStats, Seq(idColumn), "left_outer")
       .na
       .fill(0)
