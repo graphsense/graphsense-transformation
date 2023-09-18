@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 ### Added
+- Added coinbase transactions to network representations
+  (address = 'coinbase', address_id = 0)
 - Added new columns (`total_received_adj`, `total_spent_adj`) to `cluster`
   table (see graphsense/graphsense-transformation#34)
 
