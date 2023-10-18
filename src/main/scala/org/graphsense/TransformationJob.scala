@@ -1,11 +1,10 @@
-package info.graphsense
+package org.graphsense
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, from_unixtime, max}
+import org.graphsense.{Fields => F}
+import org.graphsense.storage._
 import org.rogach.scallop._
-
-import info.graphsense.{Fields => F}
-import info.graphsense.storage._
 
 object TransformationJob {
 

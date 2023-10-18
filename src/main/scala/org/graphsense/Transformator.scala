@@ -1,4 +1,4 @@
-package info.graphsense
+package org.graphsense
 
 import org.apache.spark.sql.{Column, DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.expressions.Window
@@ -21,8 +21,7 @@ import org.apache.spark.sql.functions.{
 }
 import org.apache.spark.sql.types.{FloatType, IntegerType, LongType}
 import org.graphframes.GraphFrame
-
-import info.graphsense.{Fields => F}
+import org.graphsense.{Fields => F}
 
 class Transformator(spark: SparkSession, bucketSize: Int) extends Serializable {
 

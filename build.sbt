@@ -28,7 +28,7 @@ val versionFromTag: String = sys.env
   .getOrElse(defaultVersion)
 
 ThisBuild / scalaVersion := "2.12.10"
-ThisBuild / organization := "info.graphsense"
+ThisBuild / organization := "org.graphsense"
 ThisBuild / version := versionFromTag
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / publishTo := Some(

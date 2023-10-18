@@ -1,4 +1,4 @@
-package info.graphsense
+package org.graphsense
 
 object Fields {
   val blockId = "blockId"

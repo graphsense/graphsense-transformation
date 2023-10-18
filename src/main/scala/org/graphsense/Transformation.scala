@@ -1,4 +1,4 @@
-package info.graphsense
+package org.graphsense
 
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, SparkSession}
 import org.apache.spark.sql.expressions.Window
@@ -25,8 +25,7 @@ import org.apache.spark.sql.functions.{
   when
 }
 import org.apache.spark.sql.types.{ByteType, FloatType, IntegerType}
-
-import info.graphsense.{Fields => F}
+import org.graphsense.{Fields => F}
 
 class Transformation(
     spark: SparkSession,

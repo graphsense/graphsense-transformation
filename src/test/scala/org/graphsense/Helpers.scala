@@ -1,4 +1,4 @@
-package info.graphsense
+package org.graphsense
 
 import org.apache.spark.sql.{
   DataFrame,

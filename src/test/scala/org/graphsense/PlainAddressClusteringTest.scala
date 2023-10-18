@@ -1,4 +1,4 @@
-package info.graphsense
+package org.graphsense
 
 import com.github.mrpowers.spark.fast.tests.DataFrameComparer
 import org.apache.spark.sql.Dataset

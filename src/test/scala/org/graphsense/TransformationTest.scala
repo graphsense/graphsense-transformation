@@ -1,4 +1,4 @@
-package info.graphsense
+package org.graphsense
 
 import com.github.mrpowers.spark.fast.tests.DataFrameComparer
 import org.apache.spark.sql.Dataset
@@ -6,7 +6,7 @@ import org.apache.spark.sql.functions.col
 import org.scalatest.funsuite._
 
 import Helpers.{readTestData, setNullableStateForAllColumns}
-import info.graphsense.{Fields => F}
+import org.graphsense.{Fields => F}
 
 class TransformationTest
     extends AnyFunSuite

@@ -1,4 +1,4 @@
-package info.graphsense
+package org.graphsense
 
 case class RegularInput(
     address: String,
