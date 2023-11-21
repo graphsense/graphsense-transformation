@@ -542,6 +542,7 @@ class Transformation(
   ) = {
     Seq(
       SummaryStatistics(
+        0,
         lastBlockTimestamp,
         lastBlockTimestamp,
         noBlocks,

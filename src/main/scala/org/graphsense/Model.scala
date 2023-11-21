@@ -215,6 +215,7 @@ case class ClusterRelationAdj(
 )
 
 case class SummaryStatistics(
+    id: Int,
     timestamp: Int,
     timestampTransform: Int,
     noBlocks: Int,
