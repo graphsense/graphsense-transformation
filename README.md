@@ -1,7 +1,9 @@
 [![sbt test](https://github.com/graphsense/graphsense-transformation/actions/workflows/sbt_test.yml/badge.svg)](https://github.com/graphsense/graphsense-transformation/actions/workflows/sbt_test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# GraphSense Transformation Pipeline
+# GraphSense Transformation Pipeline (Moved to graphsense-spark)
+
+CAUTION: Code is now maintained in repository [Graphsense Spark][graphsense-spark]
 
 The GraphSense Transformation Pipeline reads raw block data, which is
 ingested into [Apache Cassandra][apache-cassandra]
@@ -94,6 +96,7 @@ Usage: submit.sh [-h] [-m MEMORY_GB] [-c CASSANDRA_HOST] [-s SPARK_MASTER]
 [graphsense-dashboard]: https://github.com/graphsense/graphsense-dashboard
 [graphsense-rest]: https://github.com/graphsense/graphsense-rest
 [graphsense-setup]: https://github.com/graphsense/graphsense-setup
+[graphsense-spark]: https://github.com/graphsense/graphsense-spark
 [java]: https://adoptopenjdk.net
 [scala-lang]: https://www.scala-lang.org
 [scala-ide]: http://scala-ide.org/
